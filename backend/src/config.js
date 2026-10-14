@@ -15,6 +15,11 @@ export const config = {
   dbPath: env.DB_PATH || "./data/scout.db",
   jwtSecret: env.JWT_SECRET || (isProd ? "" : crypto.randomBytes(32).toString("hex")),
   tokenHours: Number(env.TOKEN_HOURS) || 8,
+  instructorTokenDays: Number(env.INSTRUCTOR_TOKEN_DAYS) || 30,
+  signupCode: env.SIGNUP_CODE || "",
+  backupDir: env.BACKUP_DIR || "",
+  backupKeep: Number(env.BACKUP_KEEP) || 14,
+  backupEveryHours: env.BACKUP_EVERY_HOURS === undefined ? 24 : Number(env.BACKUP_EVERY_HOURS),
   bcryptCost: nodeEnv === "test" ? 4 : 12,
   admin: {
     username: env.ADMIN_USERNAME || "admin",

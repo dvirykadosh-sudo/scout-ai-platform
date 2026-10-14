@@ -4,13 +4,17 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, downloadDocx, errorMessage, storageGet, storageSet, ApiError } from "@/lib/api";
-import { AGE_GROUPS, METHODS, ROLES } from "@/lib/constants";
+import { AGE_GROUPS, DEFAULT_STYLE, METHODS, ROLES, STYLE_OPTIONS, type StyleKey, type StyleSettings } from "@/lib/constants";
 import type { Activity } from "@/lib/types";
 import { ActivityBody, ActivityMeta } from "./ActivityView";
-import { useToast } from "./Providers";
+import { useAuth, useToast } from "./Providers";
+import { LivePreview } from "./LivePreview";
+import { StylePicker } from "./StylePicker";
 import { Field, Skeleton } from "./ui";
 
-const STEPS = ["פרטי הפעולה", "מצבים פדגוגיים", "שיטות וזמנים", "סקירה ויצירה"];
+const STEPS = ["פרטי הפעולה", "מצבים פדגוגיים", "שיטות וזמנים", "סגנון כתיבה", "סקירה ויצירה"];
+const LAST = STEPS.length - 1;
+const STYLE_KEY = "scout.style.current";
 
 interface Form {
   topic: string;
@@ -40,9 +44,16 @@ const EMPTY: Form = {
 
 type Errors = Record<string, string>;
 const REMEMBER_KEY = "scout.form";
+const DRAFT_KEY = "scout.draft";
+interface Draft {
+  form: Form;
+  sel: Record<string, string>;
+  step: number;
+}
 
 export function Generator() {
   const toast = useToast();
+  const { token, user } = useAuth();
   const params = useSearchParams();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -51,9 +62,51 @@ export function Generator() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Activity | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [style, setStyle] = useState<StyleSettings>(DEFAULT_STYLE);
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [promptText, setPromptText] = useState("");
+  const [pasted, setPasted] = useState("");
+  const [extBusy, setExtBusy] = useState(false);
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const draftChecked = useRef(false);
+
+  // autosave: a draft survives closing the tab or a dropped connection
+  useEffect(() => {
+    if (!draftChecked.current) {
+      draftChecked.current = true;
+      try {
+        const raw = storageGet(DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw) as Draft;
+          if (d?.form?.topic || Object.keys(d?.sel ?? {}).length) setDraft(d);
+        }
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (result || draft) return;
+    const t = window.setTimeout(() => {
+      if (form.topic.trim() || Object.keys(sel).length) storageSet(DRAFT_KEY, JSON.stringify({ form, sel, step }));
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [form, sel, step, result, draft]);
+  const clearDraft = () => storageSet(DRAFT_KEY, "");
+  const restoreDraft = () => {
+    if (!draft) return;
+    setForm({ ...EMPTY, ...draft.form });
+    setSel(draft.sel ?? {});
+    setStep(Math.min(Math.max(draft.step ?? 0, 0), LAST));
+    setDraft(null);
+    toast("הטיוטה שוחזרה", { kind: "success" });
+  };
+  const dropDraft = () => {
+    clearDraft();
+    setDraft(null);
+  };
 
   // remembered fields + method preselected from the methods library
   useEffect(() => {
@@ -66,9 +119,46 @@ export function Generator() {
         /* ignore */
       }
     }
+    const t = params.get("topic");
+    const v = params.get("value");
+    if (t) setForm((f) => ({ ...f, topic: t.slice(0, 120), value: (v ?? f.value).slice(0, 120) }));
     const m = params.get("method");
     if (m && METHODS.some((x) => x.name === m)) setSel({ [m]: "10" });
   }, [params]);
+
+  // last used writing style + whether the server has an AI key
+  useEffect(() => {
+    const raw = storageGet(STYLE_KEY);
+    if (raw) {
+      try {
+        setStyle({ ...DEFAULT_STYLE, ...(JSON.parse(raw) as Partial<StyleSettings>) });
+      } catch {
+        /* ignore */
+      }
+    }
+    api<{ aiEnabled: boolean }>("/api/meta")
+      .then((m) => setAiEnabled(m.aiEnabled))
+      .catch(() => setAiEnabled(false));
+  }, []);
+
+  // signed-in instructors: style saved in the account + name prefilled
+  useEffect(() => {
+    if (!token || !user) return;
+    setForm((f) => (f.instructor ? f : { ...f, instructor: user.displayName }));
+    api<{ style: Partial<StyleSettings> | null }>("/api/me/style", { token })
+      .then((r) => r.style && setStyle({ ...DEFAULT_STYLE, ...r.style }))
+      .catch(() => {});
+  }, [token, user]);
+
+  const saveStyleToAccount = async () => {
+    if (!token) return;
+    try {
+      await api("/api/me/style", { method: "PUT", token, body: { style } });
+      toast("הסגנון נשמר בחשבון שלכם", { kind: "success" });
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+  };
 
   // move keyboard/screen-reader focus to the new step heading
   useEffect(() => {
@@ -118,6 +208,13 @@ export function Generator() {
     return e;
   };
 
+  // after a failed validation, move focus to the first invalid field so keyboard and screen-reader users land on it
+  const focusFirst = (e: Errors) => {
+    const key = Object.keys(e)[0];
+    const id = key?.startsWith("m:") ? `method-min-${METHODS.findIndex((m) => m.name === key.slice(2))}` : key;
+    window.setTimeout(() => document.getElementById(id ?? "")?.focus(), 60);
+  };
+
   const go = (target: number) => {
     // going forward validates every step on the way
     if (target > step) {
@@ -126,6 +223,7 @@ export function Generator() {
         if (Object.keys(e).length) {
           setErrors(e);
           setStep(s);
+          focusFirst(e);
           return;
         }
       }
@@ -149,44 +247,87 @@ export function Generator() {
     });
   };
 
+  const buildBody = () => ({
+    topic: form.topic.trim(),
+    value: form.value.trim(),
+    ageGroup: form.ageGroup,
+    participants: Number(form.participants),
+    tribe: form.tribe.trim(),
+    battalion: form.battalion.trim(),
+    instructor: form.instructor.trim(),
+    role: form.role,
+    activeScouting: form.activeScouting,
+    energeticMode: form.energeticMode,
+    methods: Object.entries(sel).map(([name, minutes]) => ({ name, minutes: Number(minutes) })),
+    style,
+  });
+
+  const makePrompt = async () => {
+    for (const s of [0, 2]) {
+      const e = validate(s);
+      if (Object.keys(e).length) {
+        setErrors(e);
+        setStep(s);
+        focusFirst(e);
+        return;
+      }
+    }
+    setExtBusy(true);
+    try {
+      const r = await api<{ prompt: string }>("/api/activities/prompt", { method: "POST", token, body: buildBody() });
+      setPromptText(r.prompt);
+      storageSet(STYLE_KEY, JSON.stringify(style));
+      try {
+        await navigator.clipboard.writeText(r.prompt);
+        toast("ההנחיה הועתקה. הדביקו אותה ב-Claude או ב-ChatGPT", { kind: "success" });
+      } catch {
+        toast("לא הצלחתי להעתיק אוטומטית. סמנו את ההנחיה למטה והעתיקו ידנית", { kind: "info" });
+      }
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+    setExtBusy(false);
+  };
+
+  const importReply = async () => {
+    setExtBusy(true);
+    try {
+      const a = await api<Activity>("/api/activities/import", { method: "POST", token, body: { input: buildBody(), text: pasted } });
+      clearDraft();
+      setResult(a);
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+    setExtBusy(false);
+  };
+
   const create = async () => {
     for (const s of [0, 2]) {
       const e = validate(s);
       if (Object.keys(e).length) {
         setErrors(e);
         setStep(s);
+        focusFirst(e);
         return;
       }
     }
     setBusy(true);
     setErrors({});
     try {
-      const a = await api<Activity>("/api/activities/generate", {
-        method: "POST",
-        body: {
-          topic: form.topic.trim(),
-          value: form.value.trim(),
-          ageGroup: form.ageGroup,
-          participants: Number(form.participants),
-          tribe: form.tribe.trim(),
-          battalion: form.battalion.trim(),
-          instructor: form.instructor.trim(),
-          role: form.role,
-          activeScouting: form.activeScouting,
-          energeticMode: form.energeticMode,
-          methods: Object.entries(sel).map(([name, minutes]) => ({ name, minutes: Number(minutes) })),
-        },
-      });
+      const a = await api<Activity>("/api/activities/generate", { method: "POST", token, body: buildBody() });
+      storageSet(STYLE_KEY, JSON.stringify(style));
+      if (token) api("/api/me/style", { method: "PUT", token, body: { style } }).catch(() => {});
       storageSet(REMEMBER_KEY, JSON.stringify({ tribe: form.tribe, battalion: form.battalion, instructor: form.instructor, role: form.role }));
+      clearDraft();
       setResult(a);
     } catch (e) {
       if (e instanceof ApiError && e.fields) {
         const next: Errors = {};
-        let target = 3;
+        let target = LAST;
         for (const [k, msgs] of Object.entries(e.fields)) {
           const root = k.split(".")[0];
           next[root] = msgs[0];
-          target = Math.min(target, root === "methods" ? 2 : 0);
+          target = Math.min(target, root === "methods" ? 2 : root === "style" ? 3 : 0);
         }
         setErrors(next);
         setStep(target);
@@ -207,7 +348,45 @@ export function Generator() {
     setExporting(false);
   };
 
+  const emergency = () => {
+    setSel({ "משחק תחרות": "3", "דיון בשאלה": "5", "שיתוף": "2" });
+    setErrors({});
+    toast("נבחרו שלוש שיטות בסך 10 דקות. אפשר לשנות אותן בשלב 'שיטות וזמנים'", { kind: "info" });
+  };
+
+  const instantEmergency = async () => {
+    const e: Errors = {};
+    if (!form.instructor.trim()) e.instructor = "יש להזין שם מדריך/ה";
+    if (Object.keys(e).length) {
+      setErrors(e);
+      setStep(0);
+      focusFirst(e);
+      return;
+    }
+    setBusy(true);
+    try {
+      const body = {
+        ...(form.topic.trim() ? { topic: form.topic.trim() } : {}),
+        value: form.value.trim(),
+        ageGroup: form.ageGroup,
+        tribe: form.tribe,
+        instructor: form.instructor.trim(),
+        role: form.role,
+        participants: Number(form.participants) || 20,
+        style,
+        seed: Math.floor(Math.random() * 1000),
+      };
+      const a = await api<Activity>("/api/activities/emergency", { method: "POST", token, body });
+      clearDraft();
+      setResult(a);
+    } catch (err) {
+      toast(errorMessage(err), { kind: "error" });
+    }
+    setBusy(false);
+  };
+
   const reset = () => {
+    clearDraft();
     setResult(null);
     setSel({});
     setErrors({});
@@ -231,13 +410,16 @@ export function Generator() {
         <h2 id="result-title" ref={resultHeading} tabIndex={-1}>
           {result.title}
         </h2>
-        <p className="hint">{result.source === "ai" ? "הפעולה נוצרה בעזרת AI ונשמרה במאגר." : "הפעולה נוצרה ממחולל התבניות המובנה ונשמרה במאגר."}</p>
+        <p className="hint">{result.source === "ai" ? "הפעולה נוצרה בעזרת AI ונשמרה במאגר." : result.source === "external" ? "הפעולה יובאה מה-AI החיצוני ונשמרה במאגר." : "הפעולה נוצרה ממחולל התבניות המובנה ונשמרה במאגר."}</p>
         <ActivityMeta a={result} />
         <ActivityBody a={result} />
         <div className="actions">
           <button type="button" className="btn btn-primary" onClick={exportWord} disabled={exporting}>
             {exporting ? "מכין קובץ..." : "ייצוא ל-Word"}
           </button>
+          <Link className="btn" href={`/field/${result.id}`}>
+            מצב הדרכה בשטח
+          </Link>
           <Link className="btn" href={`/library/${result.id}`}>
             פתיחה במאגר
           </Link>
@@ -254,19 +436,20 @@ export function Generator() {
   const ageOptions = AGE_GROUPS;
 
   return (
+    <div className="wizard-layout">
     <form
       className="wizard"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        if (step < 3) go(step + 1);
+        if (step < LAST) go(step + 1);
         else create();
       }}
     >
       <ol className="stepper" aria-label="שלבי יצירת הפעולה">
         {STEPS.map((label, i) => (
-          <li key={label} aria-current={i === step ? "step" : undefined} className={i < step ? "done" : ""}>
-            <button type="button" onClick={() => go(i)}>
+          <li key={label} className={`${i < step ? "done" : ""} ${i === step ? "current" : ""}`}>
+            <button type="button" aria-current={i === step ? "step" : undefined} onClick={() => go(i)}>
               <span className="step-num" aria-hidden="true">
                 {i + 1}
               </span>
@@ -276,6 +459,37 @@ export function Generator() {
           </li>
         ))}
       </ol>
+
+      {draft && (
+        <div className="card draft-banner" role="region" aria-label="טיוטה שמורה">
+          <p>
+            <strong>נמצאה טיוטה שלא הושלמה{draft.form.topic ? `: ${draft.form.topic}` : ""}.</strong> רוצים להמשיך מאיפה שעצרתם?
+          </p>
+          <div className="actions">
+            <button type="button" className="btn btn-primary" onClick={restoreDraft}>
+              שחזור הטיוטה
+            </button>
+            <button type="button" className="btn" onClick={dropDraft}>
+              מחיקת הטיוטה
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 0 && (
+        <div className="card emergency">
+          <p>
+            <strong>אין זמן להתכונן?</strong> בלחיצה אחת נבחרות שיטות בסך 10 דקות, ונשאר רק להזין נושא ושם.
+          </p>
+          <button type="button" className="btn" onClick={emergency}>
+            פעולת חירום של 10 דקות
+          </button>{" "}
+          <button type="button" className="btn btn-primary" onClick={instantEmergency}>
+            יצירה מיידית: 10 דקות בלי ציוד
+          </button>
+          <p className="hint">הכפתור השני בונה פעולה שלמה מוכנה להפעלה עכשיו, עם משחק בעל פה ושלוש שאלות. צריך רק שם מדריך/ה, ונושא אם יש.</p>
+        </div>
+      )}
 
       <section className="card glass" aria-labelledby="step-title">
         <h2 id="step-title" className="section-title" ref={stepHeading} tabIndex={-1}>
@@ -389,7 +603,9 @@ export function Generator() {
           </>
         )}
 
-        {step === 3 && (
+        {step === 3 && <StylePicker value={style} onChange={setStyle} aiEnabled={aiEnabled} onSaveAccount={token ? saveStyleToAccount : undefined} />}
+
+        {step === LAST && (
           <div>
             <dl className="review">
               <div>
@@ -431,7 +647,41 @@ export function Generator() {
                 <dt>זמן כולל</dt>
                 <dd>{total} דקות</dd>
               </div>
+              <div>
+                <dt>סגנון כתיבה</dt>
+                <dd>
+                  {(["tone", "address", "length"] as StyleKey[]).map((k) => (STYLE_OPTIONS[k].options as Record<string, string>)[style[k]]).join(", ")}
+                  {style.sample ? ", עם דוגמה שלכם" : ""}
+                </dd>
+              </div>
             </dl>
+
+            <details className="card external">
+              <summary>אפשרות נוספת: לכתוב עם Claude או ChatGPT בצ'אט</summary>
+              <p className="hint">
+                {aiEnabled
+                  ? "אפשר גם לעבוד בצ'אט חיצוני ולהחזיר לכאן את התוצאה."
+                  : "כשאין מפתח AI בשרת, זו הדרך שבה הטקסט באמת נשמע כמוכם: מעתיקים הנחיה מוכנה (עם הדוגמה והסגנון שבחרתם), מדביקים בצ'אט, ומדביקים כאן את התשובה. היא תישמר במאגר ותקבל Word ומצב שטח."}
+              </p>
+              <div className="actions">
+                <button type="button" className="btn" onClick={makePrompt} disabled={extBusy}>
+                  {extBusy ? "מכין..." : "1. העתק הנחיה"}
+                </button>
+              </div>
+              {promptText && (
+                <div className="field">
+                  <label htmlFor="ext-prompt">ההנחיה (אם ההעתקה האוטומטית לא עבדה)</label>
+                  <textarea id="ext-prompt" rows={5} readOnly value={promptText} onFocus={(e) => e.currentTarget.select()} />
+                </div>
+              )}
+              <div className="field">
+                <label htmlFor="ext-reply">2. הדביקו כאן את התשובה של ה-AI</label>
+                <textarea id="ext-reply" rows={7} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="### פתיחה (5 דקות) ..." />
+              </div>
+              <button type="button" className="btn btn-primary" onClick={importReply} disabled={extBusy || pasted.trim().length < 40}>
+                שמירת הפעולה במאגר
+              </button>
+            </details>
           </div>
         )}
 
@@ -442,10 +692,12 @@ export function Generator() {
             </button>
           )}
           <button type="submit" className="btn btn-primary">
-            {step < 3 ? "המשך" : "צור פעולה חכמה"}
+            {step < LAST ? "המשך" : "צור פעולה חכמה"}
           </button>
         </div>
       </section>
     </form>
+    <LivePreview form={form} sel={sel} style={style} />
+    </div>
   );
 }

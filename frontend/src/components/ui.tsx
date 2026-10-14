@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useId, useRef, type ReactElement, type ReactNode } from "react";
 
 export function Field({
   label,
@@ -17,10 +17,20 @@ export function Field({
   children: ReactNode;
   className?: string;
 }) {
+  // connect the hint and the error message to the control, so screen readers read them with it
+  let control = children;
+  if (isValidElement(children) && typeof children.type === "string") {
+    const props = (children as ReactElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean }>).props;
+    const ids = [props["aria-describedby"], hint && !error ? `${htmlFor}-hint` : "", error ? `${htmlFor}-err` : ""].filter(Boolean).join(" ");
+    control = cloneElement(children as ReactElement<Record<string, unknown>>, {
+      ...(ids ? { "aria-describedby": [...new Set(ids.split(" "))].join(" ") } : {}),
+      ...(error ? { "aria-invalid": true } : {}),
+    });
+  }
   return (
     <div className={`field ${error ? "has-error" : ""} ${className}`}>
       <label htmlFor={htmlFor}>{label}</label>
-      {children}
+      {control}
       {hint && !error && (
         <p className="hint" id={`${htmlFor}-hint`}>
           {hint}

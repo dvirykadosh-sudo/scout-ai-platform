@@ -9,6 +9,8 @@ interface A11yCtx {
   largeText: boolean;
   toggleContrast: () => void;
   toggleLarge: () => void;
+  theme: "auto" | "dark" | "light";
+  cycleTheme: () => void;
 }
 const A11y = createContext<A11yCtx | null>(null);
 export const useA11y = () => {
@@ -19,9 +21,13 @@ export const useA11y = () => {
 
 /* ───────────── admin session ───────────── */
 export interface SessionUser {
+  id: number;
   username: string;
+  displayName: string;
+  role: "ADMIN" | "INSTRUCTOR";
   mustChangePw: boolean;
 }
+export const isAdminUser = (u: SessionUser | null | undefined): boolean => !!u && u.role === "ADMIN" && !u.mustChangePw;
 interface AuthCtx {
   token: string | null;
   user: SessionUser | null;
@@ -58,6 +64,7 @@ const SESSION_KEY = "scout.session";
 export function Providers({ children }: { children: ReactNode }) {
   const [highContrast, setHc] = useState(false);
   const [largeText, setLarge] = useState(false);
+  const [theme, setTheme] = useState<"auto" | "dark" | "light">("auto");
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
@@ -68,15 +75,21 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     setHc(document.documentElement.classList.contains("hc"));
     setLarge(document.documentElement.classList.contains("large"));
-    try {
-      const raw = window.sessionStorage.getItem(SESSION_KEY);
-      if (raw) {
-        const s = JSON.parse(raw) as { token: string; user: SessionUser };
-        setToken(s.token);
-        setUser(s.user);
+    const savedTheme = storageGet("scout.theme");
+    if (savedTheme === "dark" || savedTheme === "light") setTheme(savedTheme);
+    // admins stay signed in only for this browser tab; instructors stay signed in on their device
+    const read = (store: () => Storage) => {
+      try {
+        const raw = store().getItem(SESSION_KEY);
+        return raw ? (JSON.parse(raw) as { token: string; user: SessionUser }) : null;
+      } catch {
+        return null;
       }
-    } catch {
-      /* ignore */
+    };
+    const saved = read(() => window.sessionStorage) ?? read(() => window.localStorage);
+    if (saved?.user?.role) {
+      setToken(saved.token);
+      setUser(saved.user);
     }
     setReady(true);
   }, []);
@@ -96,11 +109,30 @@ export function Providers({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // theme: "auto" follows the device, and reacts when the device changes
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const apply = () => document.documentElement.classList.toggle("light", theme === "light" || (theme === "auto" && mq.matches));
+    apply();
+    if (theme !== "auto") return;
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [theme]);
+  const cycleTheme = useCallback(() => {
+    setTheme((t) => {
+      const next = t === "auto" ? "light" : t === "light" ? "dark" : "auto";
+      storageSet("scout.theme", next);
+      return next;
+    });
+  }, []);
+
   const setSession = useCallback((t: string, u: SessionUser) => {
     setToken(t);
     setUser(u);
     try {
-      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token: t, user: u }));
+      window.sessionStorage.removeItem(SESSION_KEY);
+      window.localStorage.removeItem(SESSION_KEY);
+      (u.role === "ADMIN" ? window.sessionStorage : window.localStorage).setItem(SESSION_KEY, JSON.stringify({ token: t, user: u }));
     } catch {
       /* ignore */
     }
@@ -110,6 +142,7 @@ export function Providers({ children }: { children: ReactNode }) {
     setUser(null);
     try {
       window.sessionStorage.removeItem(SESSION_KEY);
+      window.localStorage.removeItem(SESSION_KEY);
     } catch {
       /* ignore */
     }
@@ -122,7 +155,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
   const dismiss = (id: number) => setToasts((t) => t.filter((x) => x.id !== id));
 
-  const a11y = useMemo(() => ({ highContrast, largeText, toggleContrast, toggleLarge }), [highContrast, largeText, toggleContrast, toggleLarge]);
+  const a11y = useMemo(() => ({ highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme }), [highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme]);
   const auth = useMemo(() => ({ token, user, ready, setSession, clear }), [token, user, ready, setSession, clear]);
 
   return (

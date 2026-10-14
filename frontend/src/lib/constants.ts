@@ -2,6 +2,14 @@
 
 export const STAGE_NAMES = ["פתיחה", "ציר זמן/משחק", "זמן צופיות מעשי", "דיון", "סיכום"] as const;
 
+export const CONDITIONS = [
+  { key: "rain", label: "גשם" },
+  { key: "heat", label: "חום" },
+  { key: "small-room", label: "חדר קטן" },
+  { key: "few", label: "קבוצה קטנה" },
+  { key: "many", label: "קבוצה גדולה" },
+] as const;
+
 export const ROLES = ["מדריך", "מדריכה", "צוות הדרכה"] as const;
 
 export const GRADES = ["ג'", "ד'", "ה'", "ו'", "ז'", "ח'", "ט'", "י'", "יא'", "יב'"] as const;
@@ -32,6 +40,12 @@ export const METHODS: MethodInfo[] = [
 
 export const ACTION_LABELS: Record<string, string> = {
   "activity.generate": "יצירת פעולה",
+  "activity.import": "ייבוא פעולה מ-AI חיצוני",
+  register: "הרשמת מדריך",
+  "register.badcode": "הרשמה עם קוד שגוי",
+  "user.update": "עדכון משתמש",
+  "backup.create": "יצירת גיבוי",
+  "backup.download": "הורדת גיבוי",
   "activity.update": "עריכת פעולה",
   "activity.archive": "מחיקת פעולה",
   "activity.restore": "שחזור פעולה",
@@ -39,8 +53,37 @@ export const ACTION_LABELS: Record<string, string> = {
   "login.success": "התחברות",
   "login.fail": "ניסיון התחברות כושל",
   "login.locked": "חשבון נעול זמנית",
+  "rating.create": "דירוג חדש",
+  "rating.delete": "מחיקת תגובה",
   "password.changed": "החלפת סיסמה",
   "admin.created": "יצירת משתמש אדמין",
   "email.retry": "ניסיון חוזר לשליחת מייל",
   "email.failed": "שליחת מייל נכשלה",
 };
+
+export const STYLE_OPTIONS = {
+  tone: { label: "טון", options: { warm: "חם ואישי", humor: "הומוריסטי וקליל", serious: "רציני ומכבד", story: "סיפורי ודימויי", youth: "צעיר וקצבי" } },
+  address: { label: "למי הטקסט פונה", options: { students: "לחניכים (מה אומרים להם)", guide: "הוראות למדריך", script: "תסריט בגוף ראשון" } },
+  length: { label: "אורך", options: { short: "תמציתי", normal: "רגיל", long: "מפורט, עם טיפים" } },
+  detail: { label: "רמת פירוט", options: { bullets: "נקודות קצרות", script: "ניסוח מלא של מה לומר" } },
+  slang: { label: "סלנג", options: { none: "בלי", light: "קצת", heavy: "הרבה" } },
+} as const;
+
+export type StyleKey = "tone" | "address" | "length" | "detail" | "slang";
+export interface StyleSettings {
+  tone: string;
+  address: string;
+  length: string;
+  detail: string;
+  slang: string;
+  extra: string;
+  sample: string;
+}
+export const DEFAULT_STYLE: StyleSettings = { tone: "warm", address: "students", length: "normal", detail: "bullets", slang: "none", extra: "", sample: "" };
+
+export interface StyleAnalysis {
+  ok: boolean;
+  reason?: string;
+  traits?: string[];
+  suggested?: Omit<StyleSettings, "extra" | "sample">;
+}

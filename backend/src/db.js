@@ -38,6 +38,37 @@ CREATE TABLE IF NOT EXISTS activities (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_activities_status ON activities(status);
+CREATE TABLE IF NOT EXISTS ratings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  stars INTEGER NOT NULL,
+  comment TEXT,
+  author TEXT,
+  age_used TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ratings_activity ON ratings(activity_id);
+CREATE TABLE IF NOT EXISTS runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
+  ran_on TEXT NOT NULL,
+  group_label TEXT,
+  worked TEXT,
+  change_next TEXT,
+  notes TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_runs_user ON runs(user_id, activity_id);
+CREATE TABLE IF NOT EXISTS activity_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  snapshot_json TEXT NOT NULL,
+  editor TEXT,
+  note TEXT,
+  saved_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_versions_activity ON activity_versions(activity_id, id);
 CREATE TABLE IF NOT EXISTS sessions (
   key TEXT PRIMARY KEY,
   ip TEXT NOT NULL,
@@ -64,6 +95,40 @@ CREATE TABLE IF NOT EXISTS email_queue (
   last_error TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS activity_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL,
+  author_name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notes_activity ON activity_notes(activity_id, id);
+CREATE TABLE IF NOT EXISTS collections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS collection_items (
+  collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (collection_id, activity_id)
+);
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL,
+  liked TEXT NOT NULL DEFAULT '',
+  more TEXT NOT NULL DEFAULT 'maybe',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_activity ON feedback(activity_id);
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS login_attempts (
   key TEXT PRIMARY KEY,
   count INTEGER NOT NULL DEFAULT 0,
@@ -78,7 +143,22 @@ export function openDb(file = config.dbPath) {
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+const columnsOf = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+
+/** Adds columns introduced after the first release, so existing databases keep working. */
+function migrate(db) {
+  const add = (table, col, ddl) => {
+    if (!columnsOf(db, table).includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
+  };
+  add("users", "display_name", "TEXT");
+  add("users", "style_json", "TEXT");
+  add("users", "disabled", "INTEGER NOT NULL DEFAULT 0");
+  add("activities", "owner_id", "INTEGER");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_activities_owner ON activities(owner_id)");
 }
 
 export const nowIso = () => new Date().toISOString();

@@ -1,0 +1,12 @@
+{
+  "name": "scout-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "all": "node e2e-improvements.mjs && node e2e-round-a.mjs && node e2e-round-b.mjs && node e2e-round-c.mjs"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "playwright-core": "^1.50.0"
+  }
+}

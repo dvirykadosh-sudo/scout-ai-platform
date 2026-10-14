@@ -12,9 +12,8 @@ export const hashPassword = (pw) => bcrypt.hash(pw, config.bcryptCost);
 export const verifyPassword = (pw, hash) => bcrypt.compare(pw, hash || DUMMY_HASH).then((ok) => ok && !!hash);
 
 export function signToken(user) {
-  return jwt.sign({ sub: user.id, username: user.username, role: user.role, mustChangePw: !!user.must_change_pw }, config.jwtSecret, {
-    expiresIn: `${config.tokenHours}h`,
-  });
+  const expiresIn = user.role === "ADMIN" ? `${config.tokenHours}h` : `${config.instructorTokenDays}d`;
+  return jwt.sign({ sub: user.id, username: user.username, role: user.role, mustChangePw: !!user.must_change_pw }, config.jwtSecret, { expiresIn });
 }
 
 export function ensureAdmin(db) {
@@ -32,33 +31,49 @@ export function ensureAdmin(db) {
   return true;
 }
 
-/** Express middleware factory: requires a valid admin token. */
-export function requireAdmin({ allowMustChange = false } = {}) {
-  return (req, res, next) => {
-    const header = req.headers.authorization || "";
-    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-    try {
-      const p = jwt.verify(token, config.jwtSecret);
-      if (p.role !== "ADMIN") throw new Error("role");
-      if (p.mustChangePw && !allowMustChange) {
-        return res.status(403).json({ error: { code: "MUST_CHANGE_PASSWORD", message: "יש להחליף סיסמה לפני המשך" } });
-      }
-      req.user = { id: p.sub, username: p.username, role: p.role };
-      next();
-    } catch {
-      res.status(401).json({ error: { code: "UNAUTHORIZED", message: "נדרשת התחברות אדמין" } });
-    }
-  };
-}
-
-export function optionalUser(req) {
+function readToken(req) {
   const header = req.headers.authorization || "";
   if (!header.startsWith("Bearer ")) return null;
   try {
-    return jwt.verify(header.slice(7), config.jwtSecret).username;
+    return jwt.verify(header.slice(7), config.jwtSecret);
   } catch {
     return null;
   }
+}
+
+const unauthorized = (res, message) => res.status(401).json({ error: { code: "UNAUTHORIZED", message } });
+
+/** Requires any signed-in user (admin or instructor). */
+export function requireUser({ allowMustChange = false } = {}) {
+  return (req, res, next) => {
+    const p = readToken(req);
+    if (!p) return unauthorized(res, "נדרשת התחברות");
+    if (p.mustChangePw && !allowMustChange) {
+      return res.status(403).json({ error: { code: "MUST_CHANGE_PASSWORD", message: "יש להחליף סיסמה לפני המשך" } });
+    }
+    req.user = { id: p.sub, username: p.username, role: p.role };
+    next();
+  };
+}
+
+/** Requires a valid admin token. */
+export function requireAdmin(opts = {}) {
+  const base = requireUser(opts);
+  return (req, res, next) =>
+    base(req, res, () => {
+      if (req.user.role !== "ADMIN") return unauthorized(res, "נדרשת התחברות אדמין");
+      next();
+    });
+}
+
+/** Signed-in user if a valid token was sent, otherwise null. Never rejects. */
+export function optionalAuth(req) {
+  const p = readToken(req);
+  return p && !p.mustChangePw ? { id: p.sub, username: p.username, role: p.role } : null;
+}
+
+export function optionalUser(req) {
+  return readToken(req)?.username ?? null;
 }
 
 export function checkLock(db, key) {

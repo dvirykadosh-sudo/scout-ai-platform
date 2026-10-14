@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { api, errorMessage, fieldErrorLines } from "@/lib/api";
 import { AGE_GROUPS } from "@/lib/constants";
 import type { Activity, Stage } from "@/lib/types";
+import { StageRegen } from "./StageRegen";
+import { QualityPanel, type QItem } from "./QualityPanel";
 import { Field, Modal } from "./ui";
 
 interface Props {
@@ -88,6 +90,19 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
     setSaving(false);
   };
 
+  const qItems: QItem[] = [
+    ...stages.map((s, i) => ({ key: `stage:${i}`, label: `שלב ${i + 1}: ${s.name}`, text: s.content })),
+    { key: "equipment", label: "ציוד", text: equipment },
+    { key: "safety", label: "בטיחות", text: safetyNotes },
+    { key: "concl", label: "סיכום", text: conclusionNote },
+  ];
+  const applyQ = (key: string, text: string) => {
+    if (key.startsWith("stage:")) setStage(Number(key.slice(6)), { content: text });
+    else if (key === "equipment") setEquipment(text);
+    else if (key === "safety") setSafetyNotes(text);
+    else if (key === "concl") setConclusionNote(text);
+  };
+
   const id = (n: string) => `edit-${activity.id}-${n}`;
 
   return (
@@ -168,8 +183,10 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
               <textarea id={id(`content${i}`)} rows={4} value={s.content} onChange={(e) => setStage(i, { content: e.target.value })} />
             </Field>
           </div>
+          <StageRegen activityId={activity.id} index={i} onAccept={(content) => setStage(i, { content })} />
         </fieldset>
       ))}
+      <QualityPanel items={qItems} onChange={applyQ} />
     </Modal>
   );
 }

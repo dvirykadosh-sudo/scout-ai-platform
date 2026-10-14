@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AGE_GROUPS, METHOD_NAMES, ROLES, STAGE_NAMES } from "./shared/constants.js";
+import { styleSchema } from "./style.js";
 
 const text = (max) => z.string().trim().max(max);
 
@@ -24,6 +25,7 @@ export const generateSchema = z
       .max(12),
     activeScouting: z.boolean().default(false),
     energeticMode: z.boolean().default(false),
+    style: styleSchema,
   })
   .superRefine((v, ctx) => {
     const names = v.methods.map((m) => m.name);
@@ -82,9 +84,11 @@ export const listQuerySchema = z.object({
   value: text(100).optional(),
   method: z.enum(METHOD_NAMES).optional(),
   tag: text(40).optional(),
+  ids: z.string().regex(/^\d{1,9}(,\d{1,9}){0,99}$/, "רשימת מזהים לא תקינה").optional(),
   minDuration: z.coerce.number().int().min(1).max(300).optional(),
   maxDuration: z.coerce.number().int().min(1).max(300).optional(),
-  sort: z.enum(["new", "duration", "title"]).optional(),
+  sort: z.enum(["new", "duration", "title", "rating", "popular"]).optional(),
+  minRating: z.coerce.number().int().min(1).max(5).optional(),
   page: z.coerce.number().int().min(1).max(1000).optional(),
   pageSize: z.coerce.number().int().min(1).max(50).optional(),
 });
@@ -93,4 +97,80 @@ export const duplicateSchema = z.object({
   ageGroup: z.enum(AGE_GROUPS).optional(),
   durationMin: z.coerce.number().int().min(5).max(180).optional(),
   title: text(120).optional(),
+});
+
+export const ratingSchema = z.object({
+  stars: z.coerce.number().int().min(1, "יש לבחור דירוג בין 1 ל-5").max(5, "יש לבחור דירוג בין 1 ל-5"),
+  comment: text(600).optional().default(""),
+  author: text(60).optional().default(""),
+  ageUsed: z.enum(AGE_GROUPS).optional(),
+});
+
+export const importSchema = z.object({
+  input: generateSchema,
+  text: z.string().trim().min(40, "הדביקו את התשובה המלאה של ה-AI").max(20000),
+});
+
+export const registerSchema = z.object({
+  username: text(30)
+    .min(3, "שם משתמש: לפחות 3 תווים")
+    .regex(/^[A-Za-z0-9_.\u0590-\u05FF-]+$/, "שם משתמש יכול להכיל אותיות, ספרות, נקודה, מקף וקו תחתון"),
+  password: z.string().min(8, "הסיסמה חייבת להכיל לפחות 8 תווים").max(200),
+  displayName: text(60).min(2, "יש להזין שם להצגה"),
+  signupCode: text(100).optional().default(""),
+});
+
+export const adminUserPatchSchema = z.object({
+  disabled: z.boolean().optional(),
+  role: z.enum(["ADMIN", "INSTRUCTOR"]).optional(),
+  resetPassword: z.boolean().optional(),
+});
+
+export const runSchema = z.object({
+  ranOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "יש לבחור תאריך"),
+  groupLabel: text(60).optional().default(""),
+  worked: text(600).optional().default(""),
+  changeNext: text(600).optional().default(""),
+  notes: text(1000).optional().default(""),
+});
+
+export const bookletSchema = z.object({
+  ids: z.array(z.coerce.number().int().min(1)).min(1, "בחרו לפחות פעולה אחת").max(40, "עד 40 פעולות בחוברת"),
+  title: text(100).optional().default(""),
+});
+
+export const planSchema = z.object({
+  weeks: z.coerce.number().int().min(1, "לפחות שבוע אחד").max(52, "עד 52 שבועות"),
+  ageGroup: z.enum(AGE_GROUPS).optional(),
+  values: z.array(text(120)).max(12).default([]),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export const qualitySchema = z.object({
+  items: z.array(z.object({ label: text(60), text: z.string().max(4000) })).min(1).max(20),
+});
+
+export const regenSchema = z.object({ variant: z.coerce.number().int().min(0).max(50).default(1), style: styleSchema.optional() });
+
+export const emergencySchema = z.object({
+  topic: text(120).default("פעולת חירום"),
+  value: text(120).default(""),
+  ageGroup: z.enum(AGE_GROUPS, { error: "יש לבחור שכבת גיל מהרשימה" }),
+  tribe: text(60).default("שבט מעוז"),
+  instructor: text(60).min(1, "יש להזין שם מדריך/ה"),
+  role: z.enum(ROLES).default("מדריך"),
+  participants: z.coerce.number().int().min(1).max(200).default(20),
+  style: styleSchema,
+  seed: z.coerce.number().int().default(0),
+});
+
+export const importParsedSchema = z.object({
+  title: text(120).min(2, "יש להזין שם לפעולה"),
+  ageGroup: z.enum(AGE_GROUPS, { error: "יש לבחור שכבת גיל מהרשימה" }),
+  leadingValue: text(160).default(""),
+  equipment: text(500).default(""),
+  safetyNotes: text(1000).default(""),
+  instructor: text(60).min(1, "יש להזין שם מדריך/ה"),
+  tribe: text(60).default("שבט מעוז"),
+  stages: stagesSchema,
 });

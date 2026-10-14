@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { api, errorMessage } from "@/lib/api";
+import { api, downloadBooklet, errorMessage } from "@/lib/api";
 import { AGE_GROUPS, METHODS } from "@/lib/constants";
+import { useFavorites } from "@/lib/favorites";
 import type { Activity, ListResponse } from "@/lib/types";
 import { ActivityActions } from "./ActivityActions";
-import { ActivityMeta } from "./ActivityView";
+import { ActivityGlance } from "./ActivityView";
+import { useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
 
 const PAGE_SIZE = 6;
@@ -24,6 +26,14 @@ export function Library() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [favOnly, setFavOnly] = useState(false);
+  const [minRating, setMinRating] = useState("");
+  const [picked, setPicked] = useState<{ id: number; title: string }[]>([]);
+  const [bookTitle, setBookTitle] = useState("חוברת פעולות");
+  const [bookBusy, setBookBusy] = useState(false);
+  const toast = useToast();
+  const { ids: favIds } = useFavorites();
+  const favKey = favIds.join(",");
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -32,7 +42,7 @@ export function Library() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedQ, age, method, minD, maxD, sort]);
+  }, [debouncedQ, age, method, minD, maxD, sort, favOnly, minRating]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -42,6 +52,15 @@ export function Library() {
     if (method) p.set("method", method);
     if (minD) p.set("minDuration", minD);
     if (maxD) p.set("maxDuration", maxD);
+    if (minRating) p.set("minRating", minRating);
+    if (favOnly) {
+      if (!favKey) {
+        setData({ items: [], total: 0, page: 1, pageSize: PAGE_SIZE });
+        setLoading(false);
+        return;
+      }
+      p.set("ids", favKey.split(",").slice(0, 100).join(","));
+    }
     setLoading(true);
     api<ListResponse>(`/api/activities?${p}`, { signal: ctrl.signal })
       .then((d) => {
@@ -55,21 +74,50 @@ export function Library() {
         setLoading(false);
       });
     return () => ctrl.abort();
-  }, [debouncedQ, age, method, minD, maxD, sort, page, reloadKey]);
+  }, [debouncedQ, age, method, minD, maxD, sort, page, reloadKey, favOnly, favKey, minRating]);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
-  const hasFilters = !!(q || age || method || minD || maxD);
+  const hasFilters = !!(q || age || method || minD || maxD || favOnly || minRating);
   const clear = () => {
     setQ("");
     setAge("");
     setMethod("");
     setMinD("");
     setMaxD("");
+    setFavOnly(false);
+    setMinRating("");
   };
+  const isPicked = (id: number) => picked.some((x) => x.id === id);
+  const togglePick = (a: Activity) => setPicked((l) => (l.some((x) => x.id === a.id) ? l.filter((x) => x.id !== a.id) : l.length >= 40 ? l : [...l, { id: a.id, title: a.title }]));
+  const makeBooklet = async () => {
+    setBookBusy(true);
+    try {
+      await downloadBooklet(picked.map((x) => x.id), bookTitle.trim() || "חוברת פעולות");
+      toast("החוברת ירדה", { kind: "success" });
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+    setBookBusy(false);
+  };
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("focus") === "1") document.getElementById("f-q")?.focus();
+  }, []);
 
   return (
     <>
+      <nav className="tool-links no-print" aria-label="כלים נוספים">
+        <Link className="btn btn-small" href="/library/import">
+          ייבוא מקבצי Word
+        </Link>
+        <Link className="btn btn-small" href="/icebreakers">
+          משחקי היכרות
+        </Link>
+        <Link className="btn btn-small" href="/plan">
+          תכנון תקופתי
+        </Link>
+      </nav>
       <form className="card glass filters" role="search" aria-label="חיפוש וסינון פעולות" onSubmit={(e) => e.preventDefault()}>
         <div className="form-grid filters-grid">
           <Field label="חיפוש חופשי" htmlFor="f-q" className="span-2">
@@ -102,8 +150,23 @@ export function Library() {
               <option value="new">החדשות ביותר</option>
               <option value="duration">לפי משך</option>
               <option value="title">לפי שם</option>
+              <option value="rating">לפי דירוג</option>
+              <option value="popular">הכי מופעלות</option>
             </select>
           </Field>
+          <Field label="דירוג מינימלי" htmlFor="f-rating">
+            <select id="f-rating" value={minRating} onChange={(e) => setMinRating(e.target.value)}>
+              <option value="">הכול</option>
+              <option value="3">3 כוכבים ומעלה</option>
+              <option value="4">4 כוכבים ומעלה</option>
+            </select>
+          </Field>
+          <div className="field filters-clear">
+            <label className="check">
+              <input type="checkbox" checked={favOnly} onChange={(e) => setFavOnly(e.target.checked)} />
+              <span>מועדפים בלבד</span>
+            </label>
+          </div>
           {hasFilters && (
             <div className="field filters-clear">
               <button type="button" className="btn" onClick={clear}>
@@ -131,7 +194,7 @@ export function Library() {
 
       {data && data.items.length === 0 && !loading && (
         <div className="card empty">
-          <p>לא נמצאו פעולות שמתאימות לחיפוש.</p>
+          <p>{favOnly && !favKey ? "עדיין לא סימנתם פעולות כמועדפות. לחצו על 'הוספה למועדפים' בכל פעולה." : "לא נמצאו פעולות שמתאימות לחיפוש."}</p>
           {hasFilters ? (
             <button type="button" className="btn" onClick={clear}>
               ניקוי סינון
@@ -150,7 +213,8 @@ export function Library() {
             <h2 className="card-title">
               <Link href={`/library/${a.id}`}>{a.title}</Link>
             </h2>
-            <ActivityMeta a={a} />
+            <ActivityGlance a={a} />
+            {a.snippet && <p className="snippet">…{a.snippet}…</p>}
             {a.tags.length > 0 && (
               <ul className="tags" aria-label="תגיות">
                 {a.tags.map((t) => (
@@ -158,7 +222,11 @@ export function Library() {
                 ))}
               </ul>
             )}
-            <ActivityActions activity={a} onChanged={reload} />
+            <label className="check pick">
+              <input type="checkbox" checked={isPicked(a.id)} onChange={() => togglePick(a)} />
+              <span>הוספה לחוברת</span>
+            </label>
+            <ActivityActions activity={a} onChanged={reload} compact />
           </li>
         ))}
       </ul>
@@ -175,6 +243,23 @@ export function Library() {
             הבא
           </button>
         </nav>
+      )}
+      {picked.length > 0 && (
+        <section className="booklet-bar glass" aria-label="חוברת פעולות">
+          <p>
+            <strong>{picked.length}</strong> פעולות נבחרו לחוברת Word
+          </p>
+          <label className="sr-only" htmlFor="book-title">
+            שם החוברת
+          </label>
+          <input id="book-title" value={bookTitle} maxLength={80} onChange={(e) => setBookTitle(e.target.value)} />
+          <button type="button" className="btn btn-primary" onClick={makeBooklet} disabled={bookBusy}>
+            {bookBusy ? "יוצר..." : "הורדת חוברת"}
+          </button>
+          <button type="button" className="btn" onClick={() => setPicked([])}>
+            ניקוי בחירה
+          </button>
+        </section>
       )}
     </>
   );

@@ -1,4 +1,5 @@
 import { createApp } from "./app.js";
+import { backupDirFor, startBackupSchedule } from "./backup.js";
 import { ensureAdmin } from "./auth.js";
 import { assertProductionSafe, config } from "./config.js";
 import { openDb } from "./db.js";
@@ -12,6 +13,7 @@ const seeded = seedIfEmpty(db);
 const adminCreated = ensureAdmin(db);
 const mailer = createMailer(db, config.smtp);
 mailer.start();
+startBackupSchedule(db, backupDirFor());
 
 const app = createApp({ db, mailer });
 app.listen(config.port, () => {

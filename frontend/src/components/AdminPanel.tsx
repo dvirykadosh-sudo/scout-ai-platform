@@ -5,111 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, errorMessage, fmtDate } from "@/lib/api";
 import { ACTION_LABELS } from "@/lib/constants";
 import type { LogRow, SessionRow, Stats } from "@/lib/types";
+import { AdminApproval, AdminBackups, AdminInsights, AdminLogo, AdminUsers } from "./AdminExtras";
+import { ChangePassword, LoginForm } from "./AuthForms";
 import { useAuth, useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
-
-interface LoginResponse {
-  token: string;
-  user: { username: string; role: string; mustChangePw: boolean };
-}
-
-function LoginForm() {
-  const { setSession } = useAuth();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !password) return setError("יש למלא שם משתמש וסיסמה");
-    setBusy(true);
-    setError("");
-    try {
-      const r = await api<LoginResponse>("/api/auth/login", { method: "POST", body: { username: username.trim(), password } });
-      setSession(r.token, { username: r.user.username, mustChangePw: r.user.mustChangePw });
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-    setBusy(false);
-  };
-
-  return (
-    <form className="card glass narrow" onSubmit={submit} noValidate aria-labelledby="login-title">
-      <h2 id="login-title" className="section-title">
-        התחברות אדמין
-      </h2>
-      <p className="hint">יצירת פעולות וצפייה במאגר פתוחות לכולם. עריכה, מחיקה ולוח הבקרה דורשים התחברות.</p>
-      {error && (
-        <p className="error-box" role="alert">
-          {error}
-        </p>
-      )}
-      <Field label="שם משתמש" htmlFor="login-user">
-        <input id="login-user" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
-      </Field>
-      <Field label="סיסמה" htmlFor="login-pass">
-        <input id="login-pass" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-      </Field>
-      <button className="btn btn-primary" disabled={busy}>
-        {busy ? "מתחבר..." : "כניסה"}
-      </button>
-    </form>
-  );
-}
-
-function ChangePassword() {
-  const { token, user, setSession, clear } = useAuth();
-  const toast = useToast();
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
-  const [again, setAgain] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (next.length < 8) return setError("הסיסמה החדשה חייבת להכיל לפחות 8 תווים");
-    if (next !== again) return setError("הסיסמאות החדשות אינן זהות");
-    setBusy(true);
-    setError("");
-    try {
-      const r = await api<{ token: string }>("/api/auth/change-password", { method: "POST", token, body: { currentPassword: current, newPassword: next } });
-      setSession(r.token, { username: user?.username ?? "admin", mustChangePw: false });
-      toast("הסיסמה הוחלפה", { kind: "success" });
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) clear();
-      setError(errorMessage(err));
-    }
-    setBusy(false);
-  };
-
-  return (
-    <form className="card glass narrow" onSubmit={submit} noValidate aria-labelledby="pw-title">
-      <h2 id="pw-title" className="section-title">
-        החלפת סיסמה
-      </h2>
-      <p className="hint">{user?.mustChangePw ? "לפני שממשיכים יש להחליף את הסיסמה הראשונית." : "בחרו סיסמה חדשה."}</p>
-      {error && (
-        <p className="error-box" role="alert">
-          {error}
-        </p>
-      )}
-      <Field label="סיסמה נוכחית" htmlFor="pw-cur">
-        <input id="pw-cur" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" />
-      </Field>
-      <Field label="סיסמה חדשה" htmlFor="pw-new" hint="לפחות 8 תווים">
-        <input id="pw-new" type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" />
-      </Field>
-      <Field label="סיסמה חדשה, פעם נוספת" htmlFor="pw-again">
-        <input id="pw-again" type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" />
-      </Field>
-      <button className="btn btn-primary" disabled={busy}>
-        {busy ? "שומר..." : "החלפת סיסמה"}
-      </button>
-    </form>
-  );
-}
 
 function BarList({ title, data }: { title: string; data: Record<string, number> }) {
   const rows = Object.entries(data).sort((a, b) => b[1] - a[1]);
@@ -165,6 +64,7 @@ function Dashboard() {
   const [logFilter, setLogFilter] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -203,17 +103,22 @@ function Dashboard() {
     <>
       <div className="admin-head">
         <p>
-          מחובר/ת כ-<strong>{user?.username}</strong>
+          מחובר/ת כ-<strong>{user?.displayName ?? user?.username}</strong>
         </p>
         <div className="actions">
           <button type="button" className="btn" onClick={load} disabled={loading}>
             רענון
+          </button>
+          <button type="button" className="btn" aria-expanded={pwOpen} onClick={() => setPwOpen(!pwOpen)}>
+            החלפת סיסמה
           </button>
           <button type="button" className="btn" onClick={logout}>
             התנתקות
           </button>
         </div>
       </div>
+
+      {pwOpen && <ChangePassword onDone={() => setPwOpen(false)} />}
 
       {error && (
         <div className="error-box" role="alert">
@@ -262,6 +167,12 @@ function Dashboard() {
               למאגר הפעולות
             </Link>
           </section>
+
+          <AdminInsights />
+          <AdminApproval />
+          <AdminUsers />
+          <AdminBackups />
+          <AdminLogo />
 
           <section aria-labelledby="sessions-title" className="card glass">
             <h2 id="sessions-title" className="section-title">
@@ -342,10 +253,28 @@ function Dashboard() {
   );
 }
 
+function NotAdmin() {
+  const { user, clear } = useAuth();
+  return (
+    <section className="card glass narrow" aria-labelledby="na-title">
+      <h2 id="na-title" className="section-title">
+        אין הרשאה
+      </h2>
+      <p>
+        אתם מחוברים כמדריך/ה ({user?.displayName}). לוח הבקרה מיועד לאדמין בלבד. את הפעולות שלכם אפשר לראות ב<Link href="/account">אזור האישי</Link>.
+      </p>
+      <button type="button" className="btn" onClick={clear}>
+        התנתקות כדי להתחבר כאדמין
+      </button>
+    </section>
+  );
+}
+
 export function AdminPanel() {
   const { token, user, ready } = useAuth();
   if (!ready) return <Skeleton lines={3} />;
-  if (!token || !user) return <LoginForm />;
+  if (!token || !user) return <LoginForm title="התחברות אדמין" hint="יצירת פעולות וצפייה במאגר פתוחות לכולם. לוח הבקרה, ניהול משתמשים וגיבויים מיועדים לאדמין." />;
+  if (user.role !== "ADMIN") return <NotAdmin />;
   if (user.mustChangePw) return <ChangePassword />;
   return <Dashboard />;
 }

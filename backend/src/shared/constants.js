@@ -31,3 +31,28 @@ export const METHODS = [
   { name: "פירוק", description: "פירוק רעיון או תופעה למרכיביה כדי להבין אותה לעומק.", whenToUse: "בנושאים מורכבים או מופשטים.", example: "פירוק מושג לגורמים, לתוצאות ולדוגמאות." },
 ];
 export const METHOD_NAMES = METHODS.map((m) => m.name);
+
+// ── סגנון כתיבה ──
+export const STYLE_OPTIONS = {
+  tone: {
+    label: "טון",
+    options: {
+      warm: "חם ואישי",
+      humor: "הומוריסטי וקליל",
+      serious: "רציני ומכבד",
+      story: "סיפורי ודימויי",
+      youth: "צעיר וקצבי",
+    },
+  },
+  address: {
+    label: "למי הטקסט פונה",
+    options: {
+      students: "לחניכים (מה אומרים להם)",
+      guide: "הוראות למדריך",
+      script: "תסריט בגוף ראשון",
+    },
+  },
+  length: { label: "אורך", options: { short: "תמציתי", normal: "רגיל", long: "מפורט, עם טיפים" } },
+  detail: { label: "רמת פירוט", options: { bullets: "נקודות קצרות", script: "ניסוח מלא של מה לומר" } },
+  slang: { label: "סלנג", options: { none: "בלי", light: "קצת", heavy: "הרבה" } },
+};

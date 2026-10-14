@@ -1,19 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api, downloadDocx, errorMessage } from "@/lib/api";
 import { AGE_GROUPS } from "@/lib/constants";
 import type { Activity } from "@/lib/types";
 import { EditActivityModal } from "./EditActivityModal";
-import { useAuth, useToast } from "./Providers";
+import { AdaptModal } from "./AdaptModal";
+import { CollectionModal } from "./CollectionModal";
+import { OfflineButton } from "./OfflineButton";
+import { ShareModal } from "./ShareModal";
+import { VersionsModal } from "./VersionsModal";
+import { useFavorites } from "@/lib/favorites";
+import { isAdminUser, useAuth, useToast } from "./Providers";
 import { Field, Modal } from "./ui";
 
-export function ActivityActions({ activity, onChanged, onDeleted }: { activity: Activity; onChanged: () => void; onDeleted?: () => void }) {
+export function ActivityActions({ activity, onChanged, onDeleted, compact = false }: { activity: Activity; onChanged: () => void; onDeleted?: () => void; compact?: boolean }) {
   const { token, user, clear } = useAuth();
   const toast = useToast();
   const router = useRouter();
-  const isAdmin = !!token && !!user && !user.mustChangePw;
+  // the owner of an activity and any admin may edit/delete it (the server enforces this too)
+  const canManage = !!token && !!user && !user.mustChangePw && (isAdminUser(user) || (!activity.isSeed && activity.ownerId === user.id));
 
   const [busy, setBusy] = useState(false);
   const [dupOpen, setDupOpen] = useState(false);
@@ -22,11 +30,18 @@ export function ActivityActions({ activity, onChanged, onDeleted }: { activity: 
   const [dupAge, setDupAge] = useState(activity.ageGroup);
   const [dupMin, setDupMin] = useState(String(activity.durationMin));
   const [seedOk, setSeedOk] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [verOpen, setVerOpen] = useState(false);
+  const [adaptOpen, setAdaptOpen] = useState(false);
+  const [colOpen, setColOpen] = useState(false);
+  const [fbOpen, setFbOpen] = useState(false);
+  const { isFav, toggle: toggleFav } = useFavorites();
+  const fav = isFav(activity.id);
 
   const handleAuthError = (e: unknown) => {
     if (e instanceof ApiError && e.status === 401) {
       clear();
-      toast("ההתחברות פגה. יש להתחבר שוב בלוח הבקרה", { kind: "error" });
+      toast("ההתחברות פגה. יש להתחבר שוב באזור האישי", { kind: "error" });
       return true;
     }
     if (e instanceof ApiError && e.code === "MUST_CHANGE_PASSWORD") {
@@ -102,13 +117,57 @@ export function ActivityActions({ activity, onChanged, onDeleted }: { activity: 
         <button type="button" className="btn btn-primary" onClick={exportWord} disabled={busy}>
           ייצוא ל-Word
         </button>
+        <Link className="btn" href={`/field/${activity.id}`}>
+          מצב הדרכה בשטח
+        </Link>
+        <button
+          type="button"
+          className="btn"
+          aria-pressed={fav}
+          onClick={() => {
+            toggleFav(activity.id);
+            toast(fav ? "הוסרה מהמועדפים" : "נוספה למועדפים", { kind: "info" });
+          }}
+        >
+          <span aria-hidden="true">{fav ? "★ " : "☆ "}</span>
+          {fav ? "במועדפים" : "הוספה למועדפים"}
+        </button>
         <button type="button" className="btn" onClick={() => setDupOpen(true)}>
           שכפול והתאמה
         </button>
-        {isAdmin && (
+        {!compact && (
+          <>
+            <button type="button" className="btn" onClick={() => setShareOpen(true)}>
+              שיתוף וקוד QR
+            </button>
+            <button type="button" className="btn" onClick={() => window.print()}>
+              הדפסה / שמירה כ-PDF
+            </button>
+            <button type="button" className="btn" onClick={() => setAdaptOpen(true)}>
+              התאמה לתנאים
+            </button>
+            <button type="button" className="btn" onClick={() => setColOpen(true)}>
+              הוספה לאוסף
+            </button>
+            <Link className="btn" href={`/library/${activity.id}/cards`}>
+              כרטיסים להדפסה
+            </Link>
+            <Link className="btn" href={`/library/${activity.id}/brief`}>
+              דף למדריך מחליף
+            </Link>
+            <OfflineButton activityId={activity.id} />
+          </>
+        )}
+        {canManage && (
           <>
             <button type="button" className="btn" onClick={() => setEditOpen(true)}>
               עריכה
+            </button>
+            <button type="button" className="btn" onClick={() => setFbOpen(true)}>
+              משוב מחניכים
+            </button>
+            <button type="button" className="btn" onClick={() => setVerOpen(true)}>
+              היסטוריית גרסאות
             </button>
             <button type="button" className="btn btn-danger" onClick={() => setDelOpen(true)}>
               מחיקה
@@ -116,6 +175,11 @@ export function ActivityActions({ activity, onChanged, onDeleted }: { activity: 
           </>
         )}
       </div>
+
+      <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} activityId={activity.id} title={activity.title} />
+      <AdaptModal open={adaptOpen} onClose={() => setAdaptOpen(false)} activity={activity} />
+      <CollectionModal open={colOpen} onClose={() => setColOpen(false)} activityId={activity.id} />
+      <ShareModal open={fbOpen} onClose={() => setFbOpen(false)} activityId={activity.id} title={activity.title} path={`/feedback/${activity.id}`} heading="משוב מחניכים" intro="הקישור פותח שאלון קצר ואנונימי של שלוש שאלות. אפשר להקרין את ה-QR בסוף הפעולה." />
 
       <Modal
         open={dupOpen}
@@ -145,7 +209,21 @@ export function ActivityActions({ activity, onChanged, onDeleted }: { activity: 
         </Field>
       </Modal>
 
-      {isAdmin && (
+      {canManage && (
+        <VersionsModal
+          open={verOpen}
+          activityId={activity.id}
+          token={token}
+          onClose={() => setVerOpen(false)}
+          onRestored={() => {
+            setVerOpen(false);
+            onChanged();
+          }}
+          onAuthError={handleAuthError}
+        />
+      )}
+
+      {canManage && (
         <EditActivityModal
           open={editOpen}
           activity={activity}

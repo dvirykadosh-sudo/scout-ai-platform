@@ -23,13 +23,35 @@ export interface Activity {
   activeScouting: boolean;
   energeticMode: boolean;
   isSeed: boolean;
+  ownerId: number | null;
   status: string;
   tags: string[];
   methods: { name: string; minutes: number }[];
   stages: Stage[];
+  snippet?: string;
+  runCount?: number;
   createdAt: string;
   updatedAt: string;
-  source?: "ai" | "fallback";
+  source?: "ai" | "fallback" | "external";
+  rating?: RatingSummary;
+}
+
+export interface RatingSummary {
+  count: number;
+  average: number;
+}
+
+export interface RatingItem {
+  id: number;
+  stars: number;
+  comment: string | null;
+  author: string | null;
+  ageUsed: string | null;
+  createdAt: string;
+}
+
+export interface RatingsResponse extends RatingSummary {
+  items: RatingItem[];
 }
 
 export interface ListResponse {
@@ -62,4 +84,62 @@ export interface Stats {
   byMethod: Record<string, number>;
   generatedLast7Days: number;
   emailQueue: { status: string; c: number }[];
+}
+
+export interface Run {
+  id: number;
+  activityId: number;
+  ranOn: string;
+  groupLabel: string;
+  worked: string;
+  changeNext: string;
+  notes: string;
+  createdAt: string;
+  title?: string;
+}
+
+export interface QualityIssue {
+  label: string;
+  phrase: string;
+  why: string;
+  fix: string | null;
+  index: number;
+  context: string;
+}
+export interface QualityResult {
+  score: number;
+  issues: QualityIssue[];
+}
+
+export interface ActivitySnapshot {
+  title: string;
+  ageGroup: string;
+  groupSize: number;
+  leadingValue: string;
+  equipment: string;
+  safetyNotes: string;
+  conclusionNote: string | null;
+  tags: string[];
+  stages: Stage[];
+  durationMin: number;
+}
+export interface VersionItem {
+  id: number;
+  editor: string | null;
+  note: string | null;
+  savedAt: string;
+  snapshot: ActivitySnapshot;
+}
+
+export interface PlanSlot {
+  week: number;
+  date: string | null;
+  wantedValue: string | null;
+  note: string;
+  activity: { id: number; title: string; durationMin: number; ageGroup: string; leadingValue: string } | null;
+}
+export interface PlanResponse {
+  slots: PlanSlot[];
+  coverage: { value: string; count: number; planned: number }[];
+  missing: string[];
 }

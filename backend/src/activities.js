@@ -20,6 +20,7 @@ export function rowToActivity(r) {
     activeScouting: !!r.active_scouting,
     energeticMode: !!r.energetic_mode,
     isSeed: !!r.is_seed,
+    ownerId: r.owner_id ?? null,
     status: r.status,
     tags: JSON.parse(r.tags_json),
     methods: JSON.parse(r.methods_json),
@@ -37,8 +38,8 @@ export function insertActivity(db, a) {
     .prepare(
       `INSERT INTO activities (title, duration_min, author, instructor, instructor_role, tribe, battalion, age_group,
         group_size, leading_value, equipment, safety_notes, conclusion_note, active_scouting, energetic_mode, is_seed,
-        status, tags_json, methods_json, stages_json, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        status, tags_json, methods_json, stages_json, created_at, updated_at, owner_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     )
     .run(
       a.title,
@@ -63,6 +64,7 @@ export function insertActivity(db, a) {
       JSON.stringify(a.stages),
       t,
       t,
+      a.ownerId ?? null,
     );
   return Number(res.lastInsertRowid);
 }
@@ -97,21 +99,52 @@ export function updateActivity(db, id, a) {
 export function getActivity(db, id, { includeArchived = false } = {}) {
   const r = db.prepare("SELECT * FROM activities WHERE id = ?").get(id);
   if (!r) return null;
-  if (!includeArchived && r.status !== "PUBLISHED") return null;
+  // PENDING = waiting for approval: not in the shared library, but the direct link works
+  if (!includeArchived && r.status !== "PUBLISHED" && r.status !== "PENDING") return null;
   return rowToActivity(r);
 }
 
 const escapeLike = (s) => s.replace(/[\\%_]/g, (c) => "\\" + c);
 
+/** The editable content of an activity, used for version history. */
+export function snapshotOf(a) {
+  const { title, author, instructor, instructorRole, tribe, battalion, ageGroup, groupSize, leadingValue, equipment, safetyNotes, conclusionNote, tags, methods, stages, durationMin } = a;
+  return { title, author, instructor, instructorRole, tribe, battalion, ageGroup, groupSize, leadingValue, equipment, safetyNotes, conclusionNote, tags, methods, stages, durationMin };
+}
+
+const RATING_SQL = "(SELECT AVG(stars) FROM ratings r WHERE r.activity_id = activities.id)";
+const RATING_COUNT_SQL = "(SELECT COUNT(*) FROM ratings r WHERE r.activity_id = activities.id)";
+const RUN_COUNT_SQL = "(SELECT COUNT(*) FROM runs u WHERE u.activity_id = activities.id)";
+
+function snippetFor(a, tokens) {
+  const t = tokens[0];
+  if (!t) return "";
+  const pools = [...a.stages.map((s) => `${s.name}: ${s.content}`), a.equipment, a.safetyNotes, a.conclusionNote || ""];
+  for (const text of pools) {
+    const flat = text.replace(/\s+/g, " ");
+    const i = flat.toLowerCase().indexOf(t.toLowerCase());
+    if (i >= 0) {
+      const from = Math.max(0, i - 50);
+      return (from > 0 ? "…" : "") + flat.slice(from, i + t.length + 90) + (i + t.length + 90 < flat.length ? "…" : "");
+    }
+  }
+  return "";
+}
+
 export function searchActivities(db, f = {}) {
   const where = [f.includeArchived ? "1=1" : "status = 'PUBLISHED'"];
   const p = [];
-  if (f.q) {
-    const like = `%${escapeLike(f.q)}%`;
+  const tokens = f.q ? f.q.split(/\s+/).filter(Boolean).slice(0, 6) : [];
+  for (const tok of tokens) {
+    const like = `%${escapeLike(tok)}%`;
     where.push(
-      "(title LIKE ? ESCAPE '\\' OR leading_value LIKE ? ESCAPE '\\' OR author LIKE ? ESCAPE '\\' OR stages_json LIKE ? ESCAPE '\\')",
+      "(title LIKE ? ESCAPE '\\' OR leading_value LIKE ? ESCAPE '\\' OR author LIKE ? ESCAPE '\\' OR stages_json LIKE ? ESCAPE '\\' OR equipment LIKE ? ESCAPE '\\' OR safety_notes LIKE ? ESCAPE '\\' OR tags_json LIKE ? ESCAPE '\\' OR conclusion_note LIKE ? ESCAPE '\\')",
     );
-    p.push(like, like, like, like);
+    p.push(like, like, like, like, like, like, like, like);
+  }
+  if (f.minRating) {
+    where.push(`${RATING_SQL} >= ?`);
+    p.push(f.minRating);
   }
   if (f.age) {
     where.push("age_group = ?");
@@ -124,6 +157,11 @@ export function searchActivities(db, f = {}) {
   if (f.method) {
     where.push("methods_json LIKE ? ESCAPE '\\'");
     p.push(`%"${escapeLike(f.method)}"%`);
+  }
+  if (f.ids) {
+    const ids = f.ids.split(",").map(Number);
+    where.push(`id IN (${ids.map(() => "?").join(",")})`);
+    p.push(...ids);
   }
   if (f.tag) {
     where.push("tags_json LIKE ? ESCAPE '\\'");
@@ -138,8 +176,13 @@ export function searchActivities(db, f = {}) {
     p.push(f.maxDuration);
   }
   const order =
-    { duration: "duration_min ASC, id ASC", title: "title COLLATE NOCASE ASC", new: "created_at DESC, id DESC" }[f.sort] ||
-    "created_at DESC, id DESC";
+    {
+      duration: "duration_min ASC, id ASC",
+      title: "title COLLATE NOCASE ASC",
+      new: "created_at DESC, id DESC",
+      rating: `COALESCE(${RATING_SQL}, 0) DESC, ${RATING_COUNT_SQL} DESC, id DESC`,
+      popular: `(${RATING_COUNT_SQL} + ${RUN_COUNT_SQL}) DESC, COALESCE(${RATING_SQL}, 0) DESC, id DESC`,
+    }[f.sort] || "created_at DESC, id DESC";
   const page = Math.max(1, f.page || 1);
   const pageSize = Math.min(50, Math.max(1, f.pageSize || 12));
   const w = where.join(" AND ");
@@ -147,5 +190,12 @@ export function searchActivities(db, f = {}) {
   const rows = db
     .prepare(`SELECT * FROM activities WHERE ${w} ORDER BY ${order} LIMIT ? OFFSET ?`)
     .all(...p, pageSize, (page - 1) * pageSize);
-  return { items: rows.map(rowToActivity), total, page, pageSize };
+  const items = rows.map(rowToActivity);
+  for (const a of items) {
+    const r = db.prepare("SELECT COUNT(*) AS c, AVG(stars) AS avg FROM ratings WHERE activity_id = ?").get(a.id);
+    a.rating = { count: r.c, average: r.c ? Math.round(r.avg * 10) / 10 : 0 };
+    a.runCount = db.prepare("SELECT COUNT(*) AS c FROM runs WHERE activity_id = ?").get(a.id).c;
+    if (tokens.length) a.snippet = snippetFor(a, tokens);
+  }
+  return { items, total, page, pageSize };
 }
