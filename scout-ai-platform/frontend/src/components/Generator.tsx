@@ -8,6 +8,8 @@ import { AGE_GROUPS, DEFAULT_STYLE, METHODS, ROLES, STYLE_OPTIONS, type StyleKey
 import type { Activity } from "@/lib/types";
 import { ActivityBody, ActivityMeta } from "./ActivityView";
 import { useAuth, useToast } from "./Providers";
+import { LivePreview } from "./LivePreview";
+import { useKinds } from "@/lib/kinds";
 import { StylePicker } from "./StylePicker";
 import { Field, Skeleton } from "./ui";
 
@@ -26,6 +28,7 @@ interface Form {
   ageGroup: string;
   activeScouting: boolean;
   energeticMode: boolean;
+  kind: string;
 }
 
 const EMPTY: Form = {
@@ -39,10 +42,17 @@ const EMPTY: Form = {
   ageGroup: "כיתה ח' - מעורב",
   activeScouting: false,
   energeticMode: false,
+  kind: "",
 };
 
 type Errors = Record<string, string>;
 const REMEMBER_KEY = "scout.form";
+const DRAFT_KEY = "scout.draft";
+interface Draft {
+  form: Form;
+  sel: Record<string, string>;
+  step: number;
+}
 
 export function Generator() {
   const toast = useToast();
@@ -63,6 +73,46 @@ export function Generator() {
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
+  const kinds = useKinds();
+  const kindApplied = useRef(false);
+  const [topicBusy, setTopicBusy] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const draftChecked = useRef(false);
+
+  // autosave: a draft survives closing the tab or a dropped connection
+  useEffect(() => {
+    if (!draftChecked.current) {
+      draftChecked.current = true;
+      try {
+        const raw = storageGet(DRAFT_KEY);
+        if (raw) {
+          const d = JSON.parse(raw) as Draft;
+          if (d?.form?.topic || Object.keys(d?.sel ?? {}).length) setDraft(d);
+        }
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (result || draft) return;
+    const t = window.setTimeout(() => {
+      if (form.topic.trim() || Object.keys(sel).length) storageSet(DRAFT_KEY, JSON.stringify({ form, sel, step }));
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [form, sel, step, result, draft]);
+  const clearDraft = () => storageSet(DRAFT_KEY, "");
+  const restoreDraft = () => {
+    if (!draft) return;
+    setForm({ ...EMPTY, ...draft.form });
+    setSel(draft.sel ?? {});
+    setStep(Math.min(Math.max(draft.step ?? 0, 0), LAST));
+    setDraft(null);
+    toast("הטיוטה שוחזרה", { kind: "success" });
+  };
+  const dropDraft = () => {
+    clearDraft();
+    setDraft(null);
+  };
 
   // remembered fields + method preselected from the methods library
   useEffect(() => {
@@ -75,9 +125,53 @@ export function Generator() {
         /* ignore */
       }
     }
+    const t = params.get("topic");
+    const v = params.get("value");
+    if (t) setForm((f) => ({ ...f, topic: t.slice(0, 120), value: (v ?? f.value).slice(0, 120) }));
     const m = params.get("method");
     if (m && METHODS.some((x) => x.name === m)) setSel({ [m]: "10" });
+    const k = params.get("kind");
+    if (k) setForm((f) => ({ ...f, kind: k }));
   }, [params]);
+
+  // a kind chosen through the link fills the methods and modes once the kinds arrive
+  useEffect(() => {
+    if (kindApplied.current || !form.kind || !kinds.length) return;
+    kindApplied.current = true;
+    const k = kinds.find((x) => x.id === form.kind);
+    if (k && Object.keys(sel).length === 0) {
+      setSel(Object.fromEntries(k.methods.map((m) => [m.name, String(m.minutes)])));
+      setForm((f) => ({ ...f, activeScouting: k.scouting, energeticMode: k.energetic }));
+    }
+  }, [form.kind, kinds, sel]);
+
+  const pickKind = (id: string) => {
+    kindApplied.current = true;
+    const k = kinds.find((x) => x.id === id);
+    if (!k) {
+      setForm((f) => ({ ...f, kind: "" }));
+      return;
+    }
+    setSel(Object.fromEntries(k.methods.map((m) => [m.name, String(m.minutes)])));
+    setForm((f) => ({ ...f, kind: id, activeScouting: k.scouting, energeticMode: k.energetic }));
+    toast(`נבחרו שיטות וזמנים של ${k.label} (${k.minutes} דקות). אפשר לשנות בשלב "שיטות וזמנים"`, { kind: "info" });
+  };
+
+  const randomTopic = async () => {
+    setTopicBusy(true);
+    try {
+      const r = await api<{ topic: string; value: string }>(`/api/topics/random${form.kind ? `?kind=${form.kind}` : ""}`, { token });
+      setForm((f) => ({ ...f, topic: r.topic, value: r.value }));
+      setErrors((e) => {
+        const n = { ...e };
+        delete n.topic;
+        return n;
+      });
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+    setTopicBusy(false);
+  };
 
   // last used writing style + whether the server has an AI key
   useEffect(() => {
@@ -211,6 +305,7 @@ export function Generator() {
     role: form.role,
     activeScouting: form.activeScouting,
     energeticMode: form.energeticMode,
+    ...(form.kind ? { kind: form.kind } : {}),
     methods: Object.entries(sel).map(([name, minutes]) => ({ name, minutes: Number(minutes) })),
     style,
   });
@@ -246,6 +341,7 @@ export function Generator() {
     setExtBusy(true);
     try {
       const a = await api<Activity>("/api/activities/import", { method: "POST", token, body: { input: buildBody(), text: pasted } });
+      clearDraft();
       setResult(a);
     } catch (e) {
       toast(errorMessage(e), { kind: "error" });
@@ -270,6 +366,7 @@ export function Generator() {
       storageSet(STYLE_KEY, JSON.stringify(style));
       if (token) api("/api/me/style", { method: "PUT", token, body: { style } }).catch(() => {});
       storageSet(REMEMBER_KEY, JSON.stringify({ tribe: form.tribe, battalion: form.battalion, instructor: form.instructor, role: form.role }));
+      clearDraft();
       setResult(a);
     } catch (e) {
       if (e instanceof ApiError && e.fields) {
@@ -305,7 +402,39 @@ export function Generator() {
     toast("נבחרו שלוש שיטות בסך 10 דקות. אפשר לשנות אותן בשלב 'שיטות וזמנים'", { kind: "info" });
   };
 
+  const instantEmergency = async () => {
+    const e: Errors = {};
+    if (!form.instructor.trim()) e.instructor = "יש להזין שם מדריך/ה";
+    if (Object.keys(e).length) {
+      setErrors(e);
+      setStep(0);
+      focusFirst(e);
+      return;
+    }
+    setBusy(true);
+    try {
+      const body = {
+        ...(form.topic.trim() ? { topic: form.topic.trim() } : {}),
+        value: form.value.trim(),
+        ageGroup: form.ageGroup,
+        tribe: form.tribe,
+        instructor: form.instructor.trim(),
+        role: form.role,
+        participants: Number(form.participants) || 20,
+        style,
+        seed: Math.floor(Math.random() * 1000),
+      };
+      const a = await api<Activity>("/api/activities/emergency", { method: "POST", token, body });
+      clearDraft();
+      setResult(a);
+    } catch (err) {
+      toast(errorMessage(err), { kind: "error" });
+    }
+    setBusy(false);
+  };
+
   const reset = () => {
+    clearDraft();
     setResult(null);
     setSel({});
     setErrors({});
@@ -355,6 +484,7 @@ export function Generator() {
   const ageOptions = AGE_GROUPS;
 
   return (
+    <div className="wizard-layout">
     <form
       className="wizard"
       noValidate
@@ -378,6 +508,22 @@ export function Generator() {
         ))}
       </ol>
 
+      {draft && (
+        <div className="card draft-banner" role="region" aria-label="טיוטה שמורה">
+          <p>
+            <strong>נמצאה טיוטה שלא הושלמה{draft.form.topic ? `: ${draft.form.topic}` : ""}.</strong> רוצים להמשיך מאיפה שעצרתם?
+          </p>
+          <div className="actions">
+            <button type="button" className="btn btn-primary" onClick={restoreDraft}>
+              שחזור הטיוטה
+            </button>
+            <button type="button" className="btn" onClick={dropDraft}>
+              מחיקת הטיוטה
+            </button>
+          </div>
+        </div>
+      )}
+
       {step === 0 && (
         <div className="card emergency">
           <p>
@@ -385,7 +531,11 @@ export function Generator() {
           </p>
           <button type="button" className="btn" onClick={emergency}>
             פעולת חירום של 10 דקות
+          </button>{" "}
+          <button type="button" className="btn btn-primary" onClick={instantEmergency}>
+            יצירה מיידית: 10 דקות בלי ציוד
           </button>
+          <p className="hint">הכפתור השני בונה פעולה שלמה מוכנה להפעלה עכשיו, עם משחק בעל פה ושלוש שאלות. צריך רק שם מדריך/ה, ונושא אם יש.</p>
         </div>
       )}
 
@@ -399,8 +549,23 @@ export function Generator() {
             <Field label="נושא הפעולה" htmlFor="topic" error={err("topic")}>
               <input id="topic" value={form.topic} onChange={(e) => set("topic", e.target.value)} aria-invalid={!!err("topic")} aria-describedby={err("topic") ? "topic-err" : undefined} autoComplete="off" />
             </Field>
+            <div className="span-2">
+              <button type="button" className="btn" onClick={randomTopic} disabled={topicBusy}>
+                {topicBusy ? "מחפש..." : "אין נושא? הציעו לי נושא וערך"}
+              </button>
+            </div>
             <Field label="ערך מוביל" htmlFor="value" hint="לא חובה. אם ריק, הנושא ישמש כערך." error={err("value")}>
               <input id="value" value={form.value} onChange={(e) => set("value", e.target.value)} autoComplete="off" />
+            </Field>
+            <Field label="סוג הפעולה" htmlFor="kind" hint={kinds.find((k) => k.id === form.kind)?.short ?? "לא חובה. בחירה ממלאת שיטות וזמנים מתאימים."}>
+              <select id="kind" value={form.kind} onChange={(e) => pickKind(e.target.value)}>
+                <option value="">ללא סוג מיוחד</option>
+                {kinds.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="שם השבט" htmlFor="tribe" error={err("tribe")}>
               <input id="tribe" value={form.tribe} onChange={(e) => set("tribe", e.target.value)} />
@@ -595,5 +760,7 @@ export function Generator() {
         </div>
       </section>
     </form>
+    <LivePreview form={form} sel={sel} style={style} />
+    </div>
   );
 }

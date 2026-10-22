@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { storageGet, storageSet } from "@/lib/api";
+import { API_URL, storageGet, storageSet } from "@/lib/api";
 
 /* ───────────── accessibility settings ───────────── */
 interface A11yCtx {
@@ -9,6 +9,8 @@ interface A11yCtx {
   largeText: boolean;
   toggleContrast: () => void;
   toggleLarge: () => void;
+  theme: "auto" | "dark" | "light";
+  cycleTheme: () => void;
 }
 const A11y = createContext<A11yCtx | null>(null);
 export const useA11y = () => {
@@ -24,6 +26,13 @@ export interface SessionUser {
   displayName: string;
   role: "ADMIN" | "INSTRUCTOR";
   mustChangePw: boolean;
+  staffRole?: "SUPER" | "CONTENT" | "USERS" | "VIEWER" | null;
+  email?: string;
+  phone?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  totpEnabled?: boolean;
+  termsAccepted?: boolean;
 }
 export const isAdminUser = (u: SessionUser | null | undefined): boolean => !!u && u.role === "ADMIN" && !u.mustChangePw;
 interface AuthCtx {
@@ -62,6 +71,7 @@ const SESSION_KEY = "scout.session";
 export function Providers({ children }: { children: ReactNode }) {
   const [highContrast, setHc] = useState(false);
   const [largeText, setLarge] = useState(false);
+  const [theme, setTheme] = useState<"auto" | "dark" | "light">("auto");
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
@@ -72,6 +82,8 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     setHc(document.documentElement.classList.contains("hc"));
     setLarge(document.documentElement.classList.contains("large"));
+    const savedTheme = storageGet("scout.theme");
+    if (savedTheme === "dark" || savedTheme === "light") setTheme(savedTheme);
     // admins stay signed in only for this browser tab; instructors stay signed in on their device
     const read = (store: () => Storage) => {
       try {
@@ -104,6 +116,23 @@ export function Providers({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // theme: "auto" follows the device, and reacts when the device changes
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const apply = () => document.documentElement.classList.toggle("light", theme === "light" || (theme === "auto" && mq.matches));
+    apply();
+    if (theme !== "auto") return;
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [theme]);
+  const cycleTheme = useCallback(() => {
+    setTheme((t) => {
+      const next = t === "auto" ? "light" : t === "light" ? "dark" : "auto";
+      storageSet("scout.theme", next);
+      return next;
+    });
+  }, []);
+
   const setSession = useCallback((t: string, u: SessionUser) => {
     setToken(t);
     setUser(u);
@@ -116,6 +145,14 @@ export function Providers({ children }: { children: ReactNode }) {
     }
   }, []);
   const clear = useCallback(() => {
+    // מבטלים את החיבור גם בשרת, כדי שהאסימון לא יישאר בתוקף
+    try {
+      const raw = window.sessionStorage.getItem(SESSION_KEY) ?? window.localStorage.getItem(SESSION_KEY);
+      const t = raw ? (JSON.parse(raw) as { token?: string }).token : null;
+      if (t) void fetch(`${API_URL}/api/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${t}` } }).catch(() => {});
+    } catch {
+      /* ignore */
+    }
     setToken(null);
     setUser(null);
     try {
@@ -133,7 +170,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
   const dismiss = (id: number) => setToasts((t) => t.filter((x) => x.id !== id));
 
-  const a11y = useMemo(() => ({ highContrast, largeText, toggleContrast, toggleLarge }), [highContrast, largeText, toggleContrast, toggleLarge]);
+  const a11y = useMemo(() => ({ highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme }), [highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme]);
   const auth = useMemo(() => ({ token, user, ready, setSession, clear }), [token, user, ready, setSession, clear]);
 
   return (

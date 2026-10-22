@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
@@ -8,16 +9,30 @@ import helmet from "helmet";
 import { ZodError } from "zod";
 import { apportion, buildExternalPrompt, generateActivity, normalizeDraft, parseExternal } from "./ai.js";
 import { analyzeSample, extractText } from "./style.js";
-import { getActivity, insertActivity, rowToActivity, searchActivities, updateActivity } from "./activities.js";
+import { getActivity, insertActivity, rowToActivity, searchActivities, snapshotOf, updateActivity } from "./activities.js";
+import { buildPlan } from "./plan.js";
+import { newActivityStatus, registerExtraRoutes } from "./routes-extra.js";
+import { generateKinded } from "./kinds.js";
+import { registerContentRoutes } from "./routes-content.js";
+import { registerOrganizerRoutes } from "./routes-organizer.js";
+import { registerCareRoutes } from "./routes-care.js";
+import { registerCommunityRoutes } from "./routes-community.js";
+import { registerAssistRoutes } from "./routes-assist.js";
+import { registerAccountRoutes } from "./routes-accounts.js";
+import { registerSecurityRoutes } from "./routes-security.js";
+import { ipHash, isBlocked, logAccess, pageFrom, purgeOld, readSettings } from "./security.js";
+import { registerKindRoutes } from "./routes-kinds.js";
+import { EMERGENCY_METHODS, buildEmergencyDraft, parseLooseDoc, pickIcebreakers, regenerateStage } from "./tools.js";
+import { checkQuality } from "./quality.js";
 import { checkLock, clearFailures, hashPassword, optionalAuth, optionalUser, registerFailure, requireAdmin, requireUser, signToken, verifyPassword } from "./auth.js";
 import { BACKUP_NAME, backupDirFor, createBackup, listBackups } from "./backup.js";
 import { styleSchema } from "./style.js";
 import { config } from "./config.js";
 import { audit, nowIso } from "./db.js";
-import { buildDocx } from "./docx.js";
+import { buildBookletDocx, buildDocx } from "./docx.js";
 import { activityEmailHtml } from "./email.js";
 import { AGE_GROUPS, GRADES, GENDER_GROUPS, METHODS, ROLES, STAGE_LAYERS, STAGE_NAMES, MIDOT } from "./shared/constants.js";
-import { adminUserPatchSchema, changePwSchema, duplicateSchema, generateSchema, importSchema, listQuerySchema, loginSchema, ratingSchema, registerSchema, stagesSchema, updateSchema } from "./validate.js";
+import { emergencySchema, importParsedSchema, regenSchema, adminUserPatchSchema, bookletSchema, changePwSchema, duplicateSchema, generateSchema, importSchema, listQuerySchema, loginSchema, planSchema, qualitySchema, ratingSchema, registerSchema, runSchema, stagesSchema, updateSchema } from "./validate.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fail = (code, message, fields) => ({ error: { code, message, ...(fields ? { fields } : {}) } });
@@ -33,6 +48,11 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json({ limit: "200kb" }));
+  // האימות מול מסד הנתונים (חיבורים מבוטלים, תפקידים) קורא את המסד דרך הבקשה
+  app.use((req, res, next) => {
+    req.db = db;
+    next();
+  });
 
   const limiter = (windowMs, limit) =>
     rateLimit({
@@ -44,16 +64,33 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       handler: (req, res) => res.status(429).json(fail("RATE_LIMIT", "יותר מדי בקשות. נסו שוב בעוד כמה דקות")),
     });
 
-  // ── session tracking (for the admin dashboard) ──
+  // ── כתובות חסומות: לפני כל השאר, גם לדפים וגם ל-API ──
+  app.use((req, res, next) => {
+    if (req.path !== "/api/health" && isBlocked(db, req.ip)) {
+      return req.path.startsWith("/api") ? res.status(403).json(fail("BLOCKED", "הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת")) : res.status(403).type("text/plain; charset=utf-8").send("הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת.");
+    }
+    next();
+  });
+
+  // ── מעקב מבקרים (ללוח האדמין): חיבור לפי כתובת ודפדפן, ורישום "ביקור" אחד בכל 30 דקות ──
+  const visitSeen = new Map();
   app.use((req, res, next) => {
     if (req.path.startsWith("/api") && req.path !== "/api/health") {
       const ua = String(req.headers["user-agent"] || "").slice(0, 200);
-      const key = crypto.createHash("sha1").update(`${req.ip}|${ua}`).digest("hex");
+      const hash = ipHash(req.ip);
+      const shown = readSettings(db).visitorIpMode === "hashed" ? `h:${hash.slice(0, 10)}` : req.ip || "";
+      const key = crypto.createHash("sha1").update(`${hash}|${ua}`).digest("hex");
       const t = nowIso();
       db.prepare(
         `INSERT INTO sessions (key, ip, user_agent, first_seen, last_seen, username) VALUES (?,?,?,?,?,?)
-         ON CONFLICT(key) DO UPDATE SET last_seen=excluded.last_seen, username=COALESCE(excluded.username, sessions.username)`,
-      ).run(key, req.ip || "", ua, t, t, optionalUser(req));
+         ON CONFLICT(key) DO UPDATE SET last_seen=excluded.last_seen, ip=excluded.ip, username=COALESCE(excluded.username, sessions.username)`,
+      ).run(key, shown, ua, t, t, optionalUser(req));
+      const last = visitSeen.get(key) ?? 0;
+      if (Date.now() - last > 30 * 60_000) {
+        if (visitSeen.size > 5000) visitSeen.clear();
+        visitSeen.set(key, Date.now());
+        logAccess(db, req, "visit", { username: optionalUser(req), page: pageFrom(req) });
+      } else visitSeen.set(key, last);
     }
     next();
   });
@@ -61,58 +98,49 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   if (serveStatic) app.use(express.static(path.join(here, "..", "public")));
 
   const signupOpen = () => !!config.signupCode || !config.isProd;
-  const publicUser = (u) => ({ id: u.id, username: u.username, displayName: u.display_name || u.username, role: u.role, mustChangePw: !!u.must_change_pw });
+
+  // ── לוגו השבט: מועלה על ידי האדמין, נשמר כקובץ ליד מסד הנתונים ──
+  const logoFile = dbFile === ":memory:" ? null : path.join(path.dirname(path.resolve(dbFile)), "logo.bin");
+  const sniff = (b) =>
+    b.length > 12 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+      ? "image/png"
+      : b.length > 4 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff
+        ? "image/jpeg"
+        : b.length > 12 && b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP"
+          ? "image/webp"
+          : null;
+  const makeLogo = (buf) => (buf && sniff(buf) ? { buf, type: sniff(buf), v: crypto.createHash("sha1").update(buf).digest("hex").slice(0, 10) } : null);
+  let logo = null;
+  try {
+    if (logoFile && fs.existsSync(logoFile)) logo = makeLogo(fs.readFileSync(logoFile));
+  } catch {
+    logo = null;
+  }
 
   // ── public: meta ──
   app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso() }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
-    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode }),
+    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode, logoVersion: logo?.v ?? null }),
   );
 
-  // ── auth ──
-  app.post("/api/auth/login", limiter(15 * 60_000, 30), async (req, res) => {
-    const { username, password } = loginSchema.parse(req.body ?? {});
-    const key = `${username.toLowerCase()}|${req.ip}`;
-    const locked = checkLock(db, key);
-    if (locked) {
-      audit(db, username, "login.locked", { ip: req.ip });
-      return res.status(429).json(fail("LOCKED", `יותר מדי ניסיונות כושלים. נסו שוב בעוד ${locked} דקות`));
-    }
-    const user = db.prepare("SELECT * FROM users WHERE lower(username) = lower(?)").get(username);
-    const ok = await verifyPassword(password, user?.password_hash);
-    if (!user || !ok || user.disabled) {
-      registerFailure(db, key);
-      audit(db, username, "login.fail", { ip: req.ip });
-      return res.status(401).json(fail("BAD_CREDENTIALS", "שם משתמש או סיסמה שגויים"));
-    }
-    clearFailures(db, key);
-    audit(db, username, "login.success", { ip: req.ip });
-    res.json({ token: signToken(user), user: publicUser(user) });
+  app.get("/api/logo", (req, res) => {
+    if (!logo) return res.status(404).json(fail("NOT_FOUND", "אין לוגו"));
+    res.set({ "Content-Type": logo.type, "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff" }).send(logo.buf);
   });
-
-  app.post("/api/auth/register", limiter(60 * 60_000, 10), async (req, res) => {
-    if (!signupOpen()) return res.status(403).json(fail("SIGNUP_CLOSED", "ההרשמה סגורה. פנו למנהל המערכת שייצור לכם משתמש"));
-    const v = registerSchema.parse(req.body ?? {});
-    if (config.signupCode && v.signupCode !== config.signupCode) {
-      audit(db, v.username, "register.badcode", { ip: req.ip });
-      return res.status(403).json(fail("BAD_CODE", "קוד ההרשמה שגוי. בקשו אותו ממנהל השבט"));
-    }
-    if (db.prepare("SELECT 1 FROM users WHERE lower(username) = lower(?)").get(v.username)) {
-      return res.status(409).json(fail("USERNAME_TAKEN", "שם המשתמש תפוס. בחרו שם אחר"));
-    }
-    const r = db
-      .prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at, display_name) VALUES (?,?,?,?,?,?)")
-      .run(v.username, await hashPassword(v.password), "INSTRUCTOR", 0, nowIso(), v.displayName);
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(Number(r.lastInsertRowid));
-    audit(db, user.username, "register", { ip: req.ip });
-    res.status(201).json({ token: signToken(user), user: publicUser(user) });
+  app.post("/api/admin/logo", requireAdmin(), express.raw({ type: () => true, limit: "700kb" }), (req, res) => {
+    const next = makeLogo(Buffer.isBuffer(req.body) ? req.body : null);
+    if (!next) return res.status(415).json(fail("BAD_IMAGE", "הקובץ חייב להיות תמונה מסוג PNG, JPG או WebP, עד 700KB"));
+    logo = next;
+    if (logoFile) fs.writeFileSync(logoFile, next.buf);
+    audit(db, optionalUser(req), "logo.set", { type: next.type, size: next.buf.length });
+    res.json({ ok: true, logoVersion: next.v });
   });
-
-  app.get("/api/auth/me", requireUser({ allowMustChange: true }), (req, res) => {
-    const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
-    if (!u || u.disabled) return res.status(401).json(fail("UNAUTHORIZED", "החשבון אינו פעיל"));
-    res.json({ user: publicUser(u) });
+  app.delete("/api/admin/logo", requireAdmin(), (req, res) => {
+    logo = null;
+    if (logoFile) fs.rmSync(logoFile, { force: true });
+    audit(db, optionalUser(req), "logo.clear", {});
+    res.json({ ok: true });
   });
 
   // ── my account: own activities + saved writing style ──
@@ -128,17 +156,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const style = styleSchema.parse(req.body?.style ?? undefined);
     db.prepare("UPDATE users SET style_json = ? WHERE id = ?").run(JSON.stringify(style), req.user.id);
     res.json({ style });
-  });
-
-  app.post("/api/auth/change-password", requireUser({ allowMustChange: true }), async (req, res) => {
-    const { currentPassword, newPassword } = changePwSchema.parse(req.body ?? {});
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
-    if (!(await verifyPassword(currentPassword, user.password_hash))) {
-      return res.status(400).json(fail("BAD_PASSWORD", "הסיסמה הנוכחית שגויה"));
-    }
-    db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 0 WHERE id = ?").run(await hashPassword(newPassword), user.id);
-    audit(db, user.username, "password.changed");
-    res.json({ token: signToken({ ...user, must_change_pw: 0 }) });
   });
 
   // ── activities: public read ──
@@ -207,6 +224,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const who = optionalAuth(req);
     const activity = {
       ownerId: who?.id ?? null,
+      status: newActivityStatus(db, who),
       title: g.title,
       durationMin: g.durationMin,
       author: input.instructor,
@@ -222,12 +240,13 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       conclusionNote: g.conclusionNote,
       activeScouting: input.activeScouting,
       energeticMode: input.energeticMode,
+      kind: g.kind ?? input.kind ?? null,
       tags: g.tags,
       methods: input.methods,
       stages: g.stages,
     };
     const id = insertActivity(db, activity);
-    audit(db, who?.username ?? "anonymous", action, { id, title: activity.title, source: g.source, ip: req.ip });
+    audit(db, who?.username ?? "anonymous", action, { id, title: activity.title, source: g.source });
     const saved = getActivity(db, id);
     mailer?.enqueue(`פעולה חדשה: ${saved.title}`, activityEmailHtml(saved));
     return { ...saved, source: g.source };
@@ -235,7 +254,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   app.post("/api/activities/generate", limiter(15 * 60_000, 20), async (req, res) => {
     const input = generateSchema.parse(req.body ?? {});
-    const g = await generateActivity(input);
+    const g = await generateKinded(input);
     res.status(201).json(saveGenerated(input, g, req, "activity.generate"));
   });
 
@@ -291,26 +310,37 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       stages,
       isSeed: false,
       ownerId: optionalAuth(req)?.id ?? null,
+      status: newActivityStatus(db, optionalAuth(req)),
     });
     audit(db, optionalUser(req), "activity.duplicate", { from: src.id, id });
     res.status(201).json(getActivity(db, id));
   });
 
   // ── activities: write (owner or admin) ──
-  const canManage = (user, a) => user.role === "ADMIN" || (!a.isSeed && a.ownerId != null && a.ownerId === user.id);
-  const forbidden = (res) => res.status(403).json(fail("FORBIDDEN", "אפשר לערוך רק פעולות שיצרתם. אדמין יכול לערוך הכול"));
+  // canOwn: הבעלים או אדמין (מחיקה, שיתוף). canManage: גם שותף לעריכה (עריכה, גרסאות, הוספת סיפור)
+  const canOwn = (user, a) => user.role === "ADMIN" || (!a.isSeed && a.ownerId != null && a.ownerId === user.id);
+  const isCollaborator = (user, a) => !a.isSeed && !!db.prepare("SELECT 1 FROM activity_collaborators WHERE activity_id = ? AND user_id = ?").get(a.id, user.id);
+  const canManage = (user, a) => canOwn(user, a) || isCollaborator(user, a);
+  const forbidden = (res) => res.status(403).json(fail("FORBIDDEN", "אפשר לערוך רק פעולות שיצרתם או שמישהו שיתף איתכם. אדמין יכול לערוך הכול"));
 
   app.put("/api/activities/:id", requireUser(), (req, res) => {
     const id = Number(req.params.id);
     const existing = getActivity(db, id, { includeArchived: true });
     if (!existing) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
     if (!canManage(req.user, existing)) return forbidden(res);
+    // הגנה על עריכה משותפת: אם מישהו שמר אחרי שפתחתם את הפעולה, לא דורסים בשקט
+    const base = req.body?.baseUpdatedAt;
+    if (typeof base === "string" && base !== existing.updatedAt && req.body?.force !== true) {
+      const last = db.prepare("SELECT actor FROM audit_log WHERE action = 'activity.update' AND details LIKE ? ORDER BY id DESC LIMIT 1").get(`{"id":${id},%`);
+      return res.status(409).json(fail("EDIT_CONFLICT", `${last?.actor && last.actor !== req.user.username ? last.actor : "מישהו"} שמר/ה שינויים בפעולה אחרי שפתחתם אותה. אפשר לרענן ולראות אותם, או לשמור בכל זאת ולדרוס אותם`));
+    }
     const patch = updateSchema.parse(req.body ?? {});
     const merged = { ...existing, ...patch };
     if (patch.stages) {
       stagesSchema.parse(patch.stages);
       merged.durationMin = patch.stages.reduce((s, x) => s + x.minutes, 0);
     }
+    saveVersion(id, existing, req.user.username, "לפני עריכה");
     updateActivity(db, id, merged);
     audit(db, req.user.username, "activity.update", { id, fields: Object.keys(patch) });
     res.json(getActivity(db, id, { includeArchived: true }));
@@ -320,7 +350,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const id = Number(req.params.id);
     const a = getActivity(db, id, { includeArchived: true });
     if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
-    if (!canManage(req.user, a)) return forbidden(res);
+    if (!canOwn(req.user, a)) return forbidden(res);
     if (a.isSeed && req.query.confirm !== "yes") {
       return res.status(409).json(fail("SEED_CONFIRM", "זו פעולה מובנית של המערכת. כדי למחוק יש לאשר במפורש (confirm=yes)"));
     }
@@ -333,11 +363,171 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const id = Number(req.params.id);
     const a = getActivity(db, id, { includeArchived: true });
     if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
-    if (!canManage(req.user, a)) return forbidden(res);
-    db.prepare("UPDATE activities SET status = 'PUBLISHED', updated_at = ? WHERE id = ?").run(nowIso(), id);
+    if (!canOwn(req.user, a)) return forbidden(res);
+    db.prepare("UPDATE activities SET status = ?, updated_at = ? WHERE id = ?").run(newActivityStatus(db, req.user), nowIso(), id);
     audit(db, req.user.username, "activity.restore", { id });
     res.json(getActivity(db, id));
   });
+
+  // ── version history (owner or admin) ──
+  const MAX_VERSIONS = 30;
+  function saveVersion(activityId, activity, editor, note) {
+    db.prepare("INSERT INTO activity_versions (activity_id, snapshot_json, editor, note, saved_at) VALUES (?,?,?,?,?)").run(activityId, JSON.stringify(snapshotOf(activity)), editor, note, nowIso());
+    db.prepare("DELETE FROM activity_versions WHERE activity_id = ? AND id NOT IN (SELECT id FROM activity_versions WHERE activity_id = ? ORDER BY id DESC LIMIT ?)").run(activityId, activityId, MAX_VERSIONS);
+  }
+
+  app.get("/api/activities/:id/versions", requireUser(), (req, res) => {
+    const a = getActivity(db, Number(req.params.id), { includeArchived: true });
+    if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
+    if (!canManage(req.user, a)) return forbidden(res);
+    const items = db.prepare("SELECT id, snapshot_json, editor, note, saved_at FROM activity_versions WHERE activity_id = ? ORDER BY id DESC").all(a.id);
+    res.json({ current: snapshotOf(a), items: items.map((v) => ({ id: v.id, editor: v.editor, note: v.note, savedAt: v.saved_at, snapshot: JSON.parse(v.snapshot_json) })) });
+  });
+
+  app.post("/api/activities/:id/versions/:vid/restore", requireUser(), (req, res) => {
+    const a = getActivity(db, Number(req.params.id), { includeArchived: true });
+    if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
+    if (!canManage(req.user, a)) return forbidden(res);
+    const v = db.prepare("SELECT * FROM activity_versions WHERE id = ? AND activity_id = ?").get(Number(req.params.vid), a.id);
+    if (!v) return res.status(404).json(fail("NOT_FOUND", "הגרסה לא נמצאה"));
+    saveVersion(a.id, a, req.user.username, "לפני שחזור גרסה");
+    updateActivity(db, a.id, { ...a, ...JSON.parse(v.snapshot_json) });
+    audit(db, req.user.username, "activity.restoreVersion", { id: a.id, version: v.id });
+    res.json(getActivity(db, a.id, { includeArchived: true }));
+  });
+
+  // ── private run log ("יומן הפעלות") ──
+  const runRow = (r) => ({ id: r.id, activityId: r.activity_id, ranOn: r.ran_on, groupLabel: r.group_label || "", worked: r.worked || "", changeNext: r.change_next || "", notes: r.notes || "", engagement: r.engagement ?? null, timing: r.timing ?? null, createdAt: r.created_at, ...(r.title ? { title: r.title } : {}) });
+
+  app.get("/api/activities/:id/runs", requireUser(), (req, res) => {
+    const rows = db.prepare("SELECT * FROM runs WHERE activity_id = ? AND user_id = ? ORDER BY ran_on DESC, id DESC").all(Number(req.params.id), req.user.id);
+    res.json(rows.map(runRow));
+  });
+  app.post("/api/activities/:id/runs", requireUser(), (req, res) => {
+    const a = getActivity(db, Number(req.params.id));
+    if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
+    const v = runSchema.parse(req.body ?? {});
+    const r = db.prepare("INSERT INTO runs (activity_id, user_id, ran_on, group_label, worked, change_next, notes, engagement, timing, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").run(a.id, req.user.id, v.ranOn, v.groupLabel, v.worked, v.changeNext, v.notes, v.engagement ?? null, v.timing ?? null, nowIso());
+    res.status(201).json(runRow(db.prepare("SELECT * FROM runs WHERE id = ?").get(Number(r.lastInsertRowid))));
+  });
+  app.delete("/api/runs/:id", requireUser(), (req, res) => {
+    const r = db.prepare("DELETE FROM runs WHERE id = ? AND user_id = ?").run(Number(req.params.id), req.user.id);
+    if (!r.changes) return res.status(404).json(fail("NOT_FOUND", "הרישום לא נמצא"));
+    res.json({ ok: true });
+  });
+  app.get("/api/me/runs", requireUser(), (req, res) => {
+    const rows = db.prepare("SELECT runs.*, activities.title AS title FROM runs JOIN activities ON activities.id = runs.activity_id WHERE runs.user_id = ? ORDER BY ran_on DESC, runs.id DESC LIMIT 200").all(req.user.id);
+    res.json(rows.map(runRow));
+  });
+
+  // ── booklet (several activities in one Word file), quality check, periodic plan ──
+  app.post("/api/export/booklet", limiter(15 * 60_000, 20), async (req, res) => {
+    const { ids, title } = bookletSchema.parse(req.body ?? {});
+    const list = ids.map((id) => getActivity(db, id)).filter(Boolean);
+    if (!list.length) return res.status(404).json(fail("NOT_FOUND", "לא נמצאו פעולות"));
+    const buf = await buildBookletDocx(list, title);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename="booklet.docx"`);
+    res.send(buf);
+  });
+
+  app.post("/api/quality", limiter(15 * 60_000, 120), (req, res) => {
+    const { items } = qualitySchema.parse(req.body ?? {});
+    res.json(checkQuality(items));
+  });
+
+
+  // ── סבב א': שלב בודד מחדש, חירום, היכרות, ייבוא קבצים ──
+  app.post("/api/activities/:id/stages/:index/regenerate", limiter(15 * 60_000, 60), async (req, res) => {
+    const a = getActivity(db, Number(req.params.id));
+    const index = Number(req.params.index);
+    if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
+    if (!Number.isInteger(index) || index < 0 || index > 4) return res.status(400).json(fail("VALIDATION", "מספר שלב לא תקין"));
+    const o = regenSchema.parse(req.body ?? {});
+    res.json(await regenerateStage(a, index, o));
+  });
+
+  app.post("/api/activities/emergency", limiter(15 * 60_000, 30), (req, res) => {
+    const o = emergencySchema.parse(req.body ?? {});
+    const input = generateSchema.parse({ ...o, methods: EMERGENCY_METHODS });
+    const draft = normalizeDraft(buildEmergencyDraft(input, o.seed), input);
+    res.status(201).json(saveGenerated(input, { ...draft, tags: ["חירום", "בלי ציוד", "10 דקות"], source: "emergency" }, req, "activity.emergency"));
+  });
+
+  app.get("/api/icebreakers", (req, res) => {
+    const q = req.query;
+    res.json(
+      pickIcebreakers({
+        n: Math.min(8, Math.max(1, Number(q.n) || 3)),
+        energetic: q.energetic === "1" ? true : q.energetic === "0" ? false : undefined,
+        noEquipment: q.noEquipment === "1",
+        maxMinutes: Number(q.maxMinutes) || undefined,
+        seed: Number(q.seed) || Date.now(),
+      }),
+    );
+  });
+
+  app.post("/api/activities/import-file", limiter(15 * 60_000, 40), express.raw({ type: () => true, limit: "3mb" }), async (req, res) => {
+    try {
+      const name = String(req.query.name || "");
+      const text = await extractText(Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0), name);
+      res.json(parseLooseDoc(text, name));
+    } catch (e) {
+      res.status(e.status || 422).json(fail("EXTRACT", e.status ? e.message : "לא הצלחתי לקרוא את הקובץ"));
+    }
+  });
+
+  app.post("/api/activities/import-parsed", limiter(15 * 60_000, 60), (req, res) => {
+    const o = importParsedSchema.parse(req.body ?? {});
+    const who = optionalAuth(req);
+    const id = insertActivity(db, {
+      ownerId: who?.id ?? null,
+      status: newActivityStatus(db, who),
+      title: o.title,
+      durationMin: o.stages.reduce((a, s) => a + s.minutes, 0),
+      author: o.instructor,
+      instructor: o.instructor,
+      instructorRole: "מדריך",
+      tribe: o.tribe,
+      battalion: "",
+      ageGroup: o.ageGroup,
+      groupSize: 20,
+      leadingValue: o.leadingValue || o.title,
+      equipment: o.equipment || "לא צוין ציוד",
+      safetyNotes: o.safetyNotes || "לא צוינו הערות בטיחות. כדאי להשלים לפני ההפעלה.",
+      conclusionNote: null,
+      activeScouting: false,
+      energeticMode: false,
+      tags: ["יובא מקובץ"],
+      methods: [],
+      stages: o.stages,
+    });
+    audit(db, who?.username ?? "anonymous", "activity.import-file", { id, title: o.title });
+    res.status(201).json(getActivity(db, id));
+  });
+
+  app.post("/api/plan", limiter(15 * 60_000, 60), (req, res) => {
+    res.json(buildPlan(db, planSchema.parse(req.body ?? {})));
+  });
+
+  registerExtraRoutes(app, { db, limiter, fail, requireUser, requireAdmin, optionalAuth, optionalUser });
+  registerKindRoutes(app, { db, limiter, fail, requireAdmin, optionalAuth, optionalUser, saveGenerated });
+  registerContentRoutes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion, runRow });
+  registerOrganizerRoutes(app, { db, limiter, fail, requireUser, optionalAuth, canOwn, isCollaborator });
+  registerCareRoutes(app, { db, dbFile, limiter, fail, requireUser, requireAdmin, optionalAuth, canManage, forbidden, saveVersion });
+  registerCommunityRoutes(app, { db, limiter, fail, requireUser, requireAdmin, optionalAuth });
+  registerAssistRoutes(app, { db, limiter, optionalAuth, fail, requireUser });
+  registerSecurityRoutes(app, { db, limiter, fail, requireUser, requireAdmin });
+  registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen });
+
+  // מחיקה אוטומטית של יומני כניסות, מבקרים וחיבורים ישנים (לפי ההגדרה), פעם בכמה שעות
+  try {
+    purgeOld(db);
+  } catch {
+    /* מסד חדש מאוד */
+  }
+  const purgeTimer = setInterval(() => { try { purgeOld(db); } catch { /* ignore */ } }, 6 * 3600_000);
+  purgeTimer.unref();
 
   // ── admin dashboard data ──
   app.get("/api/admin/sessions", requireAdmin(), (req, res) => {
@@ -365,36 +555,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       generatedLast7Days: db.prepare("SELECT COUNT(*) AS c FROM audit_log WHERE action IN ('activity.generate','activity.import') AND at >= ?").get(weekAgo).c,
       emailQueue: db.prepare("SELECT status, COUNT(*) AS c FROM email_queue GROUP BY status").all(),
     });
-  });
-
-  // ── admin: users ──
-  app.get("/api/admin/users", requireAdmin(), (req, res) => {
-    const rows = db
-      .prepare(
-        `SELECT u.id, u.username, u.display_name AS displayName, u.role, u.disabled, u.created_at AS createdAt,
-                (SELECT COUNT(*) FROM activities a WHERE a.owner_id = u.id AND a.status = 'PUBLISHED') AS activities
-         FROM users u ORDER BY u.id`,
-      )
-      .all();
-    res.json(rows.map((r) => ({ ...r, disabled: !!r.disabled })));
-  });
-  app.patch("/api/admin/users/:id", requireAdmin(), async (req, res) => {
-    const id = Number(req.params.id);
-    const target = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-    if (!target) return res.status(404).json(fail("NOT_FOUND", "המשתמש לא נמצא"));
-    const p = adminUserPatchSchema.parse(req.body ?? {});
-    if (id === req.user.id && (p.disabled || (p.role && p.role !== "ADMIN"))) {
-      return res.status(400).json(fail("SELF", "אי אפשר להשבית או להוריד הרשאות לעצמכם"));
-    }
-    let tempPassword;
-    if (p.disabled !== undefined) db.prepare("UPDATE users SET disabled = ? WHERE id = ?").run(p.disabled ? 1 : 0, id);
-    if (p.role) db.prepare("UPDATE users SET role = ? WHERE id = ?").run(p.role, id);
-    if (p.resetPassword) {
-      tempPassword = crypto.randomBytes(6).toString("base64url");
-      db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 1 WHERE id = ?").run(await hashPassword(tempPassword), id);
-    }
-    audit(db, req.user.username, "user.update", { id, username: target.username, ...p });
-    res.json({ ok: true, ...(tempPassword ? { tempPassword } : {}) });
   });
 
   // ── admin: backups ──

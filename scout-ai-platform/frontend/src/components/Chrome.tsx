@@ -2,20 +2,42 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { API_URL, api } from "@/lib/api";
+import { NavBadge } from "./CareParts";
 import { useA11y, useAuth } from "./Providers";
 
 const NAV = [
   { href: "/", label: "יצירת פעולה חכמה" },
+  { href: "/assistant", label: "עוזר כתיבה" },
   { href: "/library", label: "מאגר פעולות קיים" },
+  { href: "/types", label: "סוגי פעולות" },
+  { href: "/tools", label: "כלים ורעיונות" },
   { href: "/methods", label: "ספריית המתודות" },
+  { href: "/plan", label: "תכנון תקופתי" },
   { href: "/admin", label: "לוח בקרה לאדמין" },
 ];
 // נוסף מעבר לארבעת הנתיבים הבסיסיים
 const ACCOUNT_LABEL_OUT = "התחברות והרשמה";
 
-const LOGO_URL = process.env.NEXT_PUBLIC_LOGO_URL;
+const ENV_LOGO = process.env.NEXT_PUBLIC_LOGO_URL;
+// לוגו ברירת המחדל של השבט (אדמין יכול להחליף בלוח הבקרה)
+const DEFAULT_LOGO = "/logo-maoz.png";
+
+let metaPromise: Promise<{ logoVersion: string | null }> | null = null;
+/** The logo the admin uploaded (or the one set in the environment). */
+function useLogoUrl(): string | undefined {
+  const [url, setUrl] = useState<string | undefined>(ENV_LOGO ?? DEFAULT_LOGO);
+  useEffect(() => {
+    if (ENV_LOGO) return;
+    metaPromise ??= api<{ logoVersion: string | null }>("/api/meta").catch(() => ({ logoVersion: null }));
+    metaPromise.then((m) => m.logoVersion && setUrl(`${API_URL}/api/logo?v=${m.logoVersion}`));
+  }, []);
+  return url;
+}
 
 function Emblem() {
+  const LOGO_URL = useLogoUrl();
   return (
     <div className={`emblem ${LOGO_URL ? "has-logo" : ""}`}>
       {LOGO_URL ? (
@@ -51,7 +73,7 @@ function Emblem() {
 }
 
 export function SiteHeader() {
-  const { highContrast, largeText, toggleContrast, toggleLarge } = useA11y();
+  const { highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme } = useA11y();
   const pathname = usePathname();
   const { user, ready } = useAuth();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -64,6 +86,9 @@ export function SiteHeader() {
         </button>
         <button type="button" className="a11y-btn" aria-pressed={largeText} onClick={toggleLarge}>
           הגדלת טקסט
+        </button>
+        <button type="button" className="a11y-btn" onClick={cycleTheme}>
+          תצוגה: {theme === "auto" ? "לפי המכשיר" : theme === "light" ? "בהירה" : "כהה"}
         </button>
       </div>
       <Link href="/" className="brand-link" aria-label="מחולל פעולות, שבט מעוז. לעמוד הראשי">
@@ -81,6 +106,7 @@ export function SiteHeader() {
           <li>
             <Link href="/account" aria-current={isActive("/account") ? "page" : undefined}>
               {ready && user ? `האזור האישי (${user.displayName})` : ACCOUNT_LABEL_OUT}
+              {ready && user && <NavBadge />}
             </Link>
           </li>
         </ul>
@@ -95,6 +121,12 @@ export function SiteFooter() {
       <p>כל הזכויות שמורות לשבט מעוז - ראשון לציון © 2026</p>
       <p className="footer-links">
         <Link href="/accessibility">הצהרת נגישות</Link>
+        {" · "}
+        <Link href="/privacy">פרטיות ותנאי שימוש</Link>
+        {" · "}
+        <button type="button" className="link-btn" onClick={() => window.dispatchEvent(new Event("scout:shortcuts"))}>
+          קיצורי מקלדת
+        </button>
       </p>
     </footer>
   );

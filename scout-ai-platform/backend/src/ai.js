@@ -142,7 +142,7 @@ const GENERIC_TIPS = [
   "תנו לחניכים השקטים הזדמנות לדבר, בלי ללחוץ.",
 ];
 
-function framing(input) {
+export function framing(input) {
   const st = { ...DEFAULT_STYLE, ...(input.style || {}) };
   const v = VOICE[st.tone] || VOICE.warm;
   const topic = input.topic;
@@ -177,7 +177,7 @@ function framing(input) {
 
 // ───────────────────────── fallback generator ─────────────────────────
 
-function methodsFor(input, stageIndex) {
+export function methodsFor(input, stageIndex) {
   return input.methods.filter((m) => METHOD_STAGE[m.name] === stageIndex);
 }
 
@@ -294,6 +294,7 @@ const SYSTEM_PROMPT = `אתה מדריך מנוסה בתנועת הצופים ה
 - אם activeScouting=true: בשלב "זמן צופיות מעשי" תוכן מעשי אמיתי (קשרים, פיוניריה או עזרה ראשונה).
 - אם energeticMode=true: כל משחק ישיבה הופך למשימת ריצה או תנועה.
 - שלב הסיכום וגם conclusionNote מקשרים במפורש ל${MIDOT.d.label} ("${MIDOT.d.text}") ול${MIDOT.h.label} ("${MIDOT.h.text}").
+- אם בקלט מופיע kindGuide, זהו סוג הפעולה: בנה את הפעולה לפיו והתאם את התוכן של כל שלב למבנה שבו.
 - התאם שפה ורמה לשכבת הגיל, והתייחס ברגישות לנושאים כמו אלימות, בריונות ודת ומדינה.
 - בשדה layer השתמש בשכבות: ${STAGE_LAYERS.join(" | ")}.
 

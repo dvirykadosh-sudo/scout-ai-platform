@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "./Providers";
 import { Modal } from "./ui";
 
-export function ShareModal({ open, onClose, activityId, title }: { open: boolean; onClose: () => void; activityId: number; title: string }) {
+export function ShareModal({ open, onClose, activityId, title, path, heading = "שיתוף הפעולה", intro = "הקישור פותח את הפעולה לקריאה בלבד, בלי התחברות." }: { open: boolean; onClose: () => void; activityId: number; title: string; path?: string; heading?: string; intro?: string }) {
   const toast = useToast();
   const [url, setUrl] = useState("");
   const [qr, setQr] = useState("");
@@ -14,13 +14,13 @@ export function ShareModal({ open, onClose, activityId, title }: { open: boolean
 
   useEffect(() => {
     if (!open) return;
-    const u = `${window.location.origin}/library/${activityId}`;
+    const u = `${window.location.origin}${path ?? `/library/${activityId}`}`;
     setUrl(u);
     setCanShare(typeof navigator.share === "function");
     QRCode.toDataURL(u, { width: 260, margin: 2, errorCorrectionLevel: "M", color: { dark: "#000000", light: "#ffffff" } })
       .then(setQr)
       .catch(() => setQr(""));
-  }, [open, activityId]);
+  }, [open, activityId, path]);
 
   const isLocal = /^(localhost|127\.|\[::1\])/.test(typeof window === "undefined" ? "" : window.location.hostname);
 
@@ -46,7 +46,7 @@ export function ShareModal({ open, onClose, activityId, title }: { open: boolean
     <Modal
       open={open}
       onClose={onClose}
-      title="שיתוף הפעולה"
+      title={heading}
       footer={
         <>
           <button type="button" className="btn btn-primary" onClick={copy}>
@@ -63,13 +63,13 @@ export function ShareModal({ open, onClose, activityId, title }: { open: boolean
         </>
       }
     >
-      <p>הקישור פותח את הפעולה לקריאה בלבד, בלי התחברות.</p>
-      <label htmlFor="share-url">קישור לפעולה</label>
+      <p>{intro}</p>
+      <label htmlFor="share-url">הקישור</label>
       <input id="share-url" ref={input} readOnly value={url} dir="ltr" onFocus={(e) => e.currentTarget.select()} />
       {qr && (
         <div className="qr-box">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} width={260} height={260} alt={`קוד QR שפותח את הפעולה "${title}"`} />
+          <img src={qr} width={260} height={260} alt={`קוד QR לקישור של "${title}"`} />
         </div>
       )}
       {isLocal && (

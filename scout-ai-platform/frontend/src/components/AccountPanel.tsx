@@ -1,12 +1,173 @@
 "use client";
 
+import { Forgotten, MyTags } from "./CommunityParts";
+import { ExportMine, NotificationsPanel } from "./CareParts";
+
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, errorMessage, fmtDate } from "@/lib/api";
-import type { Activity } from "@/lib/types";
+import { ApiError, api, downloadBooklet, errorMessage, fmtDate } from "@/lib/api";
+import type { Activity, Run } from "@/lib/types";
 import { ChangePassword, LoginForm, RegisterForm, useSignupInfo } from "./AuthForms";
 import { useAuth, useToast } from "./Providers";
-import { Skeleton } from "./ui";
+import { SecurityPanel } from "./SecurityPanel";
+import { STAFF_LABEL } from "@/lib/staff";
+import type { Collection } from "./CollectionModal";
+import { Field, Skeleton } from "./ui";
+
+function MyRuns() {
+  const { token } = useAuth();
+  const [runs, setRuns] = useState<Run[] | null>(null);
+  useEffect(() => {
+    api<Run[]>("/api/me/runs", { token })
+      .then(setRuns)
+      .catch(() => setRuns([]));
+  }, [token]);
+  return (
+    <section aria-labelledby="myruns-title" className="card glass">
+      <h2 id="myruns-title" className="section-title">
+        ההפעלות שלי
+      </h2>
+      {runs === null && <Skeleton lines={2} />}
+      {runs && runs.length === 0 && <p>עדיין אין רישומים. בעמוד של כל פעולה יש "יומן הפעלות" לרישום מה עבד ומה לשנות.</p>}
+      {runs && runs.length > 0 && (
+        <ul className="plain-list runs-list">
+          {runs.slice(0, 20).map((r) => (
+            <li key={r.id}>
+              <span>
+                <strong>{new Date(`${r.ranOn}T12:00:00`).toLocaleDateString("he-IL")}</strong> · <Link href={`/library/${r.activityId}`}>{r.title}</Link>
+                {r.groupLabel ? ` · ${r.groupLabel}` : ""}
+                {r.worked ? ` · עבד: ${r.worked}` : ""}
+                {r.changeNext ? ` · לשנות: ${r.changeNext}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function MyCollections() {
+  const { token } = useAuth();
+  const toast = useToast();
+  const [cols, setCols] = useState<Collection[] | null>(null);
+  const [name, setName] = useState("");
+
+  const load = useCallback(() => {
+    api<Collection[]>("/api/me/collections", { token })
+      .then(setCols)
+      .catch(() => setCols([]));
+  }, [token]);
+  useEffect(load, [load]);
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api("/api/me/collections", { method: "POST", token, body: { name } });
+      setName("");
+      load();
+    } catch (err) {
+      toast(errorMessage(err), { kind: "error" });
+    }
+  };
+  const drop = async (c: Collection) => {
+    try {
+      await api(`/api/collections/${c.id}`, { method: "DELETE", token });
+      load();
+    } catch (err) {
+      toast(errorMessage(err), { kind: "error" });
+    }
+  };
+  const removeItem = async (c: Collection, aid: number) => {
+    try {
+      await api(`/api/collections/${c.id}/items/${aid}`, { method: "DELETE", token });
+      load();
+    } catch (err) {
+      toast(errorMessage(err), { kind: "error" });
+    }
+  };
+  const booklet = async (c: Collection) => {
+    try {
+      await downloadBooklet(c.items.map((i) => i.id), c.name);
+    } catch (err) {
+      toast(errorMessage(err), { kind: "error" });
+    }
+  };
+
+  return (
+    <section aria-labelledby="mycols-title" className="card glass">
+      <h2 id="mycols-title" className="section-title">
+        האוספים שלי
+      </h2>
+      <form onSubmit={create} className="inline-form">
+        <Field label="אוסף חדש" htmlFor="acct-col-new">
+          <input id="acct-col-new" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="למשל: מחזור ז' סתיו" />
+        </Field>
+        <button type="submit" className="btn btn-primary" disabled={name.trim().length < 2}>
+          יצירה
+        </button>
+      </form>
+      {cols === null && <Skeleton lines={2} />}
+      {cols && cols.length === 0 && <p>עוד אין אוספים. בכל פעולה יש כפתור "הוספה לאוסף".</p>}
+      {cols?.map((c) => (
+        <details key={c.id} className="collection">
+          <summary>
+            {c.name} ({c.items.length})
+          </summary>
+          {c.items.length === 0 ? (
+            <p>האוסף ריק.</p>
+          ) : (
+            <ul className="plain-list">
+              {c.items.map((i) => (
+                <li key={i.id}>
+                  <Link href={`/library/${i.id}`}>{i.title}</Link>
+                  <button type="button" className="btn btn-small" onClick={() => removeItem(c, i.id)} aria-label={`הסרת ${i.title} מהאוסף`}>
+                    הסרה
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="actions">
+            <button type="button" className="btn btn-small" onClick={() => booklet(c)} disabled={c.items.length === 0}>
+              הורדת האוסף כחוברת Word
+            </button>
+            <button type="button" className="btn btn-small" onClick={() => drop(c)}>
+              מחיקת האוסף
+            </button>
+          </div>
+        </details>
+      ))}
+    </section>
+  );
+}
+
+function SharedWithMe() {
+  const { token } = useAuth();
+  const [items, setItems] = useState<Activity[] | null>(null);
+  useEffect(() => {
+    api<Activity[]>("/api/me/shared", { token })
+      .then(setItems)
+      .catch(() => setItems([]));
+  }, [token]);
+  if (!items || items.length === 0) return null;
+  return (
+    <section aria-labelledby="shared-title" className="card glass">
+      <h2 id="shared-title" className="section-title">
+        פעולות ששיתפו איתי לעריכה
+      </h2>
+      <ul className="plain-list">
+        {items.map((a) => (
+          <li key={a.id}>
+            <span>
+              <Link href={`/library/${a.id}`}>{a.title}</Link> · {a.durationMin} דק' · {a.ageGroup}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function MyActivities() {
   const { token, clear } = useAuth();
@@ -51,8 +212,11 @@ function MyActivities() {
           {items.map((a) => (
             <li key={a.id}>
               <span>
-                {a.status === "PUBLISHED" ? (
-                  <Link href={`/library/${a.id}`}>{a.title}</Link>
+                {a.status !== "ARCHIVED" ? (
+                  <>
+                    <Link href={`/library/${a.id}`}>{a.title}</Link>
+                    {a.status === "PENDING" && <span className="status-pill"> ממתינה לאישור</span>}
+                  </>
                 ) : (
                   <>
                     {a.title} <span className="status-pill">נמחקה</span>
@@ -61,7 +225,7 @@ function MyActivities() {
                 · {a.durationMin} דק' · {a.ageGroup} · {fmtDate(a.createdAt)}
               </span>
               <span className="actions">
-                {a.status === "PUBLISHED" ? (
+                {a.status !== "ARCHIVED" ? (
                   <>
                     <Link className="btn btn-small" href={`/library/${a.id}`}>
                       פתיחה ועריכה<span className="sr-only"> של {a.title}</span>
@@ -126,7 +290,7 @@ export function AccountPanel() {
     <>
       <div className="card glass account-head">
         <p className="who">
-          מחובר/ת כ-<strong>{user.displayName}</strong> ({user.role === "ADMIN" ? "אדמין" : "מדריך/ה"})
+          מחובר/ת כ-<strong>{user.displayName}</strong> ({user.role === "ADMIN" ? STAFF_LABEL[user.staffRole ?? "SUPER"] : "מדריך/ה"})
         </p>
         <div className="actions">
           {user.role === "ADMIN" && (
@@ -150,7 +314,15 @@ export function AccountPanel() {
         </div>
       </div>
       {pwOpen && <ChangePassword onDone={() => setPwOpen(false)} />}
+      <NotificationsPanel />
+      <SecurityPanel />
       <MyActivities />
+      <Forgotten />
+      <MyTags />
+      <SharedWithMe />
+      <MyRuns />
+      <MyCollections />
+      <ExportMine />
       <section className="card glass" aria-labelledby="mystyle-title">
         <h2 id="mystyle-title" className="section-title">
           הסגנון שלי

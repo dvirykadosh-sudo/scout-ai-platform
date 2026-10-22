@@ -30,6 +30,8 @@ export async function api<T>(path: string, { method = "GET", body, token, signal
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        // העמוד שבו המבקר נמצא, לסטטיסטיקת המבקרים (נתיב בלבד, בלי פרטים אישיים)
+        ...(typeof window !== "undefined" && /^\/[\w\-./%~]*$/.test(window.location.pathname) ? { "X-Page": window.location.pathname.slice(0, 100) } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
@@ -104,4 +106,47 @@ export function storageSet(key: string, value: string): void {
   } catch {
     /* storage unavailable */
   }
+}
+
+/** Downloads one Word booklet that holds several activities. */
+export async function downloadBooklet(ids: number[], title: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/export/booklet`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, title }) });
+  } catch {
+    throw new ApiError(0, "NETWORK", "אין חיבור לשרת");
+  }
+  if (!res.ok) throw new ApiError(res.status, "EXPORT", "יצירת החוברת נכשלה");
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${title || "חוברת פעולות"}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+export interface ParsedDoc {
+  title: string;
+  ageGroup: string | null;
+  leadingValue: string;
+  equipment: string;
+  safetyNotes: string;
+  stages: { name: string; minutes: number; layer: string; content: string }[];
+  durationMin: number;
+  warnings: string[];
+}
+
+/** Sends one Word or text file to the server and gets a parsed activity draft back. */
+export async function parseImportFile(file: File): Promise<ParsedDoc> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/api/activities/import-file?name=${encodeURIComponent(file.name)}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file });
+  } catch {
+    throw new ApiError(0, "NETWORK", "אין חיבור לשרת");
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, data?.error?.code ?? "EXTRACT", data?.error?.message ?? "לא הצלחתי לקרוא את הקובץ");
+  return data as ParsedDoc;
 }

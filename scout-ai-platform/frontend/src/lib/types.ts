@@ -25,9 +25,12 @@ export interface Activity {
   isSeed: boolean;
   ownerId: number | null;
   status: string;
+  kind?: string | null;
   tags: string[];
   methods: { name: string; minutes: number }[];
   stages: Stage[];
+  snippet?: string;
+  runCount?: number;
   createdAt: string;
   updatedAt: string;
   source?: "ai" | "fallback" | "external";
@@ -82,4 +85,64 @@ export interface Stats {
   byMethod: Record<string, number>;
   generatedLast7Days: number;
   emailQueue: { status: string; c: number }[];
+}
+
+export interface Run {
+  id: number;
+  activityId: number;
+  ranOn: string;
+  groupLabel: string;
+  worked: string;
+  changeNext: string;
+  notes: string;
+  engagement?: number | null;
+  timing?: string | null;
+  createdAt: string;
+  title?: string;
+}
+
+export interface QualityIssue {
+  label: string;
+  phrase: string;
+  why: string;
+  fix: string | null;
+  index: number;
+  context: string;
+}
+export interface QualityResult {
+  score: number;
+  issues: QualityIssue[];
+}
+
+export interface ActivitySnapshot {
+  title: string;
+  ageGroup: string;
+  groupSize: number;
+  leadingValue: string;
+  equipment: string;
+  safetyNotes: string;
+  conclusionNote: string | null;
+  tags: string[];
+  stages: Stage[];
+  durationMin: number;
+}
+export interface VersionItem {
+  id: number;
+  editor: string | null;
+  note: string | null;
+  savedAt: string;
+  snapshot: ActivitySnapshot;
+}
+
+export interface PlanSlot {
+  week: number;
+  date: string | null;
+  wantedValue: string | null;
+  note: string;
+  activity: { id: number; title: string; durationMin: number; ageGroup: string; leadingValue: string } | null;
+}
+export interface PlanResponse {
+  slots: PlanSlot[];
+  coverage: { value: string; count: number; planned: number }[];
+  missing: string[];
 }

@@ -31,6 +31,8 @@ export function FieldMode() {
   const [timeUp, setTimeUp] = useState(false);
   const [announce, setAnnounce] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
+  const [big, setBig] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   const endAt = useRef(0);
   const alarmed = useRef(false);
@@ -169,6 +171,27 @@ export function FieldMode() {
     }
   };
 
+  const speak = (text: string) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      if (synth.speaking) {
+        synth.cancel();
+        setSpeaking(false);
+        return;
+      }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "he-IL";
+      u.onend = () => setSpeaking(false);
+      u.onerror = () => setSpeaking(false);
+      setSpeaking(true);
+      synth.speak(u);
+    } catch {
+      setSpeaking(false);
+    }
+  };
+  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+
   const toggleFullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -177,6 +200,24 @@ export function FieldMode() {
       /* not supported */
     }
   };
+
+  useEffect(() => {
+    if (!a) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+      const onButton = t?.tagName === "BUTTON" || t?.tagName === "A";
+      if (e.key === "n" && idx < a.stages.length - 1) goTo(idx + 1);
+      else if (e.key === "p" && idx > 0) goTo(idx - 1);
+      else if (e.key === " " && !onButton) {
+        e.preventDefault();
+        toggle();
+      } else if (e.key === "r") speak(a.stages[idx].content);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   // ───────── render ─────────
   if (notFound)
@@ -211,7 +252,7 @@ export function FieldMode() {
   const pct = Math.min(100, Math.max(0, (1 - Math.max(0, remaining) / (stage.minutes * 60)) * 100));
 
   return (
-    <div className={`field ${timeUp ? "time-up" : ""}`}>
+    <div className={`field ${timeUp ? "time-up" : ""} ${big ? "field-big" : ""}`}>
       <header className="field-top">
         <Link className="btn btn-small" href={`/library/${a.id}`}>
           יציאה ממצב שטח
@@ -223,6 +264,9 @@ export function FieldMode() {
           </button>
           <button type="button" className="a11y-btn" aria-pressed={fullscreen} onClick={toggleFullscreen}>
             מסך מלא
+          </button>
+          <button type="button" className="a11y-btn" aria-pressed={big} onClick={() => setBig(!big)}>
+            כפתורים ענקיים
           </button>
           <button type="button" className="a11y-btn" aria-pressed={highContrast} onClick={toggleContrast}>
             ניגודיות גבוהה
@@ -278,6 +322,9 @@ export function FieldMode() {
           <button type="button" className="btn field-btn" onClick={() => goTo(idx)}>
             איפוס שלב
           </button>
+          <button type="button" className="btn field-btn" aria-pressed={speaking} onClick={() => speak(stage.content)}>
+            {speaking ? "עצירת ההקראה" : "הקראת השלב"}
+          </button>
           <button type="button" className="btn field-btn" onClick={() => goTo(idx - 1)} disabled={idx === 0}>
             שלב קודם
           </button>
@@ -295,6 +342,10 @@ export function FieldMode() {
         <div className="field-content">{stage.content}</div>
       </section>
 
+      <details className="field-keys">
+        <summary>קיצורי מקלדת</summary>
+        <p>רווח: התחלה והשהיה · N: שלב הבא · P: שלב קודם · R: הקראת השלב</p>
+      </details>
       <p className="field-foot">
         נותרו בפעולה כ-{leftMin} דקות מתוך {a.durationMin}
       </p>
