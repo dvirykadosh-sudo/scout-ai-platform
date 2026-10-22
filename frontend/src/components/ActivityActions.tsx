@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError, api, downloadDocx, errorMessage } from "@/lib/api";
 import { AGE_GROUPS } from "@/lib/constants";
 import type { Activity } from "@/lib/types";
 import { EditActivityModal } from "./EditActivityModal";
 import { AdaptModal } from "./AdaptModal";
 import { CollectionModal } from "./CollectionModal";
+import { AddStoryModal } from "./AddStoryModal";
+import { KindTools } from "./KindTools";
+import { CollaboratorsModal } from "./CollaboratorsModal";
+import { ScheduleModal } from "./ScheduleModal";
+import { FlagButton } from "./CareParts";
+import { WhatsAppModal } from "./WhatsAppModal";
+import { useAccess } from "@/lib/organizer";
 import { OfflineButton } from "./OfflineButton";
 import { ShareModal } from "./ShareModal";
 import { VersionsModal } from "./VersionsModal";
@@ -21,7 +28,10 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
   const toast = useToast();
   const router = useRouter();
   // the owner of an activity and any admin may edit/delete it (the server enforces this too)
-  const canManage = !!token && !!user && !user.mustChangePw && (isAdminUser(user) || (!activity.isSeed && activity.ownerId === user.id));
+  const isOwner = !!token && !!user && !user.mustChangePw && (isAdminUser(user) || (!activity.isSeed && activity.ownerId === user.id));
+  const { access, reload: reloadAccess } = useAccess(activity.id, compact || isOwner ? null : token);
+  // בעלים ואדמין עורכים ומוחקים; שותף לעריכה רק עורך
+  const canManage = isOwner || !!access?.canEdit;
 
   const [busy, setBusy] = useState(false);
   const [dupOpen, setDupOpen] = useState(false);
@@ -35,6 +45,18 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
   const [adaptOpen, setAdaptOpen] = useState(false);
   const [colOpen, setColOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false);
+  const [storyOpen, setStoryOpen] = useState(false);
+  const [waOpen, setWaOpen] = useState(false);
+  const [schedOpen, setSchedOpen] = useState(false);
+  const [collabOpen, setCollabOpen] = useState(false);
+  const [collabs, setCollabs] = useState<import("@/lib/organizer").Collaborator[]>([]);
+  const loadCollabs = () => {
+    if (!isOwner || compact) return;
+    api<import("@/lib/organizer").Access>(`/api/activities/${activity.id}/access`, { token })
+      .then((a) => setCollabs(a.collaborators))
+      .catch(() => {});
+  };
+  useEffect(loadCollabs, [isOwner, compact, activity.id, token]); // eslint-disable-line react-hooks/exhaustive-deps
   const { isFav, toggle: toggleFav } = useFavorites();
   const fav = isFav(activity.id);
 
@@ -149,6 +171,7 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
             <button type="button" className="btn" onClick={() => setColOpen(true)}>
               הוספה לאוסף
             </button>
+            <KindTools activity={activity} />
             <Link className="btn" href={`/library/${activity.id}/cards`}>
               כרטיסים להדפסה
             </Link>
@@ -156,6 +179,16 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
               דף למדריך מחליף
             </Link>
             <OfflineButton activityId={activity.id} />
+            <button type="button" className="btn" onClick={() => setWaOpen(true)}>
+              שיתוף בוואטסאפ
+            </button>
+            <Link className="btn" href={`/present/${activity.id}`}>
+              מצגת
+            </Link>
+            <button type="button" className="btn" onClick={() => setSchedOpen(true)}>
+              שיבוץ ביומן
+            </button>
+            <FlagButton activityId={activity.id} />
           </>
         )}
         {canManage && (
@@ -163,20 +196,46 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
             <button type="button" className="btn" onClick={() => setEditOpen(true)}>
               עריכה
             </button>
+            <button type="button" className="btn" onClick={() => setStoryOpen(true)}>
+              הוספת סיפור
+            </button>
             <button type="button" className="btn" onClick={() => setFbOpen(true)}>
               משוב מחניכים
             </button>
             <button type="button" className="btn" onClick={() => setVerOpen(true)}>
               היסטוריית גרסאות
             </button>
-            <button type="button" className="btn btn-danger" onClick={() => setDelOpen(true)}>
-              מחיקה
-            </button>
+            {isOwner && !activity.isSeed && (
+              <button type="button" className="btn" onClick={() => setCollabOpen(true)}>
+                שותפים לעריכה{collabs.length ? ` (${collabs.length})` : ""}
+              </button>
+            )}
+            {isOwner && (
+              <button type="button" className="btn btn-danger" onClick={() => setDelOpen(true)}>
+                מחיקה
+              </button>
+            )}
           </>
         )}
       </div>
 
+      {!compact && <WhatsAppModal open={waOpen} onClose={() => setWaOpen(false)} activityId={activity.id} />}
+      {!compact && schedOpen && <ScheduleModal open onClose={() => setSchedOpen(false)} activity={{ id: activity.id, title: activity.title, durationMin: activity.durationMin }} />}
+      {isOwner && !compact && (
+        <CollaboratorsModal
+          open={collabOpen}
+          onClose={() => setCollabOpen(false)}
+          activityId={activity.id}
+          token={token}
+          list={collabs}
+          onChanged={() => {
+            loadCollabs();
+            reloadAccess();
+          }}
+        />
+      )}
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} activityId={activity.id} title={activity.title} />
+      {canManage && <AddStoryModal open={storyOpen} onClose={() => setStoryOpen(false)} activity={activity} onChanged={onChanged} />}
       <AdaptModal open={adaptOpen} onClose={() => setAdaptOpen(false)} activity={activity} />
       <CollectionModal open={colOpen} onClose={() => setColOpen(false)} activityId={activity.id} />
       <ShareModal open={fbOpen} onClose={() => setFbOpen(false)} activityId={activity.id} title={activity.title} path={`/feedback/${activity.id}`} heading="משוב מחניכים" intro="הקישור פותח שאלון קצר ואנונימי של שלוש שאלות. אפשר להקרין את ה-QR בסוף הפעולה." />

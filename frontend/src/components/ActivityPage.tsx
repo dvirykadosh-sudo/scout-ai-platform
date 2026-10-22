@@ -6,8 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
 import { ActivityActions } from "./ActivityActions";
+import { DiscussionQuestions, ReviewPanel, SummaryBox } from "./ActivityInsights";
 import { ActivityBody, ActivityMeta } from "./ActivityView";
 import { FeedbackPanel } from "./FeedbackPanel";
+import { TagsPanel } from "./CommunityParts";
+import { SafetyPanel, SimilarActivities } from "./CareParts";
+import { NewbieTips } from "./NewbieTips";
 import { NotesSection } from "./NotesSection";
 import { PrepChecklist } from "./PrepChecklist";
 import { RatingBadge, Ratings } from "./Ratings";
@@ -84,6 +88,13 @@ export function ActivityPage() {
         </p>
       )}
       <PrepChecklist activity={a} />
+      <SafetyPanel activityId={a.id} canManage={!!user && (isAdminUser(user) || (!a.isSeed && a.ownerId === user.id))} onChanged={load} />
+      <NewbieTips activityId={a.id} />
+      <DiscussionQuestions activityId={a.id} />
+      <SummaryBox activityId={a.id} />
+      <ReviewPanel activityId={a.id} />
+      <SimilarActivities activityId={a.id} onMerged={() => router.push("/library")} />
+      <TagsPanel activityId={a.id} />
       <RunsLog activityId={a.id} />
       {token && user && (isAdminUser(user) || (!a.isSeed && a.ownerId === user.id)) && <FeedbackPanel activityId={a.id} token={token} />}
       <NotesSection activityId={a.id} ownerId={a.ownerId} />

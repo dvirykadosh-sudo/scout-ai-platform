@@ -30,6 +30,8 @@ export async function api<T>(path: string, { method = "GET", body, token, signal
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        // העמוד שבו המבקר נמצא, לסטטיסטיקת המבקרים (נתיב בלבד, בלי פרטים אישיים)
+        ...(typeof window !== "undefined" && /^\/[\w\-./%~]*$/.test(window.location.pathname) ? { "X-Page": window.location.pathname.slice(0, 100) } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });

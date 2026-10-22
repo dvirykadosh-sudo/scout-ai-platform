@@ -12,6 +12,8 @@ export const config = {
   isProd,
   port: Number(env.PORT) || 4000,
   webOrigin: env.WEB_ORIGIN || "http://localhost:3000",
+  // הכתובת הציבורית של האתר (למשל https://maoz.example.co.il), לקישורים בקבצי יומן
+  publicUrl: (env.PUBLIC_URL || "").replace(/\/+$/, ""),
   dbPath: env.DB_PATH || "./data/scout.db",
   jwtSecret: env.JWT_SECRET || (isProd ? "" : crypto.randomBytes(32).toString("hex")),
   tokenHours: Number(env.TOKEN_HOURS) || 8,
@@ -33,6 +35,8 @@ export const config = {
     from: env.SMTP_FROM || env.SMTP_USER || "noreply@maoz.local",
     adminEmail: env.ADMIN_EMAIL || "",
   },
+  // שליחת SMS: כתובת webhook כללית (Make, Zapier, פונקציית Twilio וכו') שמקבלת {to, message}
+  sms: { webhook: env.SMS_WEBHOOK_URL || "", token: env.SMS_WEBHOOK_TOKEN || "" },
   ai: {
     key: env.ANTHROPIC_API_KEY || "",
     model: env.AI_MODEL || "claude-sonnet-5-5",

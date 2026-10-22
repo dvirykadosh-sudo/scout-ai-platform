@@ -12,6 +12,16 @@ import { analyzeSample, extractText } from "./style.js";
 import { getActivity, insertActivity, rowToActivity, searchActivities, snapshotOf, updateActivity } from "./activities.js";
 import { buildPlan } from "./plan.js";
 import { newActivityStatus, registerExtraRoutes } from "./routes-extra.js";
+import { generateKinded } from "./kinds.js";
+import { registerContentRoutes } from "./routes-content.js";
+import { registerOrganizerRoutes } from "./routes-organizer.js";
+import { registerCareRoutes } from "./routes-care.js";
+import { registerCommunityRoutes } from "./routes-community.js";
+import { registerAssistRoutes } from "./routes-assist.js";
+import { registerAccountRoutes } from "./routes-accounts.js";
+import { registerSecurityRoutes } from "./routes-security.js";
+import { ipHash, isBlocked, logAccess, pageFrom, purgeOld, readSettings } from "./security.js";
+import { registerKindRoutes } from "./routes-kinds.js";
 import { EMERGENCY_METHODS, buildEmergencyDraft, parseLooseDoc, pickIcebreakers, regenerateStage } from "./tools.js";
 import { checkQuality } from "./quality.js";
 import { checkLock, clearFailures, hashPassword, optionalAuth, optionalUser, registerFailure, requireAdmin, requireUser, signToken, verifyPassword } from "./auth.js";
@@ -38,6 +48,11 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json({ limit: "200kb" }));
+  // האימות מול מסד הנתונים (חיבורים מבוטלים, תפקידים) קורא את המסד דרך הבקשה
+  app.use((req, res, next) => {
+    req.db = db;
+    next();
+  });
 
   const limiter = (windowMs, limit) =>
     rateLimit({
@@ -49,16 +64,33 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       handler: (req, res) => res.status(429).json(fail("RATE_LIMIT", "יותר מדי בקשות. נסו שוב בעוד כמה דקות")),
     });
 
-  // ── session tracking (for the admin dashboard) ──
+  // ── כתובות חסומות: לפני כל השאר, גם לדפים וגם ל-API ──
+  app.use((req, res, next) => {
+    if (req.path !== "/api/health" && isBlocked(db, req.ip)) {
+      return req.path.startsWith("/api") ? res.status(403).json(fail("BLOCKED", "הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת")) : res.status(403).type("text/plain; charset=utf-8").send("הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת.");
+    }
+    next();
+  });
+
+  // ── מעקב מבקרים (ללוח האדמין): חיבור לפי כתובת ודפדפן, ורישום "ביקור" אחד בכל 30 דקות ──
+  const visitSeen = new Map();
   app.use((req, res, next) => {
     if (req.path.startsWith("/api") && req.path !== "/api/health") {
       const ua = String(req.headers["user-agent"] || "").slice(0, 200);
-      const key = crypto.createHash("sha1").update(`${req.ip}|${ua}`).digest("hex");
+      const hash = ipHash(req.ip);
+      const shown = readSettings(db).visitorIpMode === "hashed" ? `h:${hash.slice(0, 10)}` : req.ip || "";
+      const key = crypto.createHash("sha1").update(`${hash}|${ua}`).digest("hex");
       const t = nowIso();
       db.prepare(
         `INSERT INTO sessions (key, ip, user_agent, first_seen, last_seen, username) VALUES (?,?,?,?,?,?)
-         ON CONFLICT(key) DO UPDATE SET last_seen=excluded.last_seen, username=COALESCE(excluded.username, sessions.username)`,
-      ).run(key, req.ip || "", ua, t, t, optionalUser(req));
+         ON CONFLICT(key) DO UPDATE SET last_seen=excluded.last_seen, ip=excluded.ip, username=COALESCE(excluded.username, sessions.username)`,
+      ).run(key, shown, ua, t, t, optionalUser(req));
+      const last = visitSeen.get(key) ?? 0;
+      if (Date.now() - last > 30 * 60_000) {
+        if (visitSeen.size > 5000) visitSeen.clear();
+        visitSeen.set(key, Date.now());
+        logAccess(db, req, "visit", { username: optionalUser(req), page: pageFrom(req) });
+      } else visitSeen.set(key, last);
     }
     next();
   });
@@ -66,7 +98,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   if (serveStatic) app.use(express.static(path.join(here, "..", "public")));
 
   const signupOpen = () => !!config.signupCode || !config.isProd;
-  const publicUser = (u) => ({ id: u.id, username: u.username, displayName: u.display_name || u.username, role: u.role, mustChangePw: !!u.must_change_pw });
 
   // ── לוגו השבט: מועלה על ידי האדמין, נשמר כקובץ ליד מסד הנתונים ──
   const logoFile = dbFile === ":memory:" ? null : path.join(path.dirname(path.resolve(dbFile)), "logo.bin");
@@ -112,51 +143,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     res.json({ ok: true });
   });
 
-  // ── auth ──
-  app.post("/api/auth/login", limiter(15 * 60_000, 30), async (req, res) => {
-    const { username, password } = loginSchema.parse(req.body ?? {});
-    const key = `${username.toLowerCase()}|${req.ip}`;
-    const locked = checkLock(db, key);
-    if (locked) {
-      audit(db, username, "login.locked", { ip: req.ip });
-      return res.status(429).json(fail("LOCKED", `יותר מדי ניסיונות כושלים. נסו שוב בעוד ${locked} דקות`));
-    }
-    const user = db.prepare("SELECT * FROM users WHERE lower(username) = lower(?)").get(username);
-    const ok = await verifyPassword(password, user?.password_hash);
-    if (!user || !ok || user.disabled) {
-      registerFailure(db, key);
-      audit(db, username, "login.fail", { ip: req.ip });
-      return res.status(401).json(fail("BAD_CREDENTIALS", "שם משתמש או סיסמה שגויים"));
-    }
-    clearFailures(db, key);
-    audit(db, username, "login.success", { ip: req.ip });
-    res.json({ token: signToken(user), user: publicUser(user) });
-  });
-
-  app.post("/api/auth/register", limiter(60 * 60_000, 10), async (req, res) => {
-    if (!signupOpen()) return res.status(403).json(fail("SIGNUP_CLOSED", "ההרשמה סגורה. פנו למנהל המערכת שייצור לכם משתמש"));
-    const v = registerSchema.parse(req.body ?? {});
-    if (config.signupCode && v.signupCode !== config.signupCode) {
-      audit(db, v.username, "register.badcode", { ip: req.ip });
-      return res.status(403).json(fail("BAD_CODE", "קוד ההרשמה שגוי. בקשו אותו ממנהל השבט"));
-    }
-    if (db.prepare("SELECT 1 FROM users WHERE lower(username) = lower(?)").get(v.username)) {
-      return res.status(409).json(fail("USERNAME_TAKEN", "שם המשתמש תפוס. בחרו שם אחר"));
-    }
-    const r = db
-      .prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at, display_name) VALUES (?,?,?,?,?,?)")
-      .run(v.username, await hashPassword(v.password), "INSTRUCTOR", 0, nowIso(), v.displayName);
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(Number(r.lastInsertRowid));
-    audit(db, user.username, "register", { ip: req.ip });
-    res.status(201).json({ token: signToken(user), user: publicUser(user) });
-  });
-
-  app.get("/api/auth/me", requireUser({ allowMustChange: true }), (req, res) => {
-    const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
-    if (!u || u.disabled) return res.status(401).json(fail("UNAUTHORIZED", "החשבון אינו פעיל"));
-    res.json({ user: publicUser(u) });
-  });
-
   // ── my account: own activities + saved writing style ──
   app.get("/api/me/activities", requireUser(), (req, res) => {
     const rows = db.prepare("SELECT * FROM activities WHERE owner_id = ? ORDER BY created_at DESC, id DESC LIMIT 200").all(req.user.id);
@@ -170,17 +156,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const style = styleSchema.parse(req.body?.style ?? undefined);
     db.prepare("UPDATE users SET style_json = ? WHERE id = ?").run(JSON.stringify(style), req.user.id);
     res.json({ style });
-  });
-
-  app.post("/api/auth/change-password", requireUser({ allowMustChange: true }), async (req, res) => {
-    const { currentPassword, newPassword } = changePwSchema.parse(req.body ?? {});
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
-    if (!(await verifyPassword(currentPassword, user.password_hash))) {
-      return res.status(400).json(fail("BAD_PASSWORD", "הסיסמה הנוכחית שגויה"));
-    }
-    db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 0 WHERE id = ?").run(await hashPassword(newPassword), user.id);
-    audit(db, user.username, "password.changed");
-    res.json({ token: signToken({ ...user, must_change_pw: 0 }) });
   });
 
   // ── activities: public read ──
@@ -265,12 +240,13 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       conclusionNote: g.conclusionNote,
       activeScouting: input.activeScouting,
       energeticMode: input.energeticMode,
+      kind: g.kind ?? input.kind ?? null,
       tags: g.tags,
       methods: input.methods,
       stages: g.stages,
     };
     const id = insertActivity(db, activity);
-    audit(db, who?.username ?? "anonymous", action, { id, title: activity.title, source: g.source, ip: req.ip });
+    audit(db, who?.username ?? "anonymous", action, { id, title: activity.title, source: g.source });
     const saved = getActivity(db, id);
     mailer?.enqueue(`פעולה חדשה: ${saved.title}`, activityEmailHtml(saved));
     return { ...saved, source: g.source };
@@ -278,7 +254,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   app.post("/api/activities/generate", limiter(15 * 60_000, 20), async (req, res) => {
     const input = generateSchema.parse(req.body ?? {});
-    const g = await generateActivity(input);
+    const g = await generateKinded(input);
     res.status(201).json(saveGenerated(input, g, req, "activity.generate"));
   });
 
@@ -341,14 +317,23 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
 
   // ── activities: write (owner or admin) ──
-  const canManage = (user, a) => user.role === "ADMIN" || (!a.isSeed && a.ownerId != null && a.ownerId === user.id);
-  const forbidden = (res) => res.status(403).json(fail("FORBIDDEN", "אפשר לערוך רק פעולות שיצרתם. אדמין יכול לערוך הכול"));
+  // canOwn: הבעלים או אדמין (מחיקה, שיתוף). canManage: גם שותף לעריכה (עריכה, גרסאות, הוספת סיפור)
+  const canOwn = (user, a) => user.role === "ADMIN" || (!a.isSeed && a.ownerId != null && a.ownerId === user.id);
+  const isCollaborator = (user, a) => !a.isSeed && !!db.prepare("SELECT 1 FROM activity_collaborators WHERE activity_id = ? AND user_id = ?").get(a.id, user.id);
+  const canManage = (user, a) => canOwn(user, a) || isCollaborator(user, a);
+  const forbidden = (res) => res.status(403).json(fail("FORBIDDEN", "אפשר לערוך רק פעולות שיצרתם או שמישהו שיתף איתכם. אדמין יכול לערוך הכול"));
 
   app.put("/api/activities/:id", requireUser(), (req, res) => {
     const id = Number(req.params.id);
     const existing = getActivity(db, id, { includeArchived: true });
     if (!existing) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
     if (!canManage(req.user, existing)) return forbidden(res);
+    // הגנה על עריכה משותפת: אם מישהו שמר אחרי שפתחתם את הפעולה, לא דורסים בשקט
+    const base = req.body?.baseUpdatedAt;
+    if (typeof base === "string" && base !== existing.updatedAt && req.body?.force !== true) {
+      const last = db.prepare("SELECT actor FROM audit_log WHERE action = 'activity.update' AND details LIKE ? ORDER BY id DESC LIMIT 1").get(`{"id":${id},%`);
+      return res.status(409).json(fail("EDIT_CONFLICT", `${last?.actor && last.actor !== req.user.username ? last.actor : "מישהו"} שמר/ה שינויים בפעולה אחרי שפתחתם אותה. אפשר לרענן ולראות אותם, או לשמור בכל זאת ולדרוס אותם`));
+    }
     const patch = updateSchema.parse(req.body ?? {});
     const merged = { ...existing, ...patch };
     if (patch.stages) {
@@ -365,7 +350,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const id = Number(req.params.id);
     const a = getActivity(db, id, { includeArchived: true });
     if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
-    if (!canManage(req.user, a)) return forbidden(res);
+    if (!canOwn(req.user, a)) return forbidden(res);
     if (a.isSeed && req.query.confirm !== "yes") {
       return res.status(409).json(fail("SEED_CONFIRM", "זו פעולה מובנית של המערכת. כדי למחוק יש לאשר במפורש (confirm=yes)"));
     }
@@ -378,7 +363,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const id = Number(req.params.id);
     const a = getActivity(db, id, { includeArchived: true });
     if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
-    if (!canManage(req.user, a)) return forbidden(res);
+    if (!canOwn(req.user, a)) return forbidden(res);
     db.prepare("UPDATE activities SET status = ?, updated_at = ? WHERE id = ?").run(newActivityStatus(db, req.user), nowIso(), id);
     audit(db, req.user.username, "activity.restore", { id });
     res.json(getActivity(db, id));
@@ -412,7 +397,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
 
   // ── private run log ("יומן הפעלות") ──
-  const runRow = (r) => ({ id: r.id, activityId: r.activity_id, ranOn: r.ran_on, groupLabel: r.group_label || "", worked: r.worked || "", changeNext: r.change_next || "", notes: r.notes || "", createdAt: r.created_at, ...(r.title ? { title: r.title } : {}) });
+  const runRow = (r) => ({ id: r.id, activityId: r.activity_id, ranOn: r.ran_on, groupLabel: r.group_label || "", worked: r.worked || "", changeNext: r.change_next || "", notes: r.notes || "", engagement: r.engagement ?? null, timing: r.timing ?? null, createdAt: r.created_at, ...(r.title ? { title: r.title } : {}) });
 
   app.get("/api/activities/:id/runs", requireUser(), (req, res) => {
     const rows = db.prepare("SELECT * FROM runs WHERE activity_id = ? AND user_id = ? ORDER BY ran_on DESC, id DESC").all(Number(req.params.id), req.user.id);
@@ -422,7 +407,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     const a = getActivity(db, Number(req.params.id));
     if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
     const v = runSchema.parse(req.body ?? {});
-    const r = db.prepare("INSERT INTO runs (activity_id, user_id, ran_on, group_label, worked, change_next, notes, created_at) VALUES (?,?,?,?,?,?,?,?)").run(a.id, req.user.id, v.ranOn, v.groupLabel, v.worked, v.changeNext, v.notes, nowIso());
+    const r = db.prepare("INSERT INTO runs (activity_id, user_id, ran_on, group_label, worked, change_next, notes, engagement, timing, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").run(a.id, req.user.id, v.ranOn, v.groupLabel, v.worked, v.changeNext, v.notes, v.engagement ?? null, v.timing ?? null, nowIso());
     res.status(201).json(runRow(db.prepare("SELECT * FROM runs WHERE id = ?").get(Number(r.lastInsertRowid))));
   });
   app.delete("/api/runs/:id", requireUser(), (req, res) => {
@@ -517,7 +502,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       methods: [],
       stages: o.stages,
     });
-    audit(db, who?.username ?? "anonymous", "activity.import-file", { id, title: o.title, ip: req.ip });
+    audit(db, who?.username ?? "anonymous", "activity.import-file", { id, title: o.title });
     res.status(201).json(getActivity(db, id));
   });
 
@@ -526,6 +511,23 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
 
   registerExtraRoutes(app, { db, limiter, fail, requireUser, requireAdmin, optionalAuth, optionalUser });
+  registerKindRoutes(app, { db, limiter, fail, requireAdmin, optionalAuth, optionalUser, saveGenerated });
+  registerContentRoutes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion, runRow });
+  registerOrganizerRoutes(app, { db, limiter, fail, requireUser, optionalAuth, canOwn, isCollaborator });
+  registerCareRoutes(app, { db, dbFile, limiter, fail, requireUser, requireAdmin, optionalAuth, canManage, forbidden, saveVersion });
+  registerCommunityRoutes(app, { db, limiter, fail, requireUser, requireAdmin, optionalAuth });
+  registerAssistRoutes(app, { db, limiter, optionalAuth, fail, requireUser });
+  registerSecurityRoutes(app, { db, limiter, fail, requireUser, requireAdmin });
+  registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen });
+
+  // מחיקה אוטומטית של יומני כניסות, מבקרים וחיבורים ישנים (לפי ההגדרה), פעם בכמה שעות
+  try {
+    purgeOld(db);
+  } catch {
+    /* מסד חדש מאוד */
+  }
+  const purgeTimer = setInterval(() => { try { purgeOld(db); } catch { /* ignore */ } }, 6 * 3600_000);
+  purgeTimer.unref();
 
   // ── admin dashboard data ──
   app.get("/api/admin/sessions", requireAdmin(), (req, res) => {
@@ -553,36 +555,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       generatedLast7Days: db.prepare("SELECT COUNT(*) AS c FROM audit_log WHERE action IN ('activity.generate','activity.import') AND at >= ?").get(weekAgo).c,
       emailQueue: db.prepare("SELECT status, COUNT(*) AS c FROM email_queue GROUP BY status").all(),
     });
-  });
-
-  // ── admin: users ──
-  app.get("/api/admin/users", requireAdmin(), (req, res) => {
-    const rows = db
-      .prepare(
-        `SELECT u.id, u.username, u.display_name AS displayName, u.role, u.disabled, u.created_at AS createdAt,
-                (SELECT COUNT(*) FROM activities a WHERE a.owner_id = u.id AND a.status = 'PUBLISHED') AS activities
-         FROM users u ORDER BY u.id`,
-      )
-      .all();
-    res.json(rows.map((r) => ({ ...r, disabled: !!r.disabled })));
-  });
-  app.patch("/api/admin/users/:id", requireAdmin(), async (req, res) => {
-    const id = Number(req.params.id);
-    const target = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-    if (!target) return res.status(404).json(fail("NOT_FOUND", "המשתמש לא נמצא"));
-    const p = adminUserPatchSchema.parse(req.body ?? {});
-    if (id === req.user.id && (p.disabled || (p.role && p.role !== "ADMIN"))) {
-      return res.status(400).json(fail("SELF", "אי אפשר להשבית או להוריד הרשאות לעצמכם"));
-    }
-    let tempPassword;
-    if (p.disabled !== undefined) db.prepare("UPDATE users SET disabled = ? WHERE id = ?").run(p.disabled ? 1 : 0, id);
-    if (p.role) db.prepare("UPDATE users SET role = ? WHERE id = ?").run(p.role, id);
-    if (p.resetPassword) {
-      tempPassword = crypto.randomBytes(6).toString("base64url");
-      db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 1 WHERE id = ?").run(await hashPassword(tempPassword), id);
-    }
-    audit(db, req.user.username, "user.update", { id, username: target.username, ...p });
-    res.json({ ok: true, ...(tempPassword ? { tempPassword } : {}) });
   });
 
   // ── admin: backups ──

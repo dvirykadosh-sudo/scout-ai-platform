@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, errorMessage, fieldErrorLines } from "@/lib/api";
+import { ApiError, api, errorMessage, fieldErrorLines } from "@/lib/api";
 import { AGE_GROUPS } from "@/lib/constants";
 import type { Activity, Stage } from "@/lib/types";
 import { StageRegen } from "./StageRegen";
@@ -29,6 +29,7 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
   const [stages, setStages] = useState<Stage[]>(activity.stages);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [conflict, setConflict] = useState("");
 
   // reset the form each time the dialog opens
   useEffect(() => {
@@ -43,12 +44,13 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
     setTags(activity.tags.join(", "));
     setStages(activity.stages.map((s) => ({ ...s })));
     setErrors([]);
+    setConflict("");
   }, [open, activity]);
 
   const total = stages.reduce((s, x) => s + (Number(x.minutes) || 0), 0);
   const setStage = (i: number, patch: Partial<Stage>) => setStages((st) => st.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
-  const save = async () => {
+  const save = async (force = false) => {
     const problems: string[] = [];
     if (title.trim().length < 2) problems.push("שם הפעולה קצר מדי");
     if (!leadingValue.trim()) problems.push("יש להזין ערך מוביל");
@@ -65,11 +67,14 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
 
     setSaving(true);
     setErrors([]);
+    setConflict("");
     try {
       await api(`/api/activities/${activity.id}`, {
         method: "PUT",
         token,
         body: {
+          baseUpdatedAt: activity.updatedAt,
+          ...(force ? { force: true } : {}),
           title: title.trim(),
           ageGroup,
           groupSize: size,
@@ -84,6 +89,10 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
       onSaved();
     } catch (e) {
       if (onAuthError(e)) return setSaving(false);
+      if (e instanceof ApiError && e.code === "EDIT_CONFLICT") {
+        setConflict(e.message);
+        return setSaving(false);
+      }
       const lines = fieldErrorLines(e);
       setErrors(lines.length ? lines : [errorMessage(e)]);
     }
@@ -113,7 +122,7 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
       title={`עריכת "${activity.title}"`}
       footer={
         <>
-          <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
+          <button type="button" className="btn btn-primary" onClick={() => save()} disabled={saving}>
             {saving ? "שומר..." : "שמירה"}
           </button>
           <button type="button" className="btn" onClick={onClose}>
@@ -125,6 +134,21 @@ export function EditActivityModal({ open, activity, token, onClose, onSaved, onA
         </>
       }
     >
+      {conflict && (
+        <div className="error-box" role="alert">
+          <p>
+            <strong>שימו לב:</strong> {conflict}
+          </p>
+          <div className="actions">
+            <button type="button" className="btn btn-danger" onClick={() => save(true)} disabled={saving}>
+              שמירה בכל זאת (דורסת את השינויים של האחר)
+            </button>
+            <button type="button" className="btn" onClick={() => window.location.reload()}>
+              רענון העמוד כדי לראות מה השתנה
+            </button>
+          </div>
+        </div>
+      )}
       {errors.length > 0 && (
         <div className="error-box" role="alert">
           <p>

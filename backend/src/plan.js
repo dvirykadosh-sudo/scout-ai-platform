@@ -65,3 +65,22 @@ export function buildPlan(db, { weeks, ageGroup, values = [], startDate }) {
   const missing = cleaned.filter((v) => !rows.some((a) => matchesValue(a, v)));
   return { slots, coverage, missing };
 }
+
+/** תוכנית לכמה שכבות: אותו ערך בכל שבוע לכל השכבות, ופעולה מתאימה לכל שכבה. */
+export function buildMultiPlan(db, { weeks, ageGroups, values = [], startDate }) {
+  let shared = values.map((v) => v.trim()).filter(Boolean);
+  if (!shared.length) {
+    // בלי ערכים: הערכים הנפוצים במאגר, כדי שכל השכבות יעסקו באותו ערך באותו שבוע
+    const counts = new Map();
+    for (const r of db.prepare("SELECT leading_value AS v FROM activities WHERE status = 'PUBLISHED'").all()) counts.set(r.v, (counts.get(r.v) || 0) + 1);
+    shared = [...counts.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), "he")).map(([v]) => v).slice(0, Math.min(weeks, 12));
+  }
+  const byAge = ageGroups.map((ageGroup) => ({ ageGroup, ...buildPlan(db, { weeks, ageGroup, values: shared, startDate }) }));
+  const rows = Array.from({ length: weeks }, (_, i) => ({
+    week: i + 1,
+    date: byAge[0].slots[i]?.date ?? null,
+    value: shared.length ? shared[i % shared.length] : null,
+    cells: byAge.map((p) => ({ ageGroup: p.ageGroup, activity: p.slots[i].activity, note: p.slots[i].note })),
+  }));
+  return { values: shared, ageGroups, rows, missing: [...new Set(byAge.flatMap((p) => p.missing))] };
+}

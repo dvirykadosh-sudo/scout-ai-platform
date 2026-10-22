@@ -5,7 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, errorMessage, fmtDate } from "@/lib/api";
 import { ACTION_LABELS } from "@/lib/constants";
 import type { LogRow, SessionRow, Stats } from "@/lib/types";
-import { AdminApproval, AdminBackups, AdminInsights, AdminLogo, AdminUsers } from "./AdminExtras";
+import { AdminAnnouncements } from "./CommunityParts";
+import { AdminFlags, AdminReport, AdminStorage } from "./CareParts";
+import { AdminApproval, AdminBackups, AdminFeatured, AdminInsights, AdminLogo } from "./AdminExtras";
+import { AdminAudit, AdminSecurity, AdminUsers } from "./AdminAccounts";
+import { canSee } from "@/lib/staff";
+import { AdminAccessLog, AdminBlocks, AdminSecurityOverview, AdminSecuritySettings, AdminVisitors } from "./AdminAccess";
 import { ChangePassword, LoginForm } from "./AuthForms";
 import { useAuth, useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
@@ -65,15 +70,18 @@ function Dashboard() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [pwOpen, setPwOpen] = useState(false);
+  const staff = user?.staffRole;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const q = logFilter ? `?action=${encodeURIComponent(logFilter)}` : "";
+      const staff = user?.staffRole;
+      const wantLogs = canSee(staff, "visitors");
       const [s, ss, l] = await Promise.all([
         api<Stats>("/api/admin/stats", { token }),
-        api<SessionRow[]>("/api/admin/sessions", { token }),
-        api<LogRow[]>(`/api/admin/logs${q}`, { token }),
+        wantLogs ? api<SessionRow[]>("/api/admin/sessions", { token }) : Promise.resolve([] as SessionRow[]),
+        wantLogs ? api<LogRow[]>(`/api/admin/logs${q}`, { token }) : Promise.resolve([] as LogRow[]),
       ]);
       setStats(s);
       setSessions(ss);
@@ -88,7 +96,7 @@ function Dashboard() {
       setError(errorMessage(e));
     }
     setLoading(false);
-  }, [token, logFilter, clear, toast]);
+  }, [token, logFilter, clear, toast, user?.staffRole]);
 
   useEffect(() => {
     load();
@@ -168,12 +176,38 @@ function Dashboard() {
             </Link>
           </section>
 
-          <AdminInsights />
-          <AdminApproval />
-          <AdminUsers />
-          <AdminBackups />
-          <AdminLogo />
+          {canSee(staff, "content") && <AdminInsights />}
+          {canSee(staff, "contentEdit") && (
+            <>
+              <AdminFeatured />
+              <AdminAnnouncements />
+              <AdminFlags />
+              <AdminApproval />
+            </>
+          )}
+          {canSee(staff, "users") && (
+            <>
+              <AdminSecurity />
+              <AdminUsers />
+            </>
+          )}
+          {canSee(staff, "content") && <AdminStorage />}
+          {canSee(staff, "backups") && <AdminBackups />}
+          {canSee(staff, "content") && <AdminReport />}
+          {canSee(staff, "contentEdit") && <AdminLogo />}
+          {canSee(staff, "audit") && <AdminAudit />}
+          {canSee(staff, "visitors") && (
+            <>
+              <AdminSecurityOverview />
+              <AdminAccessLog />
+              <AdminVisitors />
+              <AdminBlocks />
+              <AdminSecuritySettings />
+            </>
+          )}
 
+          {canSee(staff, "visitors") && (
+          <>
           <section aria-labelledby="sessions-title" className="card glass">
             <h2 id="sessions-title" className="section-title">
               חיבורים אחרונים
@@ -247,6 +281,8 @@ function Dashboard() {
               </table>
             </div>
           </section>
+          </>
+          )}
         </>
       )}
     </>

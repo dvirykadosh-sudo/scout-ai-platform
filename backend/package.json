@@ -19,6 +19,7 @@
     "dotenv": "^18.0.7",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
+    "geoip-country": "^5.0.202610210158",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.13.0",

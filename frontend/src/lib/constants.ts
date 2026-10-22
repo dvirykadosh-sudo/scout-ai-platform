@@ -8,6 +8,15 @@ export const CONDITIONS = [
   { key: "small-room", label: "חדר קטן" },
   { key: "few", label: "קבוצה קטנה" },
   { key: "many", label: "קבוצה גדולה" },
+  { key: "beginners", label: "קבוצה חדשה או מתחילה" },
+  { key: "strong", label: "קבוצה ותיקה וחזקה" },
+  { key: "mixed", label: "בנים ובנות יחד" },
+  { key: "restless", label: "קבוצה עם הרבה אנרגיה" },
+  { key: "mobility", label: "חניכים עם מגבלת ניידות" },
+  { key: "vision", label: "חניכים עם לקות ראייה" },
+  { key: "hearing", label: "חניכים עם לקות שמיעה" },
+  { key: "attention", label: "חניכים עם קשיי קשב וריכוז" },
+  { key: "language", label: "חניכים שהעברית אינה שפת אמם" },
 ] as const;
 
 export const ROLES = ["מדריך", "מדריכה", "צוות הדרכה"] as const;
@@ -39,6 +48,24 @@ export const METHODS: MethodInfo[] = [
 ];
 
 export const ACTION_LABELS: Record<string, string> = {
+  "login.2fa_required": "כניסה: נדרש קוד שני",
+  "login.2fa_fail": "כניסה: קוד שני שגוי",
+  "2fa.enabled": "הפעלת אימות דו-שלבי",
+  "2fa.disabled": "כיבוי אימות דו-שלבי",
+  "2fa.backup_used": "שימוש בקוד גיבוי",
+  "2fa.backup_regenerated": "קודי גיבוי חדשים",
+  "reset.requested": "בקשת איפוס סיסמה",
+  "password.reset": "איפוס סיסמה בקוד",
+  "magic.requested": "בקשת קישור כניסה",
+  "verify.requested": "בקשת קוד אימות",
+  "verify.confirmed": "אימות מייל או טלפון",
+  "contact.updated": "עדכון מייל או טלפון",
+  "session.revoke": "ניתוק מכשיר",
+  "session.revoke_others": "ניתוק מכשירים אחרים",
+  "session.admin_revoke": "ניתוק מכשיר על ידי אדמין",
+  "user.create": "יצירת משתמש",
+  "user.delete": "מחיקת משתמש",
+  "audit.export": "ייצוא יומן פעולות",
   "activity.generate": "יצירת פעולה",
   "activity.import": "ייבוא פעולה מ-AI חיצוני",
   register: "הרשמת מדריך",
@@ -59,6 +86,16 @@ export const ACTION_LABELS: Record<string, string> = {
   "admin.created": "יצירת משתמש אדמין",
   "email.retry": "ניסיון חוזר לשליחת מייל",
   "email.failed": "שליחת מייל נכשלה",
+  "block.add": "חסימת כתובת IP",
+  "block.remove": "הסרת חסימת IP",
+  "block.auto": "חסימה אוטומטית של כתובת",
+  "security.settings": "שינוי הגדרות אבטחה ופרטיות",
+  "privacy.purge": "ניקוי רשומות ישנות",
+  "privacy.purge_ip": "מחיקת כתובות IP של משתמש",
+  "terms.accepted": "אישור תנאי שימוש",
+  "access.export": "ייצוא יומן כניסות",
+  "users.export": "ייצוא רשימת משתמשים",
+  "password.expired": "תוקף הסיסמה פג",
 };
 
 export const STYLE_OPTIONS = {

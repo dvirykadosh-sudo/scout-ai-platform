@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "./config.js";
 import { audit, nowIso } from "./db.js";
+import { effectiveStaff, staffMayDo } from "./accounts.js";
 
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
@@ -11,9 +12,20 @@ const DUMMY_HASH = bcrypt.hashSync("dummy-password", 4);
 export const hashPassword = (pw) => bcrypt.hash(pw, config.bcryptCost);
 export const verifyPassword = (pw, hash) => bcrypt.compare(pw, hash || DUMMY_HASH).then((ok) => ok && !!hash);
 
-export function signToken(user) {
+export function signToken(user, sid) {
   const expiresIn = user.role === "ADMIN" ? `${config.tokenHours}h` : `${config.instructorTokenDays}d`;
-  return jwt.sign({ sub: user.id, username: user.username, role: user.role, mustChangePw: !!user.must_change_pw }, config.jwtSecret, { expiresIn });
+  return jwt.sign({ sub: user.id, username: user.username, role: user.role, mustChangePw: !!user.must_change_pw, ...(sid ? { sid } : {}) }, config.jwtSecret, { expiresIn });
+}
+
+/** אסימון קצר לשלב האימות הדו-שלבי, בלי הרשאות אחרות. */
+export const signChallenge = (userId, purpose = "2fa") => jwt.sign({ sub: userId, purpose }, config.jwtSecret, { expiresIn: "5m" });
+export function readChallenge(token, purpose = "2fa") {
+  try {
+    const p = jwt.verify(String(token), config.jwtSecret);
+    return p.purpose === purpose ? p : null;
+  } catch {
+    return null;
+  }
 }
 
 export function ensureAdmin(db) {
@@ -31,14 +43,36 @@ export function ensureAdmin(db) {
   return true;
 }
 
+/**
+ * קורא את האסימון ומאמת אותו מול מסד הנתונים: החיבור לא בוטל, החשבון לא מושעה,
+ * והתפקיד נלקח מהמסד (ולכן הורדת הרשאות חלה מיד).
+ */
 function readToken(req) {
+  if (req._tok !== undefined) return req._tok;
   const header = req.headers.authorization || "";
-  if (!header.startsWith("Bearer ")) return null;
-  try {
-    return jwt.verify(header.slice(7), config.jwtSecret);
-  } catch {
-    return null;
+  let out = null;
+  if (header.startsWith("Bearer ")) {
+    try {
+      const p = jwt.verify(header.slice(7), config.jwtSecret);
+      if (p.purpose) throw new Error("not a session token");
+      const db = req.db;
+      if (!db) out = p;
+      else {
+        const u = db.prepare("SELECT id, username, role, staff_role, disabled, must_change_pw FROM users WHERE id = ?").get(p.sub);
+        let live = !!u && !u.disabled;
+        if (live && p.sid) {
+          const s = db.prepare("SELECT revoked_at, last_seen_at FROM auth_sessions WHERE id = ? AND user_id = ?").get(p.sid, p.sub);
+          live = !!s && !s.revoked_at;
+          if (live && Date.now() - new Date(s.last_seen_at).getTime() > 60_000) db.prepare("UPDATE auth_sessions SET last_seen_at = ? WHERE id = ?").run(nowIso(), p.sid);
+        }
+        if (live) out = { sub: u.id, username: u.username, role: u.role, staff: effectiveStaff(u), mustChangePw: !!u.must_change_pw, sid: p.sid };
+      }
+    } catch {
+      out = null;
+    }
   }
+  req._tok = out;
+  return out;
 }
 
 const unauthorized = (res, message) => res.status(401).json({ error: { code: "UNAUTHORIZED", message } });
@@ -51,17 +85,20 @@ export function requireUser({ allowMustChange = false } = {}) {
     if (p.mustChangePw && !allowMustChange) {
       return res.status(403).json({ error: { code: "MUST_CHANGE_PASSWORD", message: "יש להחליף סיסמה לפני המשך" } });
     }
-    req.user = { id: p.sub, username: p.username, role: p.role };
+    req.user = { id: p.sub, username: p.username, role: p.role, staff: p.staff ?? (p.role === "ADMIN" ? "SUPER" : null), sid: p.sid };
     next();
   };
 }
 
-/** Requires a valid admin token. */
+/** Requires a valid admin token. תפקידי צוות מוגבלים לפי הנתיב (ראו staffMayDo). */
 export function requireAdmin(opts = {}) {
   const base = requireUser(opts);
   return (req, res, next) =>
     base(req, res, () => {
       if (req.user.role !== "ADMIN") return unauthorized(res, "נדרשת התחברות אדמין");
+      if (!staffMayDo(req.user.staff, req.method, req.originalUrl.split("?")[0])) {
+        return res.status(403).json({ error: { code: "FORBIDDEN_ROLE", message: "התפקיד שלכם לא כולל הרשאה לפעולה הזו" } });
+      }
       next();
     });
 }

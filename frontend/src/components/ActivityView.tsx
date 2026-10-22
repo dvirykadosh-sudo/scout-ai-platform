@@ -1,3 +1,4 @@
+import { KIND_LABELS } from "@/lib/kind-labels";
 import type { Activity } from "@/lib/types";
 
 export function StageTable({ stages }: { stages: Activity["stages"] }) {
@@ -35,6 +36,7 @@ export function ActivityMeta({ a }: { a: Activity }) {
   const who = a.instructor || a.author;
   return (
     <ul className="chips" aria-label="פרטי הפעולה">
+      {a.kind && KIND_LABELS[a.kind] && <li className="chip chip-accent">{KIND_LABELS[a.kind]}</li>}
       <li className="chip">{a.durationMin} דקות</li>
       <li className="chip">{a.ageGroup}</li>
       <li className="chip">{a.groupSize} משתתפים</li>

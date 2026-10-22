@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { storageGet, storageSet } from "@/lib/api";
+import { API_URL, storageGet, storageSet } from "@/lib/api";
 
 /* ───────────── accessibility settings ───────────── */
 interface A11yCtx {
@@ -26,6 +26,13 @@ export interface SessionUser {
   displayName: string;
   role: "ADMIN" | "INSTRUCTOR";
   mustChangePw: boolean;
+  staffRole?: "SUPER" | "CONTENT" | "USERS" | "VIEWER" | null;
+  email?: string;
+  phone?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  totpEnabled?: boolean;
+  termsAccepted?: boolean;
 }
 export const isAdminUser = (u: SessionUser | null | undefined): boolean => !!u && u.role === "ADMIN" && !u.mustChangePw;
 interface AuthCtx {
@@ -138,6 +145,14 @@ export function Providers({ children }: { children: ReactNode }) {
     }
   }, []);
   const clear = useCallback(() => {
+    // מבטלים את החיבור גם בשרת, כדי שהאסימון לא יישאר בתוקף
+    try {
+      const raw = window.sessionStorage.getItem(SESSION_KEY) ?? window.localStorage.getItem(SESSION_KEY);
+      const t = raw ? (JSON.parse(raw) as { token?: string }).token : null;
+      if (t) void fetch(`${API_URL}/api/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${t}` } }).catch(() => {});
+    } catch {
+      /* ignore */
+    }
     setToken(null);
     setUser(null);
     try {

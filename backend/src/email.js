@@ -24,8 +24,8 @@ export function createMailer(db, smtp) {
     ? nodemailer.createTransport({ host: smtp.host, port: smtp.port, auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined })
     : null;
 
-  function enqueue(subject, html) {
-    const to = smtp.adminEmail || "admin@maoz.local";
+  function enqueue(subject, html, toAddr) {
+    const to = toAddr || smtp.adminEmail || "admin@maoz.local";
     db.prepare("INSERT INTO email_queue (to_addr, subject, html, next_try_at, created_at) VALUES (?,?,?,?,?)").run(
       to,
       subject,
@@ -64,6 +64,7 @@ export function createMailer(db, smtp) {
 
   let timer = null;
   return {
+    hasTransport: !!transporter,
     enqueue,
     processQueue,
     start() {

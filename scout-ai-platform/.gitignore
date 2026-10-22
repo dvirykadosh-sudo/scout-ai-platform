@@ -1,9 +1,0 @@
-node_modules/
-.next/
-.next-prod/
-backend/data/
-.env
-.env.local
-*.zip
-next-env.d.ts
-tsconfig.tsbuildinfo

@@ -18,6 +18,7 @@ await page.getByLabel("שם להצגה").fill("מיכל");
 await page.getByLabel("שם משתמש").fill("michal" + Date.now().toString().slice(-6));
 await page.getByLabel("סיסמה", { exact: true }).fill("password99");
 await page.getByLabel("קוד הרשמה של השבט").fill(CODE);
+await page.getByLabel("קראתי ואני מאשר").check();
 await page.getByRole("button", { name: /הרשמה|יצירת חשבון/ }).last().click();
 await page.getByText("הפעולות שלי").first().waitFor({ timeout: 8000 });
 

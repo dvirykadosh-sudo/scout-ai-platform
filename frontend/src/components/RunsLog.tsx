@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { Run } from "@/lib/types";
 import { useAuth, useToast } from "./Providers";
+import { RunSuggestions } from "./RunSuggestions";
 import { Field } from "./ui";
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -20,6 +21,9 @@ export function RunsLog({ activityId }: { activityId: number }) {
   const [change, setChange] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [engagement, setEngagement] = useState("");
+  const [timing, setTiming] = useState("");
+  const [refresh, setRefresh] = useState(0);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -47,12 +51,15 @@ export function RunsLog({ activityId }: { activityId: number }) {
     e.preventDefault();
     setBusy(true);
     try {
-      await api(`/api/activities/${activityId}/runs`, { method: "POST", token, body: { ranOn, groupLabel: group, worked, changeNext: change } });
+      await api(`/api/activities/${activityId}/runs`, { method: "POST", token, body: { ranOn, groupLabel: group, worked, changeNext: change, ...(engagement ? { engagement: Number(engagement) } : {}), ...(timing ? { timing } : {}) } });
       toast("הרישום נשמר ביומן", { kind: "success" });
       setGroup("");
       setWorked("");
       setChange("");
+      setEngagement("");
+      setTiming("");
       setOpen(false);
+      setRefresh((n) => n + 1);
       load();
     } catch (err) {
       toast(errorMessage(err), { kind: "error" });
@@ -71,7 +78,7 @@ export function RunsLog({ activityId }: { activityId: number }) {
 
   const last = runs[0];
   return (
-    <section className="card glass no-print" aria-labelledby="runs-title">
+    <section id="runs" className="card glass no-print" aria-labelledby="runs-title">
       <h2 id="runs-title" className="section-title">
         יומן הפעלות (פרטי)
       </h2>
@@ -97,6 +104,22 @@ export function RunsLog({ activityId }: { activityId: number }) {
           <Field label="קבוצה (לא חובה)" htmlFor={`run-group-${activityId}`}>
             <input id={`run-group-${activityId}`} maxLength={60} value={group} onChange={(e) => setGroup(e.target.value)} placeholder="למשל: ח' 2" />
           </Field>
+          <Field label="כמה החניכים השתתפו" htmlFor={`run-eng-${activityId}`}>
+            <select id={`run-eng-${activityId}`} value={engagement} onChange={(e) => setEngagement(e.target.value)}>
+              <option value="">לא רושם</option>
+              <option value="1">מעט</option>
+              <option value="2">בינוני</option>
+              <option value="3">הרבה</option>
+            </select>
+          </Field>
+          <Field label="האם הזמן הספיק" htmlFor={`run-timing-${activityId}`}>
+            <select id={`run-timing-${activityId}`} value={timing} onChange={(e) => setTiming(e.target.value)}>
+              <option value="">לא רושם</option>
+              <option value="short">נגמר מוקדם</option>
+              <option value="ok">בדיוק</option>
+              <option value="long">נמשך יותר מדי</option>
+            </select>
+          </Field>
           <Field label="מה עבד טוב" htmlFor={`run-worked-${activityId}`} className="span-2">
             <textarea id={`run-worked-${activityId}`} rows={2} maxLength={600} value={worked} onChange={(e) => setWorked(e.target.value)} />
           </Field>
@@ -113,6 +136,7 @@ export function RunsLog({ activityId }: { activityId: number }) {
           </div>
         </form>
       )}
+      <RunSuggestions activityId={activityId} refreshKey={refresh} />
       {runs.length > 0 && (
         <ul className="plain-list runs-list" aria-label="הפעלות קודמות">
           {runs.map((r) => (
@@ -122,6 +146,8 @@ export function RunsLog({ activityId }: { activityId: number }) {
                 {r.groupLabel ? ` · ${r.groupLabel}` : ""}
                 {r.worked ? ` · עבד: ${r.worked}` : ""}
                 {r.changeNext ? ` · לשנות: ${r.changeNext}` : ""}
+                {r.engagement ? ` · השתתפות: ${["", "מעטה", "בינונית", "גבוהה"][r.engagement]}` : ""}
+                {r.timing ? ` · זמן: ${({ short: "נגמר מוקדם", ok: "בדיוק", long: "נמשך יותר מדי" } as Record<string, string>)[r.timing] ?? ""}` : ""}
               </span>
               <button type="button" className="btn btn-small" onClick={() => remove(r)} aria-label={`מחיקת הרישום מתאריך ${fmt(r.ranOn)}`}>
                 מחיקה

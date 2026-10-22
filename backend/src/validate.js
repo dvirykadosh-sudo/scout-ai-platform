@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AGE_GROUPS, METHOD_NAMES, ROLES, STAGE_NAMES } from "./shared/constants.js";
 import { styleSchema } from "./style.js";
+import { KIND_IDS } from "./kinds.js";
 
 const text = (max) => z.string().trim().max(max);
 
@@ -25,6 +26,7 @@ export const generateSchema = z
       .max(12),
     activeScouting: z.boolean().default(false),
     energeticMode: z.boolean().default(false),
+    kind: z.enum(KIND_IDS).optional(),
     style: styleSchema,
   })
   .superRefine((v, ctx) => {
@@ -84,9 +86,16 @@ export const listQuerySchema = z.object({
   value: text(100).optional(),
   method: z.enum(METHOD_NAMES).optional(),
   tag: text(40).optional(),
+  kind: z.enum(KIND_IDS).optional(),
   ids: z.string().regex(/^\d{1,9}(,\d{1,9}){0,99}$/, "רשימת מזהים לא תקינה").optional(),
   minDuration: z.coerce.number().int().min(1).max(300).optional(),
   maxDuration: z.coerce.number().int().min(1).max(300).optional(),
+  energetic: z.enum(["1"]).optional(),
+  scouting: z.enum(["1"]).optional(),
+  lightGear: z.enum(["1"]).optional(),
+  author: text(60).optional(),
+  minSize: z.coerce.number().int().min(1).max(200).optional(),
+  maxSize: z.coerce.number().int().min(1).max(200).optional(),
   sort: z.enum(["new", "duration", "title", "rating", "popular"]).optional(),
   minRating: z.coerce.number().int().min(1).max(5).optional(),
   page: z.coerce.number().int().min(1).max(1000).optional(),
@@ -132,6 +141,8 @@ export const runSchema = z.object({
   worked: text(600).optional().default(""),
   changeNext: text(600).optional().default(""),
   notes: text(1000).optional().default(""),
+  engagement: z.coerce.number().int().min(1).max(3).optional(),
+  timing: z.enum(["short", "ok", "long"]).optional(),
 });
 
 export const bookletSchema = z.object({
@@ -142,6 +153,13 @@ export const bookletSchema = z.object({
 export const planSchema = z.object({
   weeks: z.coerce.number().int().min(1, "לפחות שבוע אחד").max(52, "עד 52 שבועות"),
   ageGroup: z.enum(AGE_GROUPS).optional(),
+  values: z.array(text(120)).max(12).default([]),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export const multiPlanSchema = z.object({
+  weeks: z.coerce.number().int().min(1, "לפחות שבוע אחד").max(52, "עד 52 שבועות"),
+  ageGroups: z.array(z.enum(AGE_GROUPS)).min(1, "יש לבחור לפחות שכבה אחת").max(8, "עד 8 שכבות"),
   values: z.array(text(120)).max(12).default([]),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });

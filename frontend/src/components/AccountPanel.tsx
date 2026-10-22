@@ -1,11 +1,16 @@
 "use client";
 
+import { Forgotten, MyTags } from "./CommunityParts";
+import { ExportMine, NotificationsPanel } from "./CareParts";
+
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, downloadBooklet, errorMessage, fmtDate } from "@/lib/api";
 import type { Activity, Run } from "@/lib/types";
 import { ChangePassword, LoginForm, RegisterForm, useSignupInfo } from "./AuthForms";
 import { useAuth, useToast } from "./Providers";
+import { SecurityPanel } from "./SecurityPanel";
+import { STAFF_LABEL } from "@/lib/staff";
 import type { Collection } from "./CollectionModal";
 import { Field, Skeleton } from "./ui";
 
@@ -137,6 +142,33 @@ function MyCollections() {
   );
 }
 
+function SharedWithMe() {
+  const { token } = useAuth();
+  const [items, setItems] = useState<Activity[] | null>(null);
+  useEffect(() => {
+    api<Activity[]>("/api/me/shared", { token })
+      .then(setItems)
+      .catch(() => setItems([]));
+  }, [token]);
+  if (!items || items.length === 0) return null;
+  return (
+    <section aria-labelledby="shared-title" className="card glass">
+      <h2 id="shared-title" className="section-title">
+        פעולות ששיתפו איתי לעריכה
+      </h2>
+      <ul className="plain-list">
+        {items.map((a) => (
+          <li key={a.id}>
+            <span>
+              <Link href={`/library/${a.id}`}>{a.title}</Link> · {a.durationMin} דק' · {a.ageGroup}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function MyActivities() {
   const { token, clear } = useAuth();
   const toast = useToast();
@@ -258,7 +290,7 @@ export function AccountPanel() {
     <>
       <div className="card glass account-head">
         <p className="who">
-          מחובר/ת כ-<strong>{user.displayName}</strong> ({user.role === "ADMIN" ? "אדמין" : "מדריך/ה"})
+          מחובר/ת כ-<strong>{user.displayName}</strong> ({user.role === "ADMIN" ? STAFF_LABEL[user.staffRole ?? "SUPER"] : "מדריך/ה"})
         </p>
         <div className="actions">
           {user.role === "ADMIN" && (
@@ -282,9 +314,15 @@ export function AccountPanel() {
         </div>
       </div>
       {pwOpen && <ChangePassword onDone={() => setPwOpen(false)} />}
+      <NotificationsPanel />
+      <SecurityPanel />
       <MyActivities />
+      <Forgotten />
+      <MyTags />
+      <SharedWithMe />
       <MyRuns />
       <MyCollections />
+      <ExportMine />
       <section className="card glass" aria-labelledby="mystyle-title">
         <h2 id="mystyle-title" className="section-title">
           הסגנון שלי

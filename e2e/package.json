@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "all": "node e2e-improvements.mjs && node e2e-round-a.mjs && node e2e-round-b.mjs && node e2e-round-c.mjs"
+    "all": "node e2e-improvements.mjs && node e2e-round-a.mjs && node e2e-round-b.mjs && node e2e-round-c.mjs && node e2e-round-d.mjs && node e2e-round-e.mjs && node e2e-round-f.mjs && node e2e-round-g.mjs && node e2e-round-h.mjs && node e2e-round-i.mjs && node e2e-round-j.mjs && node e2e-round-k.mjs && node e2e-round-l.mjs && node e2e-round-m.mjs && node e2e-round-n.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.0",

@@ -25,6 +25,7 @@ export interface Activity {
   isSeed: boolean;
   ownerId: number | null;
   status: string;
+  kind?: string | null;
   tags: string[];
   methods: { name: string; minutes: number }[];
   stages: Stage[];
@@ -94,6 +95,8 @@ export interface Run {
   worked: string;
   changeNext: string;
   notes: string;
+  engagement?: number | null;
+  timing?: string | null;
   createdAt: string;
   title?: string;
 }

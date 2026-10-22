@@ -2,37 +2,39 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { api, downloadBooklet, errorMessage } from "@/lib/api";
+import { api, downloadBooklet, errorMessage, storageGet, storageSet } from "@/lib/api";
 import { AGE_GROUPS, METHODS } from "@/lib/constants";
+import { KIND_LABELS } from "@/lib/kind-labels";
 import { useFavorites } from "@/lib/favorites";
 import type { Activity, ListResponse } from "@/lib/types";
 import { ActivityActions } from "./ActivityActions";
 import { ActivityGlance } from "./ActivityView";
 import { useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
-import { ActivityMeta } from "./ActivityView";
+
 const PAGE_SIZE = 6;
+const SAVED_KEY = "scout.savedSearches";
 
-/**
- * פונקציית עזר לחישוב "מד הטירוף" (אנרגיה) של הפעולה
- */
-const getEnergyRating = (methods: any[]) => {
-  const highEnergyNames = ['משחק תחרות', 'משחק הדמייה', 'עשייה', 'פירוק'];
-  const count = methods.filter(m => {
-    const name = typeof m === 'string' ? m : m.method;
-    return highEnergyNames.includes(name);
-  }).length;
-
-  if (count >= 2) return { label: 'אנרגיה בשמיים', color: 'from-orange-500 to-red-500', width: 'w-full', icon: '🔥' };
-  if (count === 1) return { label: 'קצב מעולה', color: 'from-purple-500 to-blue-500', width: 'w-2/3', icon: '⚡' };
-  return { label: 'פעולה רגועה', color: 'from-teal-500 to-emerald-500', width: 'w-1/3', icon: '🧘' };
-};
+interface Adv {
+  energetic: boolean;
+  scouting: boolean;
+  lightGear: boolean;
+  minSize: string;
+  maxSize: string;
+  author: string;
+}
+const NO_ADV: Adv = { energetic: false, scouting: false, lightGear: false, minSize: "", maxSize: "", author: "" };
+interface Saved {
+  name: string;
+  qs: string;
+}
 
 export function Library() {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [age, setAge] = useState("");
   const [method, setMethod] = useState("");
+  const [kind, setKind] = useState("");
   const [minD, setMinD] = useState("");
   const [maxD, setMaxD] = useState("");
   const [sort, setSort] = useState("new");
@@ -41,26 +43,73 @@ export function Library() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [favOnly, setFavOnly] = useState(false);
+  const [minRating, setMinRating] = useState("");
+  const [adv, setAdv] = useState<Adv>(NO_ADV);
+  const [hydrated, setHydrated] = useState(false);
+  const [suggest, setSuggest] = useState<string[]>([]);
+  const [saved, setSaved] = useState<Saved[]>([]);
+  const [saveName, setSaveName] = useState("");
+  const [picked, setPicked] = useState<{ id: number; title: string }[]>([]);
+  const [bookTitle, setBookTitle] = useState("חוברת פעולות");
+  const [bookBusy, setBookBusy] = useState(false);
+  const toast = useToast();
+  const { ids: favIds } = useFavorites();
+  const favKey = favIds.join(",");
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => window.clearTimeout(t);
   }, [q]);
 
+  // טעינת מסננים מהכתובת (קישור שמור או שיתוף), ורשימת החיפושים השמורים
   useEffect(() => {
-    setPage(1);
-  }, [debouncedQ, age, method, minD, maxD, sort]);
+    const sp = new URLSearchParams(window.location.search);
+    applyParams(sp);
+    try {
+      const list = JSON.parse(storageGet(SAVED_KEY) ?? "[]");
+      if (Array.isArray(list)) setSaved(list.filter((x) => x && typeof x.name === "string" && typeof x.qs === "string").slice(0, 8));
+    } catch {
+      /* ignore */
+    }
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
+    setPage(1);
+  }, [debouncedQ, age, method, kind, minD, maxD, sort, favOnly, minRating, adv]);
+
+  // השלמה אוטומטית של החיפוש החופשי
+  useEffect(() => {
+    if (debouncedQ.length < 2) {
+      setSuggest([]);
+      return;
+    }
+    let live = true;
+    api<{ text: string }[]>(`/api/search/suggest?q=${encodeURIComponent(debouncedQ)}`)
+      .then((r) => live && setSuggest(r.map((x) => x.text)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [debouncedQ]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     const ctrl = new AbortController();
-    const p = new URLSearchParams({ sort, page: String(page), pageSize: String(PAGE_SIZE) });
-    if (debouncedQ) p.set("q", debouncedQ);
-    if (age) p.set("age", age);
-    if (method) p.set("method", method);
-    if (minD) p.set("minDuration", minD);
-    if (maxD) p.set("maxDuration", maxD);
+    const p = filterParams();
+    p.set("page", String(page));
+    p.set("pageSize", String(PAGE_SIZE));
+    if (favOnly) {
+      if (!favKey) {
+        setData({ items: [], total: 0, page: 1, pageSize: PAGE_SIZE });
+        setLoading(false);
+        return;
+      }
+      p.set("ids", favKey.split(",").slice(0, 100).join(","));
+    }
     setLoading(true);
-    
     api<ListResponse>(`/api/activities?${p}`, { signal: ctrl.signal })
       .then((d) => {
         setData(d);
@@ -73,167 +122,341 @@ export function Library() {
         setLoading(false);
       });
     return () => ctrl.abort();
-  }, [debouncedQ, age, method, minD, maxD, sort, page, reloadKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, debouncedQ, age, method, kind, minD, maxD, sort, page, reloadKey, favOnly, favKey, minRating, adv]);
+
+  // הכתובת תמיד משקפת את המסננים, כך שאפשר לשמור או לשלוח קישור לחיפוש
+  useEffect(() => {
+    if (!hydrated) return;
+    const qs = filterParams().toString();
+    const base = window.location.pathname;
+    window.history.replaceState(null, "", qs ? `${base}?${qs}` : base);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, debouncedQ, age, method, kind, minD, maxD, sort, minRating, adv]);
+
+  function filterParams() {
+    const p = new URLSearchParams();
+    if (sort !== "new") p.set("sort", sort);
+    if (debouncedQ) p.set("q", debouncedQ);
+    if (age) p.set("age", age);
+    if (method) p.set("method", method);
+    if (kind) p.set("kind", kind);
+    if (minD) p.set("minDuration", minD);
+    if (maxD) p.set("maxDuration", maxD);
+    if (minRating) p.set("minRating", minRating);
+    if (adv.energetic) p.set("energetic", "1");
+    if (adv.scouting) p.set("scouting", "1");
+    if (adv.lightGear) p.set("lightGear", "1");
+    if (adv.minSize) p.set("minSize", adv.minSize);
+    if (adv.maxSize) p.set("maxSize", adv.maxSize);
+    if (adv.author.trim()) p.set("author", adv.author.trim());
+    return p;
+  }
+  function applyParams(sp: URLSearchParams) {
+    const g = (k: string) => sp.get(k) ?? "";
+    setQ(g("q"));
+    setDebouncedQ(g("q"));
+    setAge(g("age"));
+    setMethod(g("method"));
+    setKind(g("kind"));
+    setMinD(g("minDuration"));
+    setMaxD(g("maxDuration"));
+    setMinRating(g("minRating"));
+    setSort(g("sort") || "new");
+    setAdv({ energetic: g("energetic") === "1", scouting: g("scouting") === "1", lightGear: g("lightGear") === "1", minSize: g("minSize"), maxSize: g("maxSize"), author: g("author") });
+  }
+  const saveSearch = () => {
+    const name = saveName.trim();
+    const qs = filterParams().toString();
+    if (!name) return toast("תנו שם לחיפוש כדי לשמור אותו", { kind: "error" });
+    if (!qs) return toast("אין מסננים לשמירה", { kind: "error" });
+    const next = [{ name, qs }, ...saved.filter((x) => x.name !== name)].slice(0, 8);
+    setSaved(next);
+    storageSet(SAVED_KEY, JSON.stringify(next));
+    setSaveName("");
+    toast("החיפוש נשמר", { kind: "success" });
+  };
+  const removeSaved = (name: string) => {
+    const next = saved.filter((x) => x.name !== name);
+    setSaved(next);
+    storageSet(SAVED_KEY, JSON.stringify(next));
+  };
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast("הקישור לחיפוש הועתק", { kind: "success" });
+    } catch {
+      toast("לא הצלחתי להעתיק את הקישור", { kind: "error" });
+    }
+  };
+  const advCount = [adv.energetic, adv.scouting, adv.lightGear, adv.minSize, adv.maxSize, adv.author.trim()].filter(Boolean).length;
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
-  const hasFilters = !!(q || age || method || minD || maxD);
-  
+  const hasFilters = !!(q || age || method || kind || minD || maxD || favOnly || minRating || advCount);
   const clear = () => {
-    setQ(""); setAge(""); setMethod(""); setMinD(""); setMaxD("");
+    setQ("");
+    setAge("");
+    setMethod("");
+    setKind("");
+    setMinD("");
+    setMaxD("");
+    setFavOnly(false);
+    setMinRating("");
+    setAdv(NO_ADV);
+  };
+  const isPicked = (id: number) => picked.some((x) => x.id === id);
+  const togglePick = (a: Activity) => setPicked((l) => (l.some((x) => x.id === a.id) ? l.filter((x) => x.id !== a.id) : l.length >= 40 ? l : [...l, { id: a.id, title: a.title }]));
+  const makeBooklet = async () => {
+    setBookBusy(true);
+    try {
+      await downloadBooklet(picked.map((x) => x.id), bookTitle.trim() || "חוברת פעולות");
+      toast("החוברת ירדה", { kind: "success" });
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+    setBookBusy(false);
   };
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("focus") === "1") document.getElementById("f-q")?.focus();
+  }, []);
+
   return (
-    <div className="library-container space-y-8">
-      {/* כותרת עליונה עם השראה */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-purple-500/20 pb-6">
-        <div>
-          <h1 className="text-3xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
-            מאגר הפעולות של ההנהגה
-          </h1>
-          <p className="text-purple-300 mt-2 italic">
-            "הדרכה היא לא להעביר חומר, אלא להעביר חוויה." • מצא את הפעולה הבאה שלך
-          </p>
-        </div>
-        <div className="text-left text-xs text-purple-400/60 font-mono">
-           SHEVET MAOZ • DVIR KADOSH • SYSTEM v2.0
-        </div>
-      </div>
-
-      {/* פילטרים משודרגים */}
-      <form className="card glass p-6 shadow-2xl border-t border-l border-white/10" onSubmit={(e) => e.preventDefault()}>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="md:col-span-2">
-            <label className="text-[10px] uppercase tracking-widest text-purple-400 font-bold mb-1 block">חיפוש מהיר</label>
-            <input 
-              className="w-full bg-purple-950/30 border border-purple-500/30 rounded-lg p-2 text-white focus:ring-2 focus:ring-pink-500 outline-none transition-all"
-              type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="מה הנושא היום?..." 
-            />
-          </div>
-          
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-purple-400 font-bold mb-1 block">שכבה</label>
-            <select className="w-full bg-purple-950/30 border border-purple-500/30 rounded-lg p-2 text-white outline-none" value={age} onChange={(e) => setAge(e.target.value)}>
+    <>
+      <nav className="tool-links no-print" aria-label="כלים נוספים">
+        <Link className="btn btn-small" href="/library/import">
+          ייבוא מקבצי Word
+        </Link>
+        <Link className="btn btn-small" href="/icebreakers">
+          משחקי היכרות
+        </Link>
+        <Link className="btn btn-small" href="/plan">
+          תכנון תקופתי
+        </Link>
+      </nav>
+      <form className="card glass filters" role="search" aria-label="חיפוש וסינון פעולות" onSubmit={(e) => e.preventDefault()}>
+        <div className="form-grid filters-grid">
+          <Field label="חיפוש חופשי" htmlFor="f-q" className="span-2">
+            <input id="f-q" type="search" list="f-q-list" value={q} onChange={(e) => setQ(e.target.value)} placeholder="שם פעולה, ערך, מילה מהתוכן..." />
+            <datalist id="f-q-list">
+              {suggest.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="שכבת גיל" htmlFor="f-age">
+            <select id="f-age" value={age} onChange={(e) => setAge(e.target.value)}>
               <option value="">הכול</option>
-              {AGE_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+              {AGE_GROUPS.map((g) => (
+                <option key={g}>{g}</option>
+              ))}
             </select>
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-purple-400 font-bold mb-1 block">שיטה</label>
-            <select className="w-full bg-purple-950/30 border border-purple-500/30 rounded-lg p-2 text-white outline-none" value={method} onChange={(e) => setMethod(e.target.value)}>
+          </Field>
+          <Field label="שיטה" htmlFor="f-method">
+            <select id="f-method" value={method} onChange={(e) => setMethod(e.target.value)}>
               <option value="">הכול</option>
-              {METHODS.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+              {METHODS.map((m) => (
+                <option key={m.name}>{m.name}</option>
+              ))}
             </select>
+          </Field>
+          <Field label="סוג פעולה" htmlFor="f-kind">
+            <select id="f-kind" value={kind} onChange={(e) => setKind(e.target.value)}>
+              <option value="">הכול</option>
+              {Object.entries(KIND_LABELS).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="משך מינימלי (דקות)" htmlFor="f-min">
+            <input id="f-min" type="number" min={1} value={minD} onChange={(e) => setMinD(e.target.value)} />
+          </Field>
+          <Field label="משך מקסימלי (דקות)" htmlFor="f-max">
+            <input id="f-max" type="number" min={1} value={maxD} onChange={(e) => setMaxD(e.target.value)} />
+          </Field>
+          <Field label="מיון" htmlFor="f-sort">
+            <select id="f-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="new">החדשות ביותר</option>
+              <option value="duration">לפי משך</option>
+              <option value="title">לפי שם</option>
+              <option value="rating">לפי דירוג</option>
+              <option value="popular">הכי מופעלות</option>
+            </select>
+          </Field>
+          <Field label="דירוג מינימלי" htmlFor="f-rating">
+            <select id="f-rating" value={minRating} onChange={(e) => setMinRating(e.target.value)}>
+              <option value="">הכול</option>
+              <option value="3">3 כוכבים ומעלה</option>
+              <option value="4">4 כוכבים ומעלה</option>
+            </select>
+          </Field>
+          <div className="field filters-clear">
+            <label className="check">
+              <input type="checkbox" checked={favOnly} onChange={(e) => setFavOnly(e.target.checked)} />
+              <span>מועדפים בלבד</span>
+            </label>
           </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-purple-400 font-bold mb-1 block">זמן (דקות)</label>
-            <input className="w-full bg-purple-950/30 border border-purple-500/30 rounded-lg p-2 text-white outline-none" type="number" placeholder="עד..." value={maxD} onChange={(e) => setMaxD(e.target.value)} />
+          {hasFilters && (
+            <div className="field filters-clear">
+              <button type="button" className="btn" onClick={clear}>
+                ניקוי סינון
+              </button>
+            </div>
+          )}
+        </div>
+        <details className="adv-filters" open={advCount > 0}>
+          <summary>סינון מתקדם{advCount > 0 ? ` (${advCount} פעילים)` : ""}</summary>
+          <div className="form-grid filters-grid">
+            <div className="field filters-clear">
+              <label className="check">
+                <input type="checkbox" checked={adv.energetic} onChange={(e) => setAdv({ ...adv, energetic: e.target.checked })} />
+                <span>תנועתית בלבד</span>
+              </label>
+            </div>
+            <div className="field filters-clear">
+              <label className="check">
+                <input type="checkbox" checked={adv.scouting} onChange={(e) => setAdv({ ...adv, scouting: e.target.checked })} />
+                <span>עם זמן צופיות מעשי</span>
+              </label>
+            </div>
+            <div className="field filters-clear">
+              <label className="check">
+                <input type="checkbox" checked={adv.lightGear} onChange={(e) => setAdv({ ...adv, lightGear: e.target.checked })} />
+                <span>ציוד קל (עד פריט אחד)</span>
+              </label>
+            </div>
+            <Field label="גודל קבוצה מינימלי" htmlFor="f-smin">
+              <input id="f-smin" type="number" min={1} max={200} value={adv.minSize} onChange={(e) => setAdv({ ...adv, minSize: e.target.value })} />
+            </Field>
+            <Field label="גודל קבוצה מקסימלי" htmlFor="f-smax">
+              <input id="f-smax" type="number" min={1} max={200} value={adv.maxSize} onChange={(e) => setAdv({ ...adv, maxSize: e.target.value })} />
+            </Field>
+            <Field label="מחבר/ת או מדריך/ה" htmlFor="f-author">
+              <input id="f-author" value={adv.author} maxLength={60} onChange={(e) => setAdv({ ...adv, author: e.target.value })} />
+            </Field>
           </div>
-
-          <div className="flex items-end">
-            {hasFilters ? (
-              <button type="button" className="btn btn-outline w-full text-xs" onClick={clear}>ניקוי סינון</button>
-            ) : (
-               <div className="w-full text-center text-[10px] text-purple-500 italic pb-2">מסונן לפי הכי חדשים</div>
-            )}
+        </details>
+        <div className="saved-searches">
+          <div className="inline-form">
+            <Field label="שם לחיפוש הנוכחי" htmlFor="f-save-name">
+              <input id="f-save-name" value={saveName} maxLength={40} onChange={(e) => setSaveName(e.target.value)} />
+            </Field>
+            <button type="button" className="btn" onClick={saveSearch}>
+              שמירת החיפוש
+            </button>
+            <button type="button" className="btn" onClick={copyLink}>
+              העתקת קישור לחיפוש
+            </button>
           </div>
+          {saved.length > 0 && (
+            <ul className="chip-list" aria-label="חיפושים שמורים">
+              {saved.map((x) => (
+                <li key={x.name}>
+                  <button type="button" className="btn btn-small" onClick={() => applyParams(new URLSearchParams(x.qs))}>
+                    {x.name}
+                  </button>
+                  <button type="button" className="icon-btn" aria-label={`מחיקת החיפוש השמור ${x.name}`} onClick={() => removeSaved(x.name)}>
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </form>
 
-      {/* הודעות סטטוס */}
-      <div className="flex justify-between items-center text-sm">
-        <p className="text-purple-200" aria-live="polite">
-          {loading ? "סורק את המאגר..." : `מצאנו עבורך ${data?.total || 0} פעולות מעולות`}
-        </p>
-      </div>
+      <p className="count" role="status" aria-live="polite">
+        {loading ? "טוען..." : data ? `נמצאו ${data.total} פעולות` : ""}
+      </p>
 
-      {loading && !data && <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><Skeleton lines={8} /><Skeleton lines={8} /></div>}
-
-      {/* רשימת הכרטיסים המטורפת */}
-      <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data?.items.map((a: Activity) => {
-          const energy = getEnergyRating(a.methods || []);
-          return (
-            <li key={a.id} className="group relative flex flex-col bg-[#1E1245]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 hover:border-purple-500/50 transition-all hover:-translate-y-1 shadow-xl">
-              {/* מד האנרגיה בראש הכרטיס */}
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-xs font-black text-purple-300 tracking-tighter opacity-70">
-                  {a.ageGroup}
-                </span>
-                <div className="flex flex-col items-end">
-                  <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-1">{energy.label}</span>
-                  <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
-                    <div className={`h-full bg-gradient-to-r ${energy.color} ${energy.width}`}></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* כותרת הפעולה */}
-              <h2 className="text-xl font-bold text-white group-hover:text-pink-400 transition-colors mb-2">
-                <Link href={`/library/${a.id}`}>{a.title}</Link>
-              </h2>
-
-              <div className="flex-grow">
-                <ActivityMeta a={a} />
-              </div>
-
-              {/* תגיות מעוצבות */}
-              {a.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {a.tags.slice(0, 3).map((t) => (
-                    <span key={t} className="text-[10px] px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
-                      #{t}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* קרדיט תחתון ופעולות */}
-              <div className="mt-6 pt-4 border-t border-white/5 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-[10px] text-white font-bold shadow-lg">
-                    {a.instructor?.[0] || 'מ'}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-white/80 font-bold">{a.instructor || 'מדריך מעוז'}</span>
-                    <span className="text-[8px] text-purple-400 uppercase tracking-tighter">צוות הדרכה • שבט מעוז</span>
-                  </div>
-                </div>
-                <ActivityActions activity={a} onChanged={reload} />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      {/* ריק? */}
-      {data?.items.length === 0 && !loading && (
-        <div className="text-center py-20 card glass">
-          <div className="text-6xl mb-4">🤷‍♂️</div>
-          <h3 className="text-xl font-bold text-white mb-2">אופס... המאגר ריק?</h3>
-          <p className="text-purple-300 mb-6">לא מצאנו כלום תחת הפילטרים האלו. אולי תנסה לחפש משהו אחר?</p>
-          <button onClick={clear} className="btn btn-primary">נקה הכל ונתחיל מחדש</button>
+      {error && (
+        <div className="error-box" role="alert">
+          <p>{error}</p>
+          <button type="button" className="btn" onClick={reload}>
+            ניסיון חוזר
+          </button>
         </div>
       )}
 
-      {/* עמודים */}
-      {data && pages > 1 && (
-        <nav className="flex justify-center items-center gap-6 pt-10" aria-label="Pagination">
-          <button className="btn btn-circle" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>←</button>
-          <span className="text-sm font-bold text-purple-200">עמוד {page} מתוך {pages}</span>
-          <button className="btn btn-circle" disabled={page >= pages} onClick={() => setPage(p => p + 1)}>→</button>
-        </nav>
+      {loading && !data && <Skeleton lines={5} />}
+
+      {data && data.items.length === 0 && !loading && (
+        <div className="card empty">
+          <p>{favOnly && !favKey ? "עדיין לא סימנתם פעולות כמועדפות. לחצו על 'הוספה למועדפים' בכל פעולה." : "לא נמצאו פעולות שמתאימות לחיפוש."}</p>
+          {hasFilters ? (
+            <button type="button" className="btn" onClick={clear}>
+              ניקוי סינון
+            </button>
+          ) : (
+            <Link className="btn btn-primary" href="/">
+              יצירת פעולה חדשה
+            </Link>
+          )}
+        </div>
       )}
 
-      {/* קרדיט קבוע להנהגה */}
-      <footer className="mt-20 py-8 text-center opacity-40 hover:opacity-100 transition-opacity">
-        <div className="h-px w-32 bg-gradient-to-r from-transparent via-purple-500 to-transparent mx-auto mb-4"></div>
-        <p className="text-xs text-purple-300 uppercase tracking-[0.2em]">
-          פותח עבור הנהגת הצופים • שבט מעוז • ייעוץ פדגוגי: דביר קדוש
-        </p>
-      </footer>
-    </div>
+      <ul className="list" aria-busy={loading}>
+        {data?.items.map((a: Activity) => (
+          <li key={a.id} className="card glass activity-card">
+            {a.kind && KIND_LABELS[a.kind] && (
+              <p className="kind-line">
+                <span className="chip chip-accent">{KIND_LABELS[a.kind]}</span>
+              </p>
+            )}
+            <h2 className="card-title">
+              <Link href={`/library/${a.id}`}>{a.title}</Link>
+            </h2>
+            <ActivityGlance a={a} />
+            {a.snippet && <p className="snippet">…{a.snippet}…</p>}
+            {a.tags.length > 0 && (
+              <ul className="tags" aria-label="תגיות">
+                {a.tags.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            )}
+            <label className="check pick">
+              <input type="checkbox" checked={isPicked(a.id)} onChange={() => togglePick(a)} />
+              <span>הוספה לחוברת</span>
+            </label>
+            <ActivityActions activity={a} onChanged={reload} compact />
+          </li>
+        ))}
+      </ul>
+
+      {data && pages > 1 && (
+        <nav className="pager" aria-label="עימוד">
+          <button type="button" className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            הקודם
+          </button>
+          <span>
+            עמוד {page} מתוך {pages}
+          </span>
+          <button type="button" className="btn" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>
+            הבא
+          </button>
+        </nav>
+      )}
+      {picked.length > 0 && (
+        <section className="booklet-bar glass" aria-label="חוברת פעולות">
+          <p>
+            <strong>{picked.length}</strong> פעולות נבחרו לחוברת Word
+          </p>
+          <label className="sr-only" htmlFor="book-title">
+            שם החוברת
+          </label>
+          <input id="book-title" value={bookTitle} maxLength={80} onChange={(e) => setBookTitle(e.target.value)} />
+          <button type="button" className="btn btn-primary" onClick={makeBooklet} disabled={bookBusy}>
+            {bookBusy ? "יוצר..." : "הורדת חוברת"}
+          </button>
+          <button type="button" className="btn" onClick={() => setPicked([])}>
+            ניקוי בחירה
+          </button>
+        </section>
+      )}
+    </>
   );
 }

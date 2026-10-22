@@ -1,6 +1,7 @@
 // נקודות קצה לסבב ג': התאמות, נושאים, הערות, אוספים, אישור, משוב ותובנות.
 import { z } from "zod";
 import { adaptActivity, CONDITIONS } from "./adapt.js";
+import { notify } from "./notify.js";
 import { getActivity, insertActivity, rowToActivity } from "./activities.js";
 import { audit, nowIso } from "./db.js";
 import { suggestTopics } from "./topics.js";
@@ -120,10 +121,11 @@ export function registerExtraRoutes(app, { db, limiter, fail, requireUser, requi
   });
   const decide = (status, action) => (req, res) => {
     const id = Number(req.params.id);
-    const r = db.prepare("SELECT status FROM activities WHERE id = ?").get(id);
+    const r = db.prepare("SELECT status, title, owner_id FROM activities WHERE id = ?").get(id);
     if (!r || r.status !== "PENDING") return notFound(res, "אין פעולה שממתינה לאישור עם המספר הזה");
     db.prepare("UPDATE activities SET status = ?, updated_at = ? WHERE id = ?").run(status, nowIso(), id);
     audit(db, optionalUser(req), action, { id });
+    notify(db, r.owner_id, "approval", status === "PUBLISHED" ? `הפעולה "${r.title}" אושרה ופורסמה במאגר` : `הפעולה "${r.title}" לא אושרה לפרסום במאגר המשותף`, `/library/${id}`);
     res.json({ ok: true, status });
   };
   app.post("/api/admin/activities/:id/approve", requireAdmin(), decide("PUBLISHED", "activity.approve"));

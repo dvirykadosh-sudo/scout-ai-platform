@@ -1,4 +1,6 @@
 import { nowIso } from "./db.js";
+import { gearLoad } from "./gear.js";
+import { notifyAdmins } from "./notify.js";
 
 export function rowToActivity(r) {
   if (!r) return null;
@@ -21,6 +23,7 @@ export function rowToActivity(r) {
     energeticMode: !!r.energetic_mode,
     isSeed: !!r.is_seed,
     ownerId: r.owner_id ?? null,
+    kind: r.kind ?? null,
     status: r.status,
     tags: JSON.parse(r.tags_json),
     methods: JSON.parse(r.methods_json),
@@ -38,8 +41,8 @@ export function insertActivity(db, a) {
     .prepare(
       `INSERT INTO activities (title, duration_min, author, instructor, instructor_role, tribe, battalion, age_group,
         group_size, leading_value, equipment, safety_notes, conclusion_note, active_scouting, energetic_mode, is_seed,
-        status, tags_json, methods_json, stages_json, created_at, updated_at, owner_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        status, tags_json, methods_json, stages_json, created_at, updated_at, owner_id, kind)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     )
     .run(
       a.title,
@@ -65,8 +68,11 @@ export function insertActivity(db, a) {
       t,
       t,
       a.ownerId ?? null,
+      a.kind ?? null,
     );
-  return Number(res.lastInsertRowid);
+  const newId = Number(res.lastInsertRowid);
+  if ((a.status || "PUBLISHED") === "PENDING") notifyAdmins(db, "pending", `פעולה חדשה ממתינה לאישור: ${a.title}`, "/admin");
+  return newId;
 }
 
 export function updateActivity(db, id, a) {
@@ -167,6 +173,10 @@ export function searchActivities(db, f = {}) {
     where.push("tags_json LIKE ? ESCAPE '\\'");
     p.push(`%"${escapeLike(f.tag)}"%`);
   }
+  if (f.kind) {
+    where.push("kind = ?");
+    p.push(f.kind);
+  }
   if (f.minDuration) {
     where.push("duration_min >= ?");
     p.push(f.minDuration);
@@ -174,6 +184,20 @@ export function searchActivities(db, f = {}) {
   if (f.maxDuration) {
     where.push("duration_min <= ?");
     p.push(f.maxDuration);
+  }
+  if (f.energetic) where.push("energetic_mode = 1");
+  if (f.scouting) where.push("active_scouting = 1");
+  if (f.minSize) {
+    where.push("group_size >= ?");
+    p.push(f.minSize);
+  }
+  if (f.maxSize) {
+    where.push("group_size <= ?");
+    p.push(f.maxSize);
+  }
+  if (f.author) {
+    where.push("(author LIKE ? ESCAPE '\\' OR instructor LIKE ? ESCAPE '\\')");
+    p.push(`%${escapeLike(f.author)}%`, `%${escapeLike(f.author)}%`);
   }
   const order =
     {
@@ -186,11 +210,20 @@ export function searchActivities(db, f = {}) {
   const page = Math.max(1, f.page || 1);
   const pageSize = Math.min(50, Math.max(1, f.pageSize || 12));
   const w = where.join(" AND ");
-  const total = db.prepare(`SELECT COUNT(*) AS c FROM activities WHERE ${w}`).get(...p).c;
-  const rows = db
-    .prepare(`SELECT * FROM activities WHERE ${w} ORDER BY ${order} LIMIT ? OFFSET ?`)
-    .all(...p, pageSize, (page - 1) * pageSize);
-  const items = rows.map(rowToActivity);
+  let total;
+  let items;
+  if (f.lightGear) {
+    // "ציוד קל" נגזר מטקסט חופשי, ולכן מסננים בקוד ולא ב-SQL
+    const all = db.prepare(`SELECT * FROM activities WHERE ${w} ORDER BY ${order}`).all(...p).map(rowToActivity).filter((a) => gearLoad(a.equipment) <= 1);
+    total = all.length;
+    items = all.slice((page - 1) * pageSize, page * pageSize);
+  } else {
+    total = db.prepare(`SELECT COUNT(*) AS c FROM activities WHERE ${w}`).get(...p).c;
+    items = db
+      .prepare(`SELECT * FROM activities WHERE ${w} ORDER BY ${order} LIMIT ? OFFSET ?`)
+      .all(...p, pageSize, (page - 1) * pageSize)
+      .map(rowToActivity);
+  }
   for (const a of items) {
     const r = db.prepare("SELECT COUNT(*) AS c, AVG(stars) AS avg FROM ratings WHERE activity_id = ?").get(a.id);
     a.rating = { count: r.c, average: r.c ? Math.round(r.avg * 10) / 10 : 0 };
@@ -198,4 +231,24 @@ export function searchActivities(db, f = {}) {
     if (tokens.length) a.snippet = snippetFor(a, tokens);
   }
   return { items, total, page, pageSize };
+}
+
+/** הצעות להשלמה אוטומטית בחיפוש: שמות פעולות, ערכים ותגיות מהמאגר המאושר. */
+export function suggestTerms(db, q, limit = 8) {
+  const needle = String(q || "").trim().toLowerCase();
+  if (needle.length < 2) return [];
+  const out = [];
+  const seen = new Set();
+  const add = (text, type) => {
+    const k = text.toLowerCase();
+    if (!seen.has(k) && k.includes(needle) && out.length < limit) {
+      seen.add(k);
+      out.push({ text, type });
+    }
+  };
+  const rows = db.prepare("SELECT title, leading_value, tags_json FROM activities WHERE status = 'PUBLISHED'").all();
+  for (const r of rows) add(r.title, "title");
+  for (const r of rows) add(r.leading_value, "value");
+  for (const r of rows) for (const t of JSON.parse(r.tags_json)) add(t, "tag");
+  return out;
 }

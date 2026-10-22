@@ -2,122 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { API_URL, ApiError, api, errorMessage, fmtDate } from "@/lib/api";
+import { KIND_LABELS } from "@/lib/kind-labels";
 import { useAuth, useToast } from "./Providers";
-
-interface UserRow {
-  id: number;
-  username: string;
-  displayName: string | null;
-  role: "ADMIN" | "INSTRUCTOR";
-  disabled: boolean;
-  createdAt: string;
-  activities: number;
-}
-
-export function AdminUsers() {
-  const { token, user, clear } = useAuth();
-  const toast = useToast();
-  const [rows, setRows] = useState<UserRow[]>([]);
-  const [temp, setTemp] = useState<{ name: string; pw: string } | null>(null);
-  const [busyId, setBusyId] = useState<number | null>(null);
-
-  const load = useCallback(() => {
-    api<UserRow[]>("/api/admin/users", { token })
-      .then(setRows)
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 401) clear();
-        else toast(errorMessage(e), { kind: "error" });
-      });
-  }, [token, clear, toast]);
-  useEffect(load, [load]);
-
-  const patch = async (u: UserRow, body: Record<string, unknown>, okMsg: string) => {
-    setBusyId(u.id);
-    try {
-      const r = await api<{ tempPassword?: string }>(`/api/admin/users/${u.id}`, { method: "PATCH", token, body });
-      if (r.tempPassword) setTemp({ name: u.displayName || u.username, pw: r.tempPassword });
-      toast(okMsg, { kind: "success" });
-      load();
-    } catch (e) {
-      toast(errorMessage(e), { kind: "error" });
-    }
-    setBusyId(null);
-  };
-
-  return (
-    <section aria-labelledby="users-title" className="card glass">
-      <h2 id="users-title" className="section-title">
-        משתמשים
-      </h2>
-      <p className="hint">מדריכים נרשמים בעצמם עם קוד ההרשמה של השבט. כאן אפשר להשבית משתמש, לאפס סיסמה או למנות אדמין.</p>
-      {temp && (
-        <div className="error-box" role="status">
-          <p>
-            הסיסמה הזמנית של <strong>{temp.name}</strong>: <code dir="ltr">{temp.pw}</code>
-          </p>
-          <p className="hint">מוצגת פעם אחת בלבד. מעבירים אותה למדריך, והוא יתבקש להחליף אותה בכניסה.</p>
-          <button type="button" className="btn btn-small" onClick={() => setTemp(null)}>
-            הבנתי, אפשר להסתיר
-          </button>
-        </div>
-      )}
-      <div className="table-wrap">
-        <table className="data-table">
-          <caption className="sr-only">רשימת משתמשים</caption>
-          <thead>
-            <tr>
-              <th scope="col">שם</th>
-              <th scope="col">שם משתמש</th>
-              <th scope="col">תפקיד</th>
-              <th scope="col">פעולות</th>
-              <th scope="col">סטטוס</th>
-              <th scope="col">ניהול</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((u) => {
-              const me = u.id === user?.id;
-              return (
-                <tr key={u.id}>
-                  <th scope="row">{u.displayName || u.username}</th>
-                  <td data-label="שם משתמש" dir="ltr">{u.username}</td>
-                  <td data-label="תפקיד">{u.role === "ADMIN" ? "אדמין" : "מדריך/ה"}</td>
-                  <td data-label="פעולות">{u.activities}</td>
-                  <td data-label="סטטוס">{u.disabled ? "מושבת" : "פעיל"}</td>
-                  <td data-label="ניהול">
-                    <div className="actions">
-                      {!me && (
-                        <>
-                          <button type="button" className="btn btn-small" disabled={busyId === u.id} onClick={() => patch(u, { disabled: !u.disabled }, u.disabled ? "המשתמש הופעל" : "המשתמש הושבת")}>
-                            {u.disabled ? "הפעלה" : "השבתה"}
-                            <span className="sr-only"> של {u.displayName || u.username}</span>
-                          </button>
-                          <button type="button" className="btn btn-small" disabled={busyId === u.id} onClick={() => patch(u, { resetPassword: true }, "נוצרה סיסמה זמנית")}>
-                            איפוס סיסמה<span className="sr-only"> של {u.displayName || u.username}</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-small"
-                            disabled={busyId === u.id}
-                            onClick={() => patch(u, { role: u.role === "ADMIN" ? "INSTRUCTOR" : "ADMIN" }, u.role === "ADMIN" ? "ההרשאה הוסרה" : "המשתמש מונה לאדמין")}
-                          >
-                            {u.role === "ADMIN" ? "הסרת אדמין" : "מינוי לאדמין"}
-                            <span className="sr-only"> ל{u.displayName || u.username}</span>
-                          </button>
-                        </>
-                      )}
-                      {me && <span className="hint">זה אתם</span>}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
 
 interface BackupRow {
   name: string;
@@ -433,6 +319,93 @@ export function AdminInsights() {
           </ul>
         </>
       )}
+    </section>
+  );
+}
+
+interface FeaturedRow {
+  topic: string;
+  value: string;
+  kind: string;
+  note: string;
+}
+
+/** Up to six suggestions from the tribe leader, shown at the top of the home page for everyone. */
+export function AdminFeatured() {
+  const { token } = useAuth();
+  const toast = useToast();
+  const [rows, setRows] = useState<FeaturedRow[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api<{ items: FeaturedRow[] }>("/api/featured")
+      .then((d) => setRows(d.items))
+      .catch(() => {});
+  }, []);
+
+  const set = (i: number, patch: Partial<FeaturedRow>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ items: FeaturedRow[] }>("/api/admin/featured", { method: "PUT", token, body: { items: rows.filter((x) => x.topic.trim()).map((x) => ({ ...x, topic: x.topic.trim() })) } });
+      setRows(r.items);
+      toast("ההצעות נשמרו ויופיעו בדף הבית", { kind: "success" });
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+    setBusy(false);
+  };
+
+  return (
+    <section className="card glass" aria-labelledby="feat-title">
+      <h2 id="feat-title" className="section-title">
+        הצעות ממנהל השבט
+      </h2>
+      <p className="hint">עד שש הצעות שמופיעות בראש דף הבית לכל המדריכים, עם כפתור "צרו פעולה". כדאי לכתוב נושא לשבוע הקרוב ואת הסוג שחסר לשבט.</p>
+      {rows.length === 0 && <p>עדיין אין הצעות.</p>}
+      {rows.map((r, i) => (
+        <fieldset key={i} className="feat-row">
+          <legend>הצעה {i + 1}</legend>
+          <div className="form-grid">
+            <label>
+              נושא
+              <input value={r.topic} maxLength={120} onChange={(e) => set(i, { topic: e.target.value })} />
+            </label>
+            <label>
+              ערך מוביל
+              <input value={r.value} maxLength={120} onChange={(e) => set(i, { value: e.target.value })} />
+            </label>
+            <label>
+              סוג פעולה
+              <select value={r.kind} onChange={(e) => set(i, { kind: e.target.value })}>
+                {Object.entries(KIND_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              הערה למדריכים (לא חובה)
+              <input value={r.note} maxLength={200} onChange={(e) => set(i, { note: e.target.value })} />
+            </label>
+          </div>
+          <button type="button" className="btn btn-small" onClick={() => setRows((x) => x.filter((_, j) => j !== i))}>
+            הסרת הצעה {i + 1}
+          </button>
+        </fieldset>
+      ))}
+      <div className="actions">
+        {rows.length < 6 && (
+          <button type="button" className="btn" onClick={() => setRows((r) => [...r, { topic: "", value: "", kind: "content", note: "" }])}>
+            הוספת הצעה
+          </button>
+        )}
+        <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
+          {busy ? "שומר..." : "שמירה"}
+        </button>
+      </div>
     </section>
   );
 }
