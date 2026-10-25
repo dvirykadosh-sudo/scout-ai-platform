@@ -17,6 +17,8 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <tbody className="print-body">
         <tr>
           <td>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="print-wm" src="/logo-maoz.png" alt="" aria-hidden="true" />
             <a className="skip-link" href="#main">
               דלג לתוכן הראשי
             </a>

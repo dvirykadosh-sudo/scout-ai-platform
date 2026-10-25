@@ -1959,3 +1959,9 @@ html.hc .cal-event { background: #000; border-width: 2px; }
 .stat-grid dt { font-size: .85rem; }
 .stat-grid dd { margin: 0; font-size: 1.4rem; font-weight: 700; }
 @media print { .wake-banner, .home-tabs { display: none; } }
+
+/* v29: סימן מים של לוגו השבט מאחורי הטקסט בהדפסה ובשמירה כ-PDF (תמונה, כדי שיודפס גם בלי "גרפיקת רקע") */
+.print-wm { display: none; }
+@media print {
+  .print-wm { display: block; position: fixed; left: 50%; top: 50%; width: 120mm; height: 120mm; margin: -60mm 0 0 -60mm; opacity: 0.09; z-index: -1; object-fit: contain; pointer-events: none; }
+}

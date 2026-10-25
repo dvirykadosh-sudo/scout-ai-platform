@@ -22,7 +22,7 @@ import { registerAccountRoutes } from "./routes-accounts.js";
 import { registerSecurityRoutes } from "./routes-security.js";
 import { registerWriteRoutes } from "./routes-write.js";
 import { registerWriteSuggestRoutes } from "./routes-write-suggest.js";
-import { registerWriteExportRoutes } from "./routes-write-export.js";
+import { findLogo, registerWriteExportRoutes } from "./routes-write-export.js";
 import { registerWriteFinalRoutes } from "./routes-write-final.js";
 import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
 import { ipHash, isBlocked, logAccess, pageFrom, purgeOld, readSettings } from "./security.js";
@@ -35,6 +35,7 @@ import { styleSchema } from "./style.js";
 import { config } from "./config.js";
 import { audit, nowIso } from "./db.js";
 import { buildBookletDocx, buildDocx } from "./docx.js";
+import { setWatermarkSource } from "./watermark.js";
 import { activityEmailHtml } from "./email.js";
 import { AGE_GROUPS, GRADES, GENDER_GROUPS, METHODS, ROLES, STAGE_LAYERS, STAGE_NAMES, MIDOT } from "./shared/constants.js";
 import { emergencySchema, importParsedSchema, regenSchema, adminUserPatchSchema, bookletSchema, changePwSchema, duplicateSchema, generateSchema, importSchema, listQuerySchema, loginSchema, planSchema, qualitySchema, ratingSchema, registerSchema, runSchema, stagesSchema, updateSchema } from "./validate.js";
@@ -121,6 +122,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   } catch {
     logo = null;
   }
+
+  setWatermarkSource(() => findLogo(() => logo && /png|jpeg/.test(logo.type) ? logo : null));
 
   // ── public: meta ──
   app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso() }));

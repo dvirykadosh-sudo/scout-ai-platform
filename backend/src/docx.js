@@ -16,6 +16,7 @@ import {
   WidthType,
 } from "docx";
 import { MIDOT } from "./shared/constants.js";
+import { fadeWatermark, watermarkRuns } from "./watermark.js";
 
 const FONT = { ascii: "Arial", hAnsi: "Arial", cs: "Arial", eastAsia: "Arial" };
 const PURPLE = "5D2FA3";
@@ -113,7 +114,7 @@ function activityBlocks(a) {
 }
 
 const pageProps = { page: { size: { width: 11906, height: 16838 }, margin: { top: 1100, bottom: 1000, left: 1000, right: 1000 } } };
-const headerFor = (a) => ({ default: new Header({ children: [para([run(a.tribe, { color: "7A6AA8", size: 20 })], { alignment: AlignmentType.CENTER })] }) });
+const headerFor = (a) => ({ default: new Header({ children: [para([...watermarkRuns(), run(a.tribe, { color: "7A6AA8", size: 20 })], { alignment: AlignmentType.CENTER })] }) });
 const footerFor = () => ({
   default: new Footer({
     children: [
@@ -126,6 +127,9 @@ const footerFor = () => ({
 const docStyles = { default: { document: { run: { font: FONT, size: 22, rightToLeft: true } } } };
 
 export async function buildDocx(a) {
+  return fadeWatermark(await buildDocxRaw(a));
+}
+async function buildDocxRaw(a) {
   const doc = new Document({
     creator: "מחולל פעולות - שבט מעוז",
     title: a.title,
@@ -160,5 +164,5 @@ export async function buildBookletDocx(activities, title = "") {
       ...activities.map((a) => ({ properties: pageProps, headers: headerFor(a), footers: footerFor(), children: activityBlocks(a) })),
     ],
   });
-  return Packer.toBuffer(doc);
+  return fadeWatermark(await Packer.toBuffer(doc));
 }

@@ -3273,3 +3273,20 @@ describe("תחנות, גיבוי, מוכנות ומתודות שבט: סבב 188
     assert.ok(c.some((x) => x.comment === "קשה למצוא"));
   });
 });
+
+describe("סימן מים בקובצי Word", () => {
+  it("מסמך Word כולל לוגו צף מאחורי הטקסט", async () => {
+    const { fadePng } = await import("../src/watermark.js");
+    const png = fs.readFileSync(new URL("../../frontend/public/logo-maoz.png", import.meta.url));
+    const faded = fadePng(png, 0.12);
+    assert.ok(faded && faded.length > 1000, "PNG מוחלש");
+    const { default: JSZip } = await import("jszip");
+    const { buildWriteDocx, findLogo } = await import("../src/routes-write-export.js");
+    const { setWatermarkSource } = await import("../src/watermark.js");
+    setWatermarkSource(() => findLogo(() => null));
+    const buf = await buildWriteDocx({ title: "x", meta: {}, blocks: [{ id: "a", title: "p", kind: "open", minutes: 5, text: "t", note: "" }] }, { logo: findLogo(() => null) });
+    const z = await JSZip.loadAsync(buf);
+    const hdr = await z.file("word/header1.xml").async("string");
+    assert.match(hdr, /behindDoc="1"/);
+  });
+});

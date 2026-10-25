@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { fadeWatermark, watermarkRuns } from "./watermark.js";
 import { AlignmentType, BorderStyle, Document, Footer, Header, ImageRun, Packer, PageNumber, Paragraph, TextRun } from "docx";
 import { KINDS, metaDefaults } from "./routes-write.js";
 import { prepOf } from "./write-suggest.js";
@@ -119,13 +120,13 @@ export async function buildWriteDocx(doc, { logo, tribe = "שבט מעוז" } = 
     sections: [
       {
         properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1100, bottom: 1000, left: 1000, right: 1000 } } },
-        headers: { default: new Header({ children: [para([run(tribe, { color: "7A6AA8", size: 20 })], { alignment: AlignmentType.CENTER })] }) },
+        headers: { default: new Header({ children: [para([...watermarkRuns(), run(tribe, { color: "7A6AA8", size: 20 })], { alignment: AlignmentType.CENTER })] }) },
         footers: { default: new Footer({ children: [para([new TextRun({ children: ["עמוד ", PageNumber.CURRENT, " מתוך ", PageNumber.TOTAL_PAGES], rightToLeft: true, font: FONT, size: 20, color: "7A6AA8" })], { alignment: AlignmentType.CENTER })] }) },
         children,
       },
     ],
   });
-  return Packer.toBuffer(file);
+  return fadeWatermark(await Packer.toBuffer(file));
 }
 
 /** טקסט נקי להעתקה, או בפורמט וואטסאפ (כוכביות להדגשה). */
