@@ -3290,3 +3290,34 @@ describe("סימן מים בקובצי Word", () => {
     assert.match(hdr, /behindDoc="1"/);
   });
 });
+
+describe("מצב המערכת, גיבוי להורדה ובדיקת תקינות", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  let adm, user;
+  before(async () => {
+    for (const pw of ["a-new-strong-pass", "admin123"]) {
+      const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "admin", password: pw }) });
+      if (r.status === 200 && !r.body.user.mustChangePw) { adm = r.body.token; break; }
+    }
+    user = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "sys1", password: "password123", displayName: "בודק מערכת", signupCode: "shevet-code" }) })).body;
+  });
+  it("בדיקת תקינות פתוחה, ומצב מערכת לאדמין בלבד", async () => {
+    const h = await j("/api/health/data");
+    assert.equal(h.status, 200);
+    assert.equal(h.body.ok, true);
+    assert.ok((await j("/api/health")).body.startedAt);
+    assert.ok([401, 403].includes((await j("/api/admin/system", { headers: H(user.token) })).status));
+    const s = (await j("/api/admin/system", { headers: H(adm) })).body;
+    assert.equal(s.integrity, "ok");
+    assert.ok(s.counts.users >= 1);
+    assert.ok(Array.isArray(s.warnings));
+  });
+  it("שמירה ידנית בלי הגדרה מחזירה הסבר, והורדת גיבוי טרי עובדת", async () => {
+    assert.equal((await j("/api/admin/persist/save", { method: "POST", headers: H(adm) })).status, 400);
+    const res = await fetch(`${base}/api/admin/backup/download`, { headers: H(adm) });
+    assert.equal(res.status, 200);
+    const buf = Buffer.from(await res.arrayBuffer());
+    assert.equal(buf.subarray(0, 15).toString("latin1"), "SQLite format 3");
+    assert.equal((await fetch(`${base}/api/admin/backup/download`)).status, 401);
+  });
+});

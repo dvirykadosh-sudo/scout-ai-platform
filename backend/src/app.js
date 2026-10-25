@@ -36,6 +36,7 @@ import { config } from "./config.js";
 import { audit, nowIso } from "./db.js";
 import { buildBookletDocx, buildDocx } from "./docx.js";
 import { setWatermarkSource } from "./watermark.js";
+import { registerSystemRoutes, startedAt as bootedAt } from "./routes-system.js";
 import { activityEmailHtml } from "./email.js";
 import { AGE_GROUPS, GRADES, GENDER_GROUPS, METHODS, ROLES, STAGE_LAYERS, STAGE_NAMES, MIDOT } from "./shared/constants.js";
 import { emergencySchema, importParsedSchema, regenSchema, adminUserPatchSchema, bookletSchema, changePwSchema, duplicateSchema, generateSchema, importSchema, listQuerySchema, loginSchema, planSchema, qualitySchema, ratingSchema, registerSchema, runSchema, stagesSchema, updateSchema } from "./validate.js";
@@ -72,7 +73,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   // ── כתובות חסומות: לפני כל השאר, גם לדפים וגם ל-API ──
   app.use((req, res, next) => {
-    if (req.path !== "/api/health" && isBlocked(db, req.ip)) {
+    if (!req.path.startsWith("/api/health") && isBlocked(db, req.ip)) {
       return req.path.startsWith("/api") ? res.status(403).json(fail("BLOCKED", "הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת")) : res.status(403).type("text/plain; charset=utf-8").send("הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת.");
     }
     next();
@@ -81,7 +82,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   // ── מעקב מבקרים (ללוח האדמין): חיבור לפי כתובת ודפדפן, ורישום "ביקור" אחד בכל 30 דקות ──
   const visitSeen = new Map();
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api") && req.path !== "/api/health") {
+    if (req.path.startsWith("/api") && !req.path.startsWith("/api/health")) {
       const ua = String(req.headers["user-agent"] || "").slice(0, 200);
       const hash = ipHash(req.ip);
       const shown = readSettings(db).visitorIpMode === "hashed" ? `h:${hash.slice(0, 10)}` : req.ip || "";
@@ -126,7 +127,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   setWatermarkSource(() => findLogo(() => logo && /png|jpeg/.test(logo.type) ? logo : null));
 
   // ── public: meta ──
-  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso() }));
+  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), startedAt: bootedAt.toISOString() }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
     res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode, logoVersion: logo?.v ?? null }),
@@ -587,6 +588,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     audit(db, req.user.username, "backup.download", { name });
     res.download(path.join(bdir, name), name);
   });
+
+  registerSystemRoutes(app, { db, dbFile, config, fail, requireAdmin, audit });
 
   // ── errors ──
   app.use("/api", (req, res) => res.status(404).json(fail("NOT_FOUND", "הכתובת לא נמצאה")));

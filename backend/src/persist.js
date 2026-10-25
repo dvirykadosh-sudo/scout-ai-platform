@@ -6,6 +6,16 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 
+/** מצב השמירה, להצגה בלוח האדמין ובבדיקת התקינות. */
+export const persistState = { configured: false, lastGoodAt: null, lastSavedAt: null, lastAttemptAt: null, lastError: null, saves: 0 };
+let handle = null;
+export const persistHandle = () => handle;
+export function persistHealthy(now = Date.now(), startedAt = now) {
+  if (!persistState.configured) return true;
+  const ref = persistState.lastGoodAt ?? startedAt;
+  return now - ref < 15 * 60_000;
+}
+
 const cfg = (env) => ({
   repo: env.DATA_REPO || "",
   token: env.DATA_TOKEN || "",
@@ -45,6 +55,7 @@ export async function restoreIfMissing(dbFile, { env = process.env, fetchFn = fe
 export function startPersist(db, dbFile, { env = process.env, fetchFn = fetch, log = console.log, pollMs = 60_000, minGapMs = 180_000 } = {}) {
   const c = cfg(env);
   if (!c.repo || !c.token || dbFile === ":memory:") return null;
+  persistState.configured = true;
   let lastHash = null, sha = null, lastPush = 0, busy = false;
   const snapshot = () => {
     const tmp = path.join(os.tmpdir(), `scout-snap-${process.pid}-${Date.now()}.db`);
@@ -75,17 +86,26 @@ export function startPersist(db, dbFile, { env = process.env, fetchFn = fetch, l
     if (busy) return false;
     busy = true;
     try {
+      persistState.lastAttemptAt = new Date().toISOString();
       const raw = snapshot();
       const hash = crypto.createHash("sha1").update(raw).digest("hex");
-      if (hash === lastHash) return false;
+      if (hash === lastHash) {
+        persistState.lastGoodAt = Date.now();
+        return false;
+      }
       if (!force && Date.now() - lastPush < minGapMs) return false;
       if (sha === null) sha = await getSha();
       await put(zlib.gzipSync(raw));
       lastHash = hash;
       lastPush = Date.now();
+      persistState.lastGoodAt = Date.now();
+      persistState.lastSavedAt = new Date().toISOString();
+      persistState.lastError = null;
+      persistState.saves += 1;
       log("שמירת נתונים: נשמר צילום חדש");
       return true;
     } catch (e) {
+      persistState.lastError = e.message;
       log(`שמירת נתונים: השמירה נכשלה (${e.message})`);
       return false;
     } finally {
@@ -100,5 +120,6 @@ export function startPersist(db, dbFile, { env = process.env, fetchFn = fetch, l
     return push({ force: true });
   };
   setTimeout(() => void push({ force: true }), 15_000).unref?.();
-  return { push, flush };
+  handle = { push, flush };
+  return handle;
 }

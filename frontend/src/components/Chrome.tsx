@@ -124,6 +124,7 @@ export function SiteFooter() {
       <p>כל הזכויות שמורות לשבט מעוז - ראשון לציון © 2026</p>
       <p className="footer-links">
         <Link href="/whats-new">מה חדש<NewBadge /></Link>
+        <Link href="/install">התקנה בטלפון</Link>
         {" · "}
         <Link href="/accessibility">הצהרת נגישות</Link>
         {" · "}

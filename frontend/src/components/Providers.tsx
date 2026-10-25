@@ -170,6 +170,15 @@ export function Providers({ children }: { children: ReactNode }) {
   }, []);
   const dismiss = (id: number) => setToasts((t) => t.filter((x) => x.id !== id));
 
+  useEffect(() => {
+    const h = () => {
+      clear();
+      toast("ההתחברות פגה. התחברו שוב.", { kind: "error" });
+    };
+    window.addEventListener("scout:session-expired", h);
+    return () => window.removeEventListener("scout:session-expired", h);
+  }, [clear, toast]);
+
   const a11y = useMemo(() => ({ highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme }), [highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme]);
   const auth = useMemo(() => ({ token, user, ready, setSession, clear }), [token, user, ready, setSession, clear]);
 

@@ -1965,3 +1965,6 @@ html.hc .cal-event { background: #000; border-width: 2px; }
 @media print {
   .print-wm { display: block; position: fixed; left: 50%; top: 50%; width: 120mm; height: 120mm; margin: -60mm 0 0 -60mm; opacity: 0.09; z-index: -1; object-fit: contain; pointer-events: none; }
 }
+
+.status-banner { position: sticky; top: 0; z-index: 60; background: #3b2a00; color: #ffe9a8; border-bottom: 2px solid var(--focus); padding: 8px 16px; text-align: center; }
+html.light .status-banner { background: #fff3cd; color: #4a3500; }

@@ -37,7 +37,7 @@ export async function api<T>(path: string, { method = "GET", body, token, signal
     });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
-    throw new ApiError(0, "NETWORK", "אין חיבור לשרת. ודאו שהשרת פועל (npm start בתיקיית backend).");
+    throw new ApiError(0, "NETWORK", "אין חיבור לשרת. בדקו את האינטרנט ונסו שוב. אם האתר היה לא פעיל זמן מה, הוא מתעורר וייקח כחצי דקה.");
   }
   if (!res.ok) {
     let data: { error?: { code?: string; message?: string; fields?: Record<string, string[]> } } = {};
@@ -46,6 +46,8 @@ export async function api<T>(path: string, { method = "GET", body, token, signal
     } catch {
       /* ignore */
     }
+    // התחברות שפגה: מודיעים ל-Providers כדי לנקות ולהציג הודעה ברורה
+    if (res.status === 401 && token && data.error?.message === "נדרשת התחברות" && typeof window !== "undefined" && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event("scout:session-expired"));
     throw new ApiError(res.status, data.error?.code ?? "ERROR", data.error?.message ?? "אירעה שגיאה", data.error?.fields);
   }
   return (await res.json()) as T;

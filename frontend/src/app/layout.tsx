@@ -7,6 +7,7 @@ import { Shortcuts } from "@/components/Shortcuts";
 export const metadata: Metadata = {
   title: { default: "מחולל פעולות | שבט מעוז", template: "%s | מחולל פעולות" },
   manifest: "/manifest.webmanifest",
+  robots: { index: false, follow: false },
   description: "מחולל פעולות חכם למדריכי שבט מעוז: יצירת פעולות בחמישה שלבים, מאגר פעולות, מצב הדרכה בשטח וייצוא ל-Word.",
 };
 

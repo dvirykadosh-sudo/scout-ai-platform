@@ -1,5 +1,6 @@
 import { SiteFooter, SiteHeader } from "@/components/Chrome";
 import { ServerWake } from "@/components/WriteFinal";
+import { StatusBanners } from "@/components/SystemParts";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,6 +25,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             </a>
             <SiteHeader />
             <ServerWake />
+            <StatusBanners />
             <main id="main" tabIndex={-1} className="page">
               {children}
             </main>
