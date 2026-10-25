@@ -141,6 +141,7 @@ await step("76. add to board + board page", async () => {
   await dlg.getByRole("link", { name: "לפתיחת הלוח" }).click();
   await page.getByRole("heading", { name: "לוח תכנון שנתי" }).waitFor();
   await page.getByRole("button", { name: /פעולת אלימות/ }).waitFor({ timeout: 8000 });
+  await page.waitForTimeout(800); // מחכים לסיום אנימציית הכניסה של הדף, שבה הצבעים עדיין מתחלפים
   const r2 = await axe(page);
   ok(r2.violations.length === 0, "axe board page " + axeMsg(r2));
   await page.getByRole("button", { name: /פעולת אלימות/ }).click();

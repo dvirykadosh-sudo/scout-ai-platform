@@ -280,7 +280,7 @@ export function RegisterForm({ needsCode }: { needsCode: boolean }) {
     if (Object.keys(er).length) return;
     setBusy(true);
     try {
-      const r = await api<AuthResponse>("/api/auth/register", { method: "POST", body: { ...f, acceptTerms: true, displayName: f.displayName.trim(), username: f.username.trim() } });
+      const r = await api<AuthResponse>("/api/auth/register", { method: "POST", body: { ...f, acceptTerms: true, displayName: f.displayName.trim(), username: f.username.trim(), signupCode: f.signupCode.trim() } });
       setSession(r.token, r.user);
       toast(`ברוכים הבאים, ${r.user.displayName}`, { kind: "success" });
     } catch (err) {
@@ -308,7 +308,7 @@ export function RegisterForm({ needsCode }: { needsCode: boolean }) {
         <input id="reg-name" value={f.displayName} onChange={(e) => set("displayName", e.target.value)} autoComplete="name" aria-invalid={!!errors.displayName} aria-describedby={errors.displayName ? "reg-name-err" : undefined} />
       </Field>
       <Field label="שם משתמש" htmlFor="reg-user" error={errors.username} hint="אותיות, ספרות, נקודה, מקף וקו תחתון">
-        <input id="reg-user" value={f.username} onChange={(e) => set("username", e.target.value)} autoComplete="username" aria-invalid={!!errors.username} aria-describedby={errors.username ? "reg-user-err" : undefined} />
+        <input id="reg-user" value={f.username} onChange={(e) => set("username", e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" aria-invalid={!!errors.username} aria-describedby={errors.username ? "reg-user-err" : undefined} />
       </Field>
       <Field label="סיסמה" htmlFor="reg-pass" error={errors.password} hint={pwHint.length ? `כדאי לשפר: ${pwHint.join(", ")}` : "לפחות 8 תווים"}>
         <input id="reg-pass" type="password" value={f.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby={errors.password ? "reg-pass-err" : undefined} />
@@ -321,7 +321,7 @@ export function RegisterForm({ needsCode }: { needsCode: boolean }) {
       </Field>
       {needsCode && (
         <Field label="קוד הרשמה של השבט" htmlFor="reg-code" error={errors.signupCode} hint="את הקוד מקבלים ממנהל השבט">
-          <input id="reg-code" value={f.signupCode} onChange={(e) => set("signupCode", e.target.value)} autoComplete="off" aria-invalid={!!errors.signupCode} aria-describedby={errors.signupCode ? "reg-code-err" : undefined} />
+          <input id="reg-code" value={f.signupCode} onChange={(e) => set("signupCode", e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" aria-invalid={!!errors.signupCode} aria-describedby={errors.signupCode ? "reg-code-err" : undefined} />
         </Field>
       )}
       <div className="field">

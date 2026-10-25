@@ -20,6 +20,11 @@ import { registerCommunityRoutes } from "./routes-community.js";
 import { registerAssistRoutes } from "./routes-assist.js";
 import { registerAccountRoutes } from "./routes-accounts.js";
 import { registerSecurityRoutes } from "./routes-security.js";
+import { registerWriteRoutes } from "./routes-write.js";
+import { registerWriteSuggestRoutes } from "./routes-write-suggest.js";
+import { registerWriteExportRoutes } from "./routes-write-export.js";
+import { registerWriteFinalRoutes } from "./routes-write-final.js";
+import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
 import { ipHash, isBlocked, logAccess, pageFrom, purgeOld, readSettings } from "./security.js";
 import { registerKindRoutes } from "./routes-kinds.js";
 import { EMERGENCY_METHODS, buildEmergencyDraft, parseLooseDoc, pickIcebreakers, regenerateStage } from "./tools.js";
@@ -518,6 +523,14 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerCommunityRoutes(app, { db, limiter, fail, requireUser, requireAdmin, optionalAuth });
   registerAssistRoutes(app, { db, limiter, optionalAuth, fail, requireUser });
   registerSecurityRoutes(app, { db, limiter, fail, requireUser, requireAdmin });
+  registerWriteRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteSuggestRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteMoreRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteStatsRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteCommunityRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteSearchRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteFinalRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo });
   registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen });
 
   // מחיקה אוטומטית של יומני כניסות, מבקרים וחיבורים ישנים (לפי ההגדרה), פעם בכמה שעות

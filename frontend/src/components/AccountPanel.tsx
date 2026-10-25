@@ -277,7 +277,7 @@ export function AccountPanel() {
         ) : (
           <section className="card glass narrow">
             <h2 className="section-title">ההרשמה סגורה</h2>
-            <p>פנו למנהל המערכת שייצור לכם משתמש.</p>
+            <p>ההרשמה העצמית לא פתוחה כרגע באתר. בקשו ממנהל/ת השבט שייצרו לכם משתמש בלוח הבקרה, או שיפתחו את ההרשמה עם קוד שבט ויתנו לכם אותו.</p>
           </section>
         )}
       </div>

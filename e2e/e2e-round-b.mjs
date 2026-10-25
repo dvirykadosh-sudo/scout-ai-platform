@@ -16,8 +16,10 @@ const cls = () => page.evaluate(() => document.documentElement.className);
 await step("hero", async () => {
   await page.goto(B + "/", { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: /ברוכים הבאים/ }).waitFor();
+  await page.getByRole("tab", { name: "השראה והצעות" }).click();
   await page.getByRole("heading", { name: "מהמאגר, כדי לקבל השראה" }).waitFor();
   ok(await page.locator(".examples-list .glance").count() > 0, "home shows library examples with glance cells");
+  await page.getByRole("tab", { name: "יצירת פעולה" }).click();
   await page.getByRole("button", { name: "מתחילים" }).click();
   await page.reload({ waitUntil: "networkidle" });
   ok((await page.getByRole("heading", { name: /ברוכים הבאים/ }).count()) === 0, "welcome stays closed after first visit");

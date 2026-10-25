@@ -1,5 +1,7 @@
 "use client";
 
+import { NewBadge } from "./WriteFinal";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -9,6 +11,7 @@ import { useA11y, useAuth } from "./Providers";
 
 const NAV = [
   { href: "/", label: "יצירת פעולה חכמה" },
+  { href: "/write", label: "פעולה חדשה משלי" },
   { href: "/assistant", label: "עוזר כתיבה" },
   { href: "/library", label: "מאגר פעולות קיים" },
   { href: "/types", label: "סוגי פעולות" },
@@ -26,7 +29,7 @@ const DEFAULT_LOGO = "/logo-maoz.png";
 
 let metaPromise: Promise<{ logoVersion: string | null }> | null = null;
 /** The logo the admin uploaded (or the one set in the environment). */
-function useLogoUrl(): string | undefined {
+export function useLogoUrl(): string | undefined {
   const [url, setUrl] = useState<string | undefined>(ENV_LOGO ?? DEFAULT_LOGO);
   useEffect(() => {
     if (ENV_LOGO) return;
@@ -120,6 +123,8 @@ export function SiteFooter() {
     <footer className="site-footer">
       <p>כל הזכויות שמורות לשבט מעוז - ראשון לציון © 2026</p>
       <p className="footer-links">
+        <Link href="/whats-new">מה חדש<NewBadge /></Link>
+        {" · "}
         <Link href="/accessibility">הצהרת נגישות</Link>
         {" · "}
         <Link href="/privacy">פרטיות ותנאי שימוש</Link>

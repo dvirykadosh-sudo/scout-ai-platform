@@ -44,6 +44,7 @@ await page.getByText("הפעולות שלי").first().waitFor({ timeout: 8000 })
 
 await step("home: what is missing and this week", async () => {
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "מה חסר לך" }).waitFor();
   const gap = await page.locator(".gap-box").innerText();
   ok(gap.includes("עוד לא") && gap.includes("פעולת שיא"), "new instructor is told a peak activity is missing");
@@ -59,11 +60,13 @@ await step("home: what is missing and this week", async () => {
 
 await step("home: gap button creates the missing kind", async () => {
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "מה חסר לך" }).waitFor();
   await page.locator(".gap-box").getByRole("button", { name: /צרו .* עכשיו/ }).click();
   await arriveAtActivity();
   ok(true, "created from the gap box");
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "מה חסר לך" }).waitFor();
   const top = await page.locator(".gap-top").innerText();
   ok(top.length > 0, "the highlighted kind moves on: " + top.replace(/\n/g, " "));
@@ -213,6 +216,7 @@ await step("admin featured picks", async () => {
   await actx.close();
 
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "הצעות ממנהל השבט" }).waitFor();
   const t = await page.locator(".featured").innerText();
   ok(t.includes("ט\"ו בשבט בשטח") && t.includes("לשבוע הבא"), "pick shown on the home page with its note");

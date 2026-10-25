@@ -86,6 +86,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "admin.created": "יצירת משתמש אדמין",
   "email.retry": "ניסיון חוזר לשליחת מייל",
   "email.failed": "שליחת מייל נכשלה",
+  "write.delete": "מחיקת מסמך כתיבה",
   "block.add": "חסימת כתובת IP",
   "block.remove": "הסרת חסימת IP",
   "block.auto": "חסימה אוטומטית של כתובת",

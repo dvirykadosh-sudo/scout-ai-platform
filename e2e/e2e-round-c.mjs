@@ -41,6 +41,7 @@ const makeActivity = async (topic) => {
 
 await step("topic ideas", async () => {
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השראה והצעות" }).click();
   await page.getByRole("heading", { name: "רעיונות לנושא" }).waitFor();
   await page.locator(".topic-ideas .tags a").first().click();
   await page.waitForURL(/topic=/);

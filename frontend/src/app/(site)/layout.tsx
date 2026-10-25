@@ -1,4 +1,5 @@
 import { SiteFooter, SiteHeader } from "@/components/Chrome";
+import { ServerWake } from "@/components/WriteFinal";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -20,6 +21,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               דלג לתוכן הראשי
             </a>
             <SiteHeader />
+            <ServerWake />
             <main id="main" tabIndex={-1} className="page">
               {children}
             </main>

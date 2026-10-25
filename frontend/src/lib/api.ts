@@ -150,3 +150,22 @@ export async function parseImportFile(file: File): Promise<ParsedDoc> {
   if (!res.ok) throw new ApiError(res.status, data?.error?.code ?? "EXTRACT", data?.error?.message ?? "לא הצלחתי לקרוא את הקובץ");
   return data as ParsedDoc;
 }
+
+/** POST that returns a file; saves it with the given name. */
+export async function postDownload(path: string, token: string | null, body: unknown, filename: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(API_URL + path, { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+  } catch {
+    throw new ApiError(0, "NETWORK", "אין חיבור לשרת");
+  }
+  if (!res.ok) throw new ApiError(res.status, "EXPORT", "יצירת הקובץ נכשלה");
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}

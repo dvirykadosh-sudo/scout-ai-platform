@@ -17,14 +17,15 @@ const STEPS = [
 
 /** First-visit welcome and real examples from the library. */
 export function HomeHero() {
+  return <HomeWelcome />;
+}
+
+/** הכרטיס שמופיע רק בביקור הראשון. */
+export function HomeWelcome() {
   const [seen, setSeen] = useState(true);
-  const [examples, setExamples] = useState<Activity[]>([]);
 
   useEffect(() => {
     setSeen(storageGet(SEEN) === "1");
-    api<ListResponse>("/api/activities?sort=rating&pageSize=3")
-      .then((d) => setExamples(d.items))
-      .catch(() => {});
   }, []);
 
   const close = () => {
@@ -64,6 +65,20 @@ export function HomeHero() {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+/** השראה: נושאים מוצעים ודוגמאות מהמאגר. */
+export function HomeInspiration() {
+  const [examples, setExamples] = useState<Activity[]>([]);
+  useEffect(() => {
+    api<ListResponse>("/api/activities?sort=rating&pageSize=3")
+      .then((d) => setExamples(d.items))
+      .catch(() => {});
+  }, []);
+  return (
+    <>
       <TopicSuggestions />
       {examples.length > 0 && (
         <section className="examples" aria-labelledby="ex-title">

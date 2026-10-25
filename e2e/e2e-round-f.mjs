@@ -109,6 +109,7 @@ await step("28-29. schedule from activity, calendar, reminder", async () => {
   await page.getByRole("button", { name: "שמירה", exact: true }).click();
   await page.getByText("הפעולה נוספה ליומן").waitFor();
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "תזכורות" }).waitFor();
   ok((await bodyText()).includes("מחר פעולה:"), "home reminder says tomorrow");
   await page.goto(B + "/calendar", { waitUntil: "networkidle" });

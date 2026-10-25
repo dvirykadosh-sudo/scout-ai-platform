@@ -115,6 +115,94 @@ CREATE TABLE IF NOT EXISTS access_log (
 CREATE INDEX IF NOT EXISTS idx_access_at ON access_log(at);
 CREATE INDEX IF NOT EXISTS idx_access_kind_at ON access_log(kind, at);
 CREATE INDEX IF NOT EXISTS idx_access_user ON access_log(user_id, kind);
+CREATE TABLE IF NOT EXISTS write_docs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  blocks_json TEXT NOT NULL DEFAULT '[]',
+  rev INTEGER NOT NULL DEFAULT 1,
+  words INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_write_docs_owner ON write_docs(owner_id, updated_at);
+CREATE TABLE IF NOT EXISTS write_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  doc_id INTEGER NOT NULL REFERENCES write_docs(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  meta_json TEXT NOT NULL,
+  blocks_json TEXT NOT NULL,
+  words INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  saved_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_write_versions_doc ON write_versions(doc_id, id);
+CREATE TABLE IF NOT EXISTS write_method_prefs (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  method TEXT NOT NULL,
+  weight INTEGER NOT NULL,
+  PRIMARY KEY (user_id, method)
+);
+CREATE TABLE IF NOT EXISTS write_snippets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_write_snippets_owner ON write_snippets(owner_id);
+CREATE TABLE IF NOT EXISTS write_shares (
+  token TEXT PRIMARY KEY,
+  doc_id INTEGER NOT NULL REFERENCES write_docs(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  doc_id INTEGER NOT NULL REFERENCES write_docs(id) ON DELETE CASCADE,
+  block_id TEXT,
+  author TEXT NOT NULL,
+  text TEXT NOT NULL,
+  resolved INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_write_comments_doc ON write_comments(doc_id, id);
+CREATE TABLE IF NOT EXISTS write_tribe_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  meta_json TEXT NOT NULL,
+  blocks_json TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_trash (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  meta_json TEXT NOT NULL,
+  blocks_json TEXT NOT NULL,
+  words INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_tribe_methods (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  line TEXT NOT NULL,
+  steps_json TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS feature_feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  feature TEXT NOT NULL,
+  vote INTEGER NOT NULL,
+  comment TEXT NOT NULL DEFAULT '',
+  username TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feature_feedback ON feature_feedback(feature);
 CREATE TABLE IF NOT EXISTS ip_blocks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   target TEXT NOT NULL UNIQUE,

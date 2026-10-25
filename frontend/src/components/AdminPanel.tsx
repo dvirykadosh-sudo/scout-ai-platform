@@ -6,6 +6,7 @@ import { ApiError, api, errorMessage, fmtDate } from "@/lib/api";
 import { ACTION_LABELS } from "@/lib/constants";
 import type { LogRow, SessionRow, Stats } from "@/lib/types";
 import { AdminAnnouncements } from "./CommunityParts";
+import { AdminWriteMetrics } from "./WriteFinal";
 import { AdminFlags, AdminReport, AdminStorage } from "./CareParts";
 import { AdminApproval, AdminBackups, AdminFeatured, AdminInsights, AdminLogo } from "./AdminExtras";
 import { AdminAudit, AdminSecurity, AdminUsers } from "./AdminAccounts";
@@ -181,6 +182,7 @@ function Dashboard() {
             <>
               <AdminFeatured />
               <AdminAnnouncements />
+              <AdminWriteMetrics />
               <AdminFlags />
               <AdminApproval />
             </>

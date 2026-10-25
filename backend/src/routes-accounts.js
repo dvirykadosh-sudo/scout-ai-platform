@@ -244,7 +244,8 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   app.post("/api/auth/register", limiter(60 * 60_000, 10), async (req, res) => {
     if (!signupOpen()) return res.status(403).json(fail("SIGNUP_CLOSED", "ההרשמה סגורה. פנו למנהל המערכת שייצור לכם משתמש"));
     const v = z.object({ username, password: pw, displayName: text(60).min(2, "יש להזין שם להצגה"), signupCode: text(100).optional().default(""), email: optText(120), phone: optText(30), acceptTerms: z.boolean().optional() }).parse(req.body ?? {});
-    if (config.signupCode && v.signupCode !== config.signupCode) {
+    const sameCode = (a, b) => String(a).replace(/\s+/g, "").toLowerCase() === String(b).replace(/\s+/g, "").toLowerCase();
+    if (config.signupCode && !sameCode(v.signupCode, config.signupCode)) {
       audit(db, v.username, "register.badcode", {});
       return res.status(403).json(fail("BAD_CODE", "קוד ההרשמה שגוי. בקשו אותו ממנהל השבט"));
     }
