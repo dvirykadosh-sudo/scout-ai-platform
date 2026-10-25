@@ -1,0 +1,30 @@
+# שרת קבוע עם כתובת מאובטחת (https): האתר + Caddy שמנפיק תעודה אוטומטית.
+# הפעלה: docker compose up -d --build   (הוראות מלאות ב-deploy/VPS.md)
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "10000"
+      DB_PATH: /data/scout.db
+      BACKUP_DIR: /data/backups
+    volumes:
+      - ./data:/data
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file: .env
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+volumes:
+  caddy_data:
+  caddy_config:

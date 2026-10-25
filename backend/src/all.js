@@ -9,6 +9,7 @@ import { backupDirFor, startBackupSchedule } from "./backup.js";
 import { assertProductionSafe, config } from "./config.js";
 import { openDb } from "./db.js";
 import { createMailer } from "./email.js";
+import { restoreIfMissing, startPersist } from "./persist.js";
 import { seedIfEmpty } from "./seed.js";
 
 process.env.NEXT_DIST_DIR ||= ".next-prod";
@@ -17,12 +18,22 @@ const require = createRequire(path.join(frontendDir, "package.json"));
 const next = require("next");
 
 assertProductionSafe();
+await restoreIfMissing(config.dbPath);
 const db = openDb();
 seedIfEmpty(db);
 ensureAdmin(db);
 const mailer = createMailer(db, config.smtp);
 mailer.start();
 startBackupSchedule(db, backupDirFor());
+const persist = startPersist(db, config.dbPath);
+if (persist) {
+  const bye = async () => {
+    await persist.flush();
+    process.exit(0);
+  };
+  process.on("SIGTERM", bye);
+  process.on("SIGINT", bye);
+}
 
 const web = next({ dev: false, dir: frontendDir });
 await web.prepare();

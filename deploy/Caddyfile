@@ -1,0 +1,5 @@
+# DOMAIN נקבע בקובץ .env. עם דומיין מקבלים https אוטומטי.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:10000
+}
