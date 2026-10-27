@@ -16,7 +16,8 @@ import {
   WidthType,
 } from "docx";
 import { MIDOT } from "./shared/constants.js";
-import { fadeWatermark, watermarkRuns } from "./watermark.js";
+import { fadeWatermark } from "./watermark.js";
+import { bar, designFooter, designHeader, designPage } from "./design.js";
 
 const FONT = { ascii: "Arial", hAnsi: "Arial", cs: "Arial", eastAsia: "Arial" };
 const PURPLE = "5D2FA3";
@@ -56,12 +57,7 @@ function cell(children, width, { head = false } = {}) {
 
 const meta = (k, v) => para([run(`${k}: `, { bold: true, color: PURPLE }), run(v)], { spacing: { after: 60 } });
 
-const heading = (text) =>
-  para([run(text, { bold: true, size: 28, color: PURPLE })], {
-    spacing: { before: 280, after: 120 },
-    keepNext: true,
-    border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: PURPLE, space: 2 } },
-  });
+const heading = (text) => bar(text);
 
 /** Exact header format required: [מדריך] . [פעולה] + [שבט] ו-[גדוד] */
 export function docTitle(a) {
@@ -113,17 +109,9 @@ function activityBlocks(a) {
   ];
 }
 
-const pageProps = { page: { size: { width: 11906, height: 16838 }, margin: { top: 1100, bottom: 1000, left: 1000, right: 1000 } } };
-const headerFor = (a) => ({ default: new Header({ children: [para([...watermarkRuns(), run(a.tribe, { color: "7A6AA8", size: 20 })], { alignment: AlignmentType.CENTER })] }) });
-const footerFor = () => ({
-  default: new Footer({
-    children: [
-      para([new TextRun({ children: ["עמוד ", PageNumber.CURRENT, " מתוך ", PageNumber.TOTAL_PAGES], rightToLeft: true, font: FONT, size: 20, color: "7A6AA8" })], {
-        alignment: AlignmentType.CENTER,
-      }),
-    ],
-  }),
-});
+const pageProps = { page: designPage() };
+const headerFor = () => designHeader(null);
+const footerFor = (a) => designFooter(a?.tribe || "שבט מעוז");
 const docStyles = { default: { document: { run: { font: FONT, size: 22, rightToLeft: true } } } };
 
 export async function buildDocx(a) {
@@ -134,7 +122,7 @@ async function buildDocxRaw(a) {
     creator: "מחולל פעולות - שבט מעוז",
     title: a.title,
     styles: docStyles,
-    sections: [{ properties: pageProps, headers: headerFor(a), footers: footerFor(), children: activityBlocks(a) }],
+    sections: [{ properties: pageProps, headers: headerFor(a), footers: footerFor(a), children: activityBlocks(a) }],
   });
   return Packer.toBuffer(doc);
 }
@@ -145,7 +133,7 @@ export async function buildBookletDocx(activities, title = "") {
   const name = title || `חוברת פעולות - ${tribe}`;
   const total = activities.reduce((s, a) => s + a.durationMin, 0);
   const cover = [
-    para([run(name, { bold: true, size: 56, color: DARK })], { alignment: AlignmentType.CENTER, spacing: { before: 3000, after: 400 } }),
+    para([run(name, { bold: true, size: 56, color: DARK })], { alignment: AlignmentType.CENTER, spacing: { before: 2600, after: 400 } }),
     para([run(tribe, { size: 32, color: PURPLE })], { alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
     para([run(`${activities.length} פעולות, בסך הכול ${total} דקות`, { size: 26 })], { alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
     para([run(new Date().toLocaleDateString("he-IL"), { size: 24, color: "7A6AA8" })], { alignment: AlignmentType.CENTER }),
@@ -159,9 +147,9 @@ export async function buildBookletDocx(activities, title = "") {
     title: name,
     styles: docStyles,
     sections: [
-      { properties: pageProps, children: [...cover] },
-      { properties: pageProps, headers: headerFor({ tribe }), footers: footerFor(), children: contents },
-      ...activities.map((a) => ({ properties: pageProps, headers: headerFor(a), footers: footerFor(), children: activityBlocks(a) })),
+      { properties: pageProps, headers: headerFor({ tribe }), footers: footerFor({ tribe }), children: [...cover] },
+      { properties: pageProps, headers: headerFor({ tribe }), footers: footerFor({ tribe }), children: contents },
+      ...activities.map((a) => ({ properties: pageProps, headers: headerFor(a), footers: footerFor(a), children: activityBlocks(a) })),
     ],
   });
   return fadeWatermark(await Packer.toBuffer(doc));

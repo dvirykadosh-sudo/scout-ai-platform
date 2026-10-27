@@ -24,6 +24,11 @@ import { registerWriteRoutes } from "./routes-write.js";
 import { registerWriteSuggestRoutes } from "./routes-write-suggest.js";
 import { findLogo, registerWriteExportRoutes } from "./routes-write-export.js";
 import { registerWriteFinalRoutes } from "./routes-write-final.js";
+import { registerWriteV36Routes } from "./routes-write-v36.js";
+import { registerOpsRoutes } from "./routes-ops.js";
+import { registerWriteV39Routes } from "./routes-write-v39.js";
+import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
+import { maintenanceGuard, maintenanceMessage } from "./ops.js";
 import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
 import { ipHash, isBlocked, logAccess, pageFrom, purgeOld, readSettings } from "./security.js";
 import { registerKindRoutes } from "./routes-kinds.js";
@@ -55,6 +60,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json({ limit: "200kb" }));
+  app.use(maintenanceGuard(db));
+  app.use(pageCountMiddleware(db));
   // האימות מול מסד הנתונים (חיבורים מבוטלים, תפקידים) קורא את המסד דרך הבקשה
   app.use((req, res, next) => {
     req.db = db;
@@ -127,7 +134,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   setWatermarkSource(() => findLogo(() => logo && /png|jpeg/.test(logo.type) ? logo : null));
 
   // ── public: meta ──
-  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), startedAt: bootedAt.toISOString() }));
+  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), startedAt: bootedAt.toISOString(), maintenance: maintenanceMessage(db) }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
     res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode, logoVersion: logo?.v ?? null }),
@@ -534,7 +541,11 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerWriteCommunityRoutes(app, { db, limiter, fail, requireUser });
   registerWriteSearchRoutes(app, { db, limiter, fail, requireUser });
   registerWriteFinalRoutes(app, { db, limiter, fail, requireUser });
-  registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo });
+  registerWriteV36Routes(app, { db, limiter, fail, requireUser });
+  registerWriteV39Routes(app, { db, limiter, fail, requireUser });
+  registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
+  registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
+  registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });
   registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen });
 
   // מחיקה אוטומטית של יומני כניסות, מבקרים וחיבורים ישנים (לפי ההגדרה), פעם בכמה שעות

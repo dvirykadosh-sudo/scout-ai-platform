@@ -1,11 +1,14 @@
 "use client";
 
+import { CompactToggle } from "./SystemParts";
+import { ReportButton } from "./PilotParts";
 import { NewBadge } from "./WriteFinal";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, api } from "@/lib/api";
+import { PaletteToggle } from "./Polish";
 import { NavBadge } from "./CareParts";
 import { useA11y, useAuth } from "./Providers";
 
@@ -90,6 +93,8 @@ export function SiteHeader() {
         <button type="button" className="a11y-btn" aria-pressed={largeText} onClick={toggleLarge}>
           הגדלת טקסט
         </button>
+        <CompactToggle />
+        <PaletteToggle />
         <button type="button" className="a11y-btn" onClick={cycleTheme}>
           תצוגה: {theme === "auto" ? "לפי המכשיר" : theme === "light" ? "בהירה" : "כהה"}
         </button>
@@ -126,6 +131,8 @@ export function SiteFooter() {
         <Link href="/whats-new">מה חדש<NewBadge /></Link>
         <Link href="/install">התקנה בטלפון</Link>
         {" · "}
+        <Link href="/style-guide">מדריך סגנון</Link>
+        {" · "}
         <Link href="/accessibility">הצהרת נגישות</Link>
         {" · "}
         <Link href="/privacy">פרטיות ותנאי שימוש</Link>
@@ -134,6 +141,9 @@ export function SiteFooter() {
           קיצורי מקלדת
         </button>
       </p>
+      <div className="footer-links">
+        <ReportButton />
+      </div>
     </footer>
   );
 }

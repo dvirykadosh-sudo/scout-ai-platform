@@ -35,6 +35,7 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
       /* ignore */
     }
     const warnings = [];
+    if (dbBytes && dbBytes > 50 * 1024 * 1024) warnings.push(`מסד הנתונים גדול (${Math.round(dbBytes / 1048576)}MB). שמירה ב-GitHub מוגבלת ל-100MB.`);
     if (config.isProd && !persistState.configured && !process.env.RENDER_DISK_PATH && !String(dbFile).startsWith("/data")) warnings.push("אין שמירת נתונים חיצונית: בהפעלה מחדש של השרת הנתונים עלולים להימחק (ראו deploy/FREE.md).");
     if (persistState.configured && !persistHealthy(Date.now(), startedAt.getTime())) warnings.push("שמירת הנתונים תקועה. בדקו את הטוקן של GitHub ב-Render.");
     if (persistState.lastError) warnings.push(`השמירה האחרונה נכשלה: ${persistState.lastError}`);

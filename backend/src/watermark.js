@@ -9,7 +9,15 @@ export function setWatermarkSource(fn) {
   source = typeof fn === "function" ? fn : () => null;
 }
 
-function size(img) {
+export function getWatermarkLogo() {
+  try {
+    return source();
+  } catch {
+    return null;
+  }
+}
+
+export function size(img) {
   try {
     if (img.type === "png") return { w: img.buf.readUInt32BE(16), h: img.buf.readUInt32BE(20) };
   } catch {
@@ -106,7 +114,7 @@ export async function fadeWatermark(buf) {
     for (const name of Object.keys(zip.files)) {
       if (!/^word\/header\d*\.xml$/.test(name)) continue;
       let xml = await zip.file(name).async("string");
-      if (xml.includes("watermark-pre")) continue;
+      if (xml.includes("watermark-pre") || xml.includes("doc-design")) continue;
       const next = xml.replace(/<a:blip ([^>]*?)\/>/g, '<a:blip $1><a:alphaModFix amt="12000"/></a:blip>');
       if (next !== xml) {
         zip.file(name, next);

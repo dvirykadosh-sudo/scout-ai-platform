@@ -281,6 +281,8 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
   const closeRef = useRef<HTMLButtonElement>(null);
   const [big, setBig] = useState(1);
   const beeped = useRef(false);
+  const warned = useRef(false);
+  const [sun, setSun] = useState(false);
   const b = snap.blocks[i];
   useEffect(() => closeRef.current?.focus(), []);
   useEffect(() => {
@@ -293,6 +295,17 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
+  // התראה שקטה (רטט) דקה לפני סוף השלב
+  useEffect(() => {
+    if (running && left === 60 && !warned.current && (b?.minutes ?? 0) > 1) {
+      warned.current = true;
+      try {
+        navigator.vibrate?.(150);
+      } catch {
+        /* optional */
+      }
+    }
+  }, [left, running, b]);
   useEffect(() => {
     if (left === 0 && running && !beeped.current && (b?.minutes ?? 0) > 0) {
       beeped.current = true;
@@ -314,6 +327,7 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
   }, [left, running, b]);
   const go = (n: number) => {
     beeped.current = false;
+    warned.current = false;
     if (n < 0 || n >= snap.blocks.length) return;
     setI(n);
     setLeft((snap.blocks[n].minutes ?? 0) * 60);
@@ -321,7 +335,7 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
   };
   if (!b) return null;
   return (
-    <div className="write-run" role="dialog" aria-modal="true" aria-label="מצב הרצה">
+    <div className={`write-run ${sun ? "write-run-sun" : ""}`} role="dialog" aria-modal="true" aria-label="מצב הרצה">
       <div className="write-run-head">
         <p className="hint">
           שלב {i + 1} מתוך {snap.blocks.length} · {KIND_LABEL[b.kind]}
@@ -344,6 +358,9 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
         </button>
         <button type="button" className="btn" onClick={() => go(i + 1)} disabled={i === snap.blocks.length - 1}>
           לשלב הבא
+        </button>
+        <button type="button" className="btn btn-small" aria-pressed={sun} onClick={() => setSun(!sun)}>
+          מצב שמש
         </button>
         <button type="button" className="btn btn-small" onClick={() => setBig((x) => Math.min(2, +(x + 0.2).toFixed(1)))}>
           הגדלת טקסט

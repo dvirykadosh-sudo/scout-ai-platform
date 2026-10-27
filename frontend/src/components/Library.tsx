@@ -1,5 +1,6 @@
 "use client";
 
+import { EmptyArt, KindIcon } from "./Polish";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, downloadBooklet, errorMessage, storageGet, storageSet } from "@/lib/api";
@@ -385,6 +386,7 @@ export function Library() {
 
       {data && data.items.length === 0 && !loading && (
         <div className="card empty">
+          <EmptyArt />
           <p>{favOnly && !favKey ? "עדיין לא סימנתם פעולות כמועדפות. לחצו על 'הוספה למועדפים' בכל פעולה." : "לא נמצאו פעולות שמתאימות לחיפוש."}</p>
           {hasFilters ? (
             <button type="button" className="btn" onClick={clear}>
@@ -403,7 +405,7 @@ export function Library() {
           <li key={a.id} className="card glass activity-card">
             {a.kind && KIND_LABELS[a.kind] && (
               <p className="kind-line">
-                <span className="chip chip-accent">{KIND_LABELS[a.kind]}</span>
+                <span className="chip chip-accent"><KindIcon kind={a.kind} /> {KIND_LABELS[a.kind]}</span>
               </p>
             )}
             <h2 className="card-title">

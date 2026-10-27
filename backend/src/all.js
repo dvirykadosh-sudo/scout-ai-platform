@@ -10,6 +10,7 @@ import { assertProductionSafe, config } from "./config.js";
 import { openDb } from "./db.js";
 import { createMailer } from "./email.js";
 import { restoreIfMissing, startPersist } from "./persist.js";
+import { applyPendingRestore, startOps } from "./ops.js";
 import { seedIfEmpty } from "./seed.js";
 
 process.env.NEXT_DIST_DIR ||= ".next-prod";
@@ -18,6 +19,7 @@ const require = createRequire(path.join(frontendDir, "package.json"));
 const next = require("next");
 
 assertProductionSafe();
+if (applyPendingRestore(config.dbPath)) console.log("בוצע שחזור מקובץ שהועלה. הקודם נשמר כ-before-restore.");
 await restoreIfMissing(config.dbPath);
 const db = openDb();
 seedIfEmpty(db);
@@ -26,6 +28,7 @@ const mailer = createMailer(db, config.smtp);
 mailer.start();
 startBackupSchedule(db, backupDirFor());
 const persist = startPersist(db, config.dbPath);
+startOps({ db, dbFile: config.dbPath, config, mailer });
 if (persist) {
   const bye = async () => {
     await persist.flush();
@@ -40,6 +43,7 @@ await web.prepare();
 const handle = web.getRequestHandler();
 
 const app = createApp({ db, mailer, serveStatic: false, dbFile: config.dbPath });
+app.set("restartOnRestore", true);
 app.use((req, res) => handle(req, res));
 app.listen(config.port, "0.0.0.0", () => {
   console.log(`האתר פועל על פורט ${config.port}`);

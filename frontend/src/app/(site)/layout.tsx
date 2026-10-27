@@ -1,6 +1,7 @@
+import { BottomNav, Effects, Splash } from "@/components/Polish";
 import { SiteFooter, SiteHeader } from "@/components/Chrome";
 import { ServerWake } from "@/components/WriteFinal";
-import { StatusBanners } from "@/components/SystemParts";
+import { CommandPalette, StatusBanners } from "@/components/SystemParts";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -23,13 +24,17 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             <a className="skip-link" href="#main">
               דלג לתוכן הראשי
             </a>
+            <Effects />
             <SiteHeader />
             <ServerWake />
             <StatusBanners />
+            <CommandPalette />
             <main id="main" tabIndex={-1} className="page">
               {children}
             </main>
             <SiteFooter />
+            <BottomNav />
+            <Splash />
           </td>
         </tr>
       </tbody>

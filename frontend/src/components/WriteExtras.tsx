@@ -4,7 +4,7 @@
 // ייבוא טקסט חופשי לשלבים, דף הכנה, ותפריט מהיר ו"המשך מאיפה שעצרת" לדף הבית.
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, errorMessage, extractStyleFile, fmtDate, postDownload } from "@/lib/api";
+import { ApiError, api, errorMessage, extractStyleFile, fmtDate, postDownload } from "@/lib/api";
 import { useLogoUrl } from "./Chrome";
 import { useAuth, useToast } from "./Providers";
 import { Field, Modal } from "./ui";
@@ -32,13 +32,16 @@ export function LogoSplash({ show, onSkip }: { show: boolean; onSkip: () => void
   );
 }
 
-const body = (s: Snap, withNotes: boolean) => ({ title: s.title, meta: s.meta, blocks: s.blocks, withNotes });
+const body = (s: Snap, withNotes: boolean, extra: Record<string, unknown> = {}) => ({ title: s.title, meta: s.meta, blocks: s.blocks, withNotes, ...extra });
+type Look = { theme: string; eco: boolean; large: boolean; qr: boolean };
 
 /** 130–132, 134: ייצוא. */
-export function ExportModal({ open, onClose, snap, token }: { open: boolean; onClose: () => void; snap: Snap; token: string | null }) {
+export function ExportModal({ open, onClose, snap, token, docId }: { open: boolean; onClose: () => void; snap: Snap; token: string | null; docId?: number }) {
   const toast = useToast();
   const [notes, setNotes] = useState(false);
+  const [look, setLook] = useState<Look>({ theme: "classic", eco: false, large: false, qr: false });
   const [busy, setBusy] = useState("");
+  const extra = { ...look, ...(docId ? { docId } : {}) };
   const name = (snap.title || "פעולה").replace(/[\\/:*?"<>|]/g, " ").slice(0, 60);
   const run = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
@@ -66,9 +69,51 @@ export function ExportModal({ open, onClose, snap, token }: { open: boolean; onC
         <input type="checkbox" checked={notes} onChange={(e) => setNotes(e.target.checked)} />
         <span>לכלול את ההערות האישיות שלי בקובץ Word</span>
       </label>
+      <label>
+        <span>ערכת עיצוב </span>
+        <select value={look.theme} onChange={(e) => setLook({ ...look, theme: e.target.value })}>
+          <option value="classic">ירוק וסגול-כחול</option>
+          <option value="purple">סגול</option>
+          <option value="blue">כחול</option>
+        </select>
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={look.eco} onChange={(e) => setLook({ ...look, eco: e.target.checked })} />
+        <span>מצב חסכוני להדפסה (בלי גלים וסימן מים)</span>
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={look.large} onChange={(e) => setLook({ ...look, large: e.target.checked })} />
+        <span>גופן גדול לקריאה בשטח</span>
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={look.qr} onChange={(e) => setLook({ ...look, qr: e.target.checked })} />
+        <span>הוספת קוד QR לפתיחת הפעולה באתר</span>
+      </label>
       <div className="write-export-grid">
-        <button type="button" className="btn btn-primary" disabled={!!busy} onClick={() => run("docx", () => postDownload("/api/write/export/docx", token, body(snap, notes), `${name}.docx`))}>
+        <button type="button" className="btn btn-primary" disabled={!!busy} onClick={() => run("docx", () => postDownload("/api/write/export/docx", token, body(snap, notes, extra), `${name}.docx`))}>
           {busy === "docx" ? "מכין…" : "הורדה כקובץ Word עם הלוגו"}
+        </button>
+        <button type="button" className="btn" disabled={!!busy} onClick={() => run("sheet", () => postDownload("/api/write/export/sheet", token, body(snap, false, extra), `דף מדריך ${name}.docx`))}>
+          {busy === "sheet" ? "מכין…" : "דף מדריך בעמוד אחד (Word)"}
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!!busy}
+          onClick={() =>
+            run("pdf", async () => {
+              try {
+                await postDownload("/api/write/export/pdf", token, body(snap, notes, extra), `${name}.pdf`);
+              } catch (e) {
+                if (e instanceof ApiError && e.status === 501) {
+                  toast("PDF ישיר לא זמין בשרת הזה. עוברים להדפסה, ושם בוחרים שמירה כ-PDF.", { kind: "info" });
+                  print();
+                } else throw e;
+              }
+            })
+          }
+        >
+          {busy === "pdf" ? "מכין…" : "הורדה כ-PDF באותו עיצוב"}
         </button>
         <button type="button" className="btn" onClick={print}>
           הדפסה או שמירה כ-PDF עם הלוגו

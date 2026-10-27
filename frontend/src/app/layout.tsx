@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#130E26" };
 
 // Applies saved accessibility settings before first paint, so there is no flash.
-const initScript = `try{var d=document.documentElement;if(localStorage.getItem('scout.hc')==='1')d.classList.add('hc');if(localStorage.getItem('scout.large')==='1')d.classList.add('large');var t=localStorage.getItem('scout.theme');if(t==='light'||(t!=='dark'&&window.matchMedia('(prefers-color-scheme: light)').matches))d.classList.add('light')}catch(e){}`;
+const initScript = `try{var d=document.documentElement;if(localStorage.getItem('scout.hc')==='1')d.classList.add('hc');if(localStorage.getItem('scout.large')==='1')d.classList.add('large');if(localStorage.getItem('scout.compact')==='1')d.classList.add('compact');var pl=localStorage.getItem('scout.palette');if(pl==='blue'||pl==='green')d.dataset.palette=pl;var t=localStorage.getItem('scout.theme');if(t==='light'||(t!=='dark'&&window.matchMedia('(prefers-color-scheme: light)').matches))d.classList.add('light')}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

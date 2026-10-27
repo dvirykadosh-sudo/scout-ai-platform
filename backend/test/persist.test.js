@@ -58,3 +58,19 @@ describe("שמירת נתונים ב-GitHub", () => {
     assert.equal(startPersist({}, "/tmp/none.db", { env: {} }), null);
   });
 });
+
+import { applyPendingRestore, pendingPath } from "../src/ops.js";
+describe("שחזור באתחול", () => {
+  it("מחליף את המסד בקובץ הממתין ושומר את הקודם", async () => {
+    const fs = await import("node:fs"), os = await import("node:os"), path = await import("node:path");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rs-"));
+    const db = path.join(dir, "x.db");
+    fs.writeFileSync(db, "old");
+    assert.equal(applyPendingRestore(db), false);
+    fs.writeFileSync(pendingPath(db), "new");
+    assert.equal(applyPendingRestore(db), true);
+    assert.equal(fs.readFileSync(db, "utf8"), "new");
+    assert.equal(fs.readFileSync(db + ".before-restore", "utf8"), "old");
+    assert.equal(fs.existsSync(pendingPath(db)), false);
+  });
+});

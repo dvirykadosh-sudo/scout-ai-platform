@@ -90,6 +90,13 @@ export function RunLogModal({ open, onClose, runs, onChange }: { open: boolean; 
           <input id="rl-rate" type="number" min={0} max={5} dir="ltr" value={rating} onChange={(e) => setRating(Math.max(0, Math.min(5, Math.round(Number(e.target.value) || 0))))} />
         </Field>
       </div>
+      <div className="actions" role="group" aria-label="משפטים מוכנים">
+        {["עבד מצוין", "היה צפוף בזמן", "החניכים התלהבו", "צריך יותר ציוד", "לשפר את הסיכום"].map((q) => (
+          <button key={q} type="button" className="btn btn-small" onClick={() => setNote((n) => (n ? `${n}. ${q}` : q).slice(0, 600))}>
+            {q}
+          </button>
+        ))}
+      </div>
       <Field label="איך הלך? מה לשנות?" htmlFor="rl-note">
         <textarea id="rl-note" rows={3} maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} />
       </Field>

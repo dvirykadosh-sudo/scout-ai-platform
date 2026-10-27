@@ -62,9 +62,17 @@ export function createMailer(db, smtp) {
     }
   }
 
+  /** שליחה מיידית (עם קבצים מצורפים). מחזיר true רק אם נשלח בפועל. */
+  async function sendNow({ to, subject, html, attachments }) {
+    if (!transporter) return false;
+    await transporter.sendMail({ from: smtp.from, to, subject, html, attachments });
+    return true;
+  }
+
   let timer = null;
   return {
     hasTransport: !!transporter,
+    sendNow,
     enqueue,
     processQueue,
     start() {

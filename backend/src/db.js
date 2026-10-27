@@ -176,6 +176,13 @@ CREATE TABLE IF NOT EXISTS write_tribe_templates (
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS write_attendance (
+  doc_id INTEGER PRIMARY KEY REFERENCES write_docs(id) ON DELETE CASCADE,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  names_json TEXT NOT NULL,
+  present_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS write_trash (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -264,6 +271,68 @@ CREATE TABLE IF NOT EXISTS feedback (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_activity ON feedback(activity_id);
+CREATE TABLE IF NOT EXISTS system_samples (
+  day TEXT PRIMARY KEY,
+  db_bytes INTEGER,
+  users INTEGER,
+  activities INTEGER,
+  write_docs INTEGER
+);
+CREATE TABLE IF NOT EXISTS team_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  leader TEXT NOT NULL,
+  title TEXT NOT NULL,
+  date TEXT NOT NULL,
+  age_group TEXT NOT NULL DEFAULT '',
+  doc_id INTEGER,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_team_date ON team_events(date);
+CREATE TABLE IF NOT EXISTS page_counts (
+  day TEXT NOT NULL,
+  page TEXT NOT NULL,
+  n INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, page)
+);
+CREATE TABLE IF NOT EXISTS bug_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  username TEXT,
+  page TEXT NOT NULL DEFAULT '',
+  text TEXT NOT NULL,
+  device TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pilot_surveys (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  ease INTEGER NOT NULL,
+  missing TEXT NOT NULL DEFAULT '',
+  would_use INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS feature_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS feature_votes (
+  request_id INTEGER NOT NULL REFERENCES feature_requests(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (request_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS write_question_bank (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  uses INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  UNIQUE (user_id, text)
+);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

@@ -2850,6 +2850,37 @@ describe("ייצוא וכלים נלווים: סבב 127–138", () => {
     assert.ok(r.body.includes(Buffer.from("word/media/")), "מכיל תמונת לוגו");
   });
 
+  it("עיצוב: ערכות, חסכוני, גופן גדול, QR ודף מדריך", async () => {
+    const sizes = {};
+    for (const [k, o] of Object.entries({ classic: {}, blue: { theme: "blue" }, eco: { eco: true }, large: { large: true }, qr: { qr: true } })) {
+      const r = await req("POST", "/api/write/export/docx", { ...doc(), ...o }, a.token);
+      assert.equal(r.status, 200, k);
+      assert.equal(r.body.subarray(0, 2).toString(), "PK");
+      sizes[k] = r.body.length;
+    }
+    assert.ok(sizes.eco < sizes.classic, "מצב חסכוני קל יותר");
+    assert.ok(sizes.qr > sizes.classic, "QR מוסיף תמונה");
+    assert.equal((await req("POST", "/api/write/export/docx", { ...doc(), theme: "nope" }, a.token)).status, 400);
+    const sh = await req("POST", "/api/write/export/sheet", doc(), a.token);
+    assert.equal(sh.status, 200);
+    assert.equal(sh.body.subarray(0, 2).toString(), "PK");
+    assert.equal((await req("POST", "/api/write/export/sheet", doc())).status, 401);
+  });
+
+  it("ייצוא שומר גרסה, ו-PDF עובד או מחזיר הסבר", async () => {
+    const d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    await req("POST", "/api/write/export/docx", { ...doc(), docId: d.id }, a.token);
+    const v = (await req("GET", `/api/write/docs/${d.id}/versions`, undefined, a.token)).body;
+    assert.ok(v.some((x) => x.note === "ייצוא קובץ"), "גרסת ייצוא");
+    const other = (await req("POST", "/api/auth/register", { username: "expv7", password: "password123", displayName: "אחר", signupCode: "shevet-code" })).body;
+    const before = (await req("GET", `/api/write/docs/${d.id}/versions`, undefined, a.token)).body.length;
+    await req("POST", "/api/write/export/docx", { ...doc(), docId: d.id }, other.token);
+    assert.equal((await req("GET", `/api/write/docs/${d.id}/versions`, undefined, a.token)).body.length, before, "לא שומר למסמך של אחר");
+    const pdf = await req("POST", "/api/write/export/pdf", doc(), a.token);
+    assert.ok([200, 501].includes(pdf.status));
+    if (pdf.status === 200) assert.equal(pdf.body.subarray(0, 4).toString(), "%PDF");
+  });
+
   it("132. טקסט להעתקה ובפורמט וואטסאפ", async () => {
     const plain = (await req("POST", "/api/write/export/text", doc(), a.token)).body.text;
     assert.ok(plain.includes("אומץ") && !plain.includes("**") && !plain.includes("סודי"));
@@ -3319,5 +3350,261 @@ describe("מצב המערכת, גיבוי להורדה ובדיקת תקינות
     const buf = Buffer.from(await res.arrayBuffer());
     assert.equal(buf.subarray(0, 15).toString("latin1"), "SQLite format 3");
     assert.equal((await fetch(`${base}/api/admin/backup/download`)).status, 401);
+  });
+});
+
+describe("שלב 36: הקרוב אליי, נוכחות, קריאות וקיצור (201–220)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let a, d;
+  const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  before(async () => {
+    a = (await req("POST", "/api/auth/register", { username: "v36a", password: "password123", displayName: "מדריך א", signupCode: "shevet-code" })).body;
+    d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    const cur = (await req("GET", `/api/write/docs/${d.id}`, undefined, a.token)).body;
+    const meta = { ...cur.meta, date: inDays(1), equipment: ["חבלים", "כדור"] };
+    const blocks = cur.blocks.map((b) => ({ ...b, text: "שורה א\nשורה ב\nשורה ג\nשורה ד\nשורה ה" }));
+    const r = await req("PUT", `/api/write/docs/${d.id}`, { title: "פעולה קרובה", meta, blocks, baseRev: cur.rev }, a.token);
+    assert.equal(r.status, 200);
+  });
+  it("201/202/209: פעולות קרובות וציוד לשבוע", async () => {
+    assert.equal((await req("GET", "/api/write/upcoming")).status, 401);
+    const u = (await req("GET", "/api/write/upcoming", undefined, a.token)).body;
+    assert.equal(u.items.length, 1);
+    assert.equal(u.items[0].daysLeft, 1);
+    assert.equal(u.tomorrow.length, 1);
+    assert.deepEqual(u.equipmentWeek.map((e) => e.name).sort(), ["חבלים", "כדור"]);
+  });
+  it("206: נוכחות נשמרת ומסוננת, ויש סטטיסטיקה", async () => {
+    const r = await req("PUT", `/api/write/docs/${d.id}/attendance`, { names: ["דני", "רוני", "דני"], present: ["דני", "זר"] }, a.token);
+    assert.deepEqual(r.body, { names: ["דני", "רוני"], present: ["דני"] });
+    const g = (await req("GET", `/api/write/docs/${d.id}/attendance`, undefined, a.token)).body;
+    assert.deepEqual(g.present, ["דני"]);
+    const st = (await req("GET", "/api/write/attendance/stats", undefined, a.token)).body;
+    assert.equal(st.sessions, 1);
+    assert.equal(st.people[0].name, "דני");
+    const b = (await req("POST", "/api/auth/register", { username: "v36b", password: "password123", displayName: "מדריך ב", signupCode: "shevet-code" })).body;
+    assert.equal((await req("GET", `/api/write/docs/${d.id}/attendance`, undefined, b.token)).status, 404);
+  });
+  it("214: קריאות, 215: תבניות טקסים", async () => {
+    assert.ok((await req("GET", "/api/write/cheers", undefined, a.token)).body.length >= 20);
+    const t = (await req("GET", "/api/write/templates")).body.map((x) => x.id);
+    for (const id of ["ceremony-birthday", "ceremony-shirt", "ceremony-end", "ceremony-memorial"]) assert.ok(t.includes(id), id);
+  });
+  it("220: קיצור ל-10 דקות יוצר עותק ולא נוגע במקור", async () => {
+    const r = await req("POST", `/api/write/docs/${d.id}/short10`, {}, a.token);
+    assert.equal(r.status, 201);
+    const c = (await req("GET", `/api/write/docs/${r.body.id}`, undefined, a.token)).body;
+    assert.match(c.title, /קיצור 10/);
+    assert.equal(c.blocks.reduce((s, b) => s + b.minutes, 0) >= 8 && c.blocks.reduce((s, b) => s + b.minutes, 0) <= 12, true);
+    assert.ok(c.blocks.every((b) => b.text.split("\n").length <= 4));
+    const o = (await req("GET", `/api/write/docs/${d.id}`, undefined, a.token)).body;
+    assert.equal(o.blocks.length, 4);
+  });
+});
+
+describe("שלב 37: תחזוקה, היסטוריה, שחזור וצוות (221–250)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let adm, a;
+  before(async () => {
+    for (const pw of ["a-new-strong-pass", "admin123"]) {
+      const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "admin", password: pw }) });
+      if (r.status === 200 && !r.body.user.mustChangePw) { adm = r.body.token; break; }
+    }
+    a = (await req("POST", "/api/auth/register", { username: "v37a", password: "password123", displayName: "מדריך ג", signupCode: "shevet-code" })).body;
+  });
+  it("246: מצב תחזוקה חוסם כתיבה לגולשים, ולא את הקריאה והניהול", async () => {
+    assert.equal((await req("PUT", "/api/admin/maintenance", { message: "מעדכנים" }, a.token)).status, 401);
+    assert.equal((await req("PUT", "/api/admin/maintenance", { message: "מעדכנים, חוזרים בעוד דקה" }, adm)).status, 200);
+    assert.equal((await req("GET", "/api/health")).body.maintenance, "מעדכנים, חוזרים בעוד דקה");
+    const w = await req("POST", "/api/write/docs", { template: "classic" }, a.token);
+    assert.equal(w.status, 503);
+    assert.equal(w.body.error.code, "MAINTENANCE");
+    assert.equal((await req("GET", "/api/write/docs", undefined, a.token)).status, 200);
+    assert.equal((await req("PUT", "/api/admin/maintenance", { message: "" }, adm)).status, 200);
+    assert.equal((await req("POST", "/api/write/docs", { template: "classic" }, a.token)).status, 201);
+  });
+  it("241: היסטוריית מדדים לאדמין בלבד", async () => {
+    assert.equal((await req("GET", "/api/admin/system/history", undefined, a.token)).status, 401);
+    const h = await req("GET", "/api/admin/system/history", undefined, adm);
+    assert.equal(h.status, 200);
+    assert.ok(Array.isArray(h.body.rows));
+    assert.equal(h.body.mailBackup.configured, false);
+    assert.equal((await req("POST", "/api/admin/backup/mail", {}, adm)).status, 400);
+  });
+  it("242/243: הצפנת גיבוי ואימות קובץ שחזור", async () => {
+    const { encryptBackup, decryptBackup, validateBackupFile } = await import("../src/ops.js");
+    const raw = Buffer.from(await (await fetch(`${base}/api/admin/backup/download`, { headers: H(adm) })).arrayBuffer());
+    validateBackupFile(raw);
+    const enc = encryptBackup(raw, "סיסמה-חזקה-123");
+    assert.ok(!enc.includes(Buffer.from("SQLite format 3")));
+    assert.ok(decryptBackup(enc, "סיסמה-חזקה-123").equals(raw));
+    assert.throws(() => decryptBackup(enc, "שגויה-שגויה"));
+    assert.throws(() => validateBackupFile(Buffer.from("not a database".repeat(400))));
+    const noConfirm = await fetch(`${base}/api/admin/restore`, { method: "POST", headers: { ...H(adm), "content-type": "application/octet-stream" }, body: raw });
+    assert.equal(noConfirm.status, 400);
+    const asUser = await fetch(`${base}/api/admin/restore`, { method: "POST", headers: { ...H(a.token), "content-type": "application/octet-stream", "x-confirm": encodeURIComponent("שחזור") }, body: raw });
+    assert.equal(asUser.status, 401);
+  });
+  it("221/222: לוח צוות, מחיקה רק של שלי, והודעה למחליף", async () => {
+    const d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const e = await req("POST", "/api/team/events", { title: "פעולת אומץ", date: tomorrow, ageGroup: "כיתה ו", docId: d.id }, a.token);
+    assert.equal(e.status, 201);
+    assert.equal(e.body.docId, d.id);
+    const other = (await req("POST", "/api/auth/register", { username: "v37b", password: "password123", displayName: "מדריך ד", signupCode: "shevet-code" })).body;
+    const list = (await req("GET", "/api/team/events", undefined, other.token)).body;
+    assert.ok(list.some((x) => x.id === e.body.id && !x.mine));
+    assert.equal((await req("DELETE", `/api/team/events/${e.body.id}`, undefined, other.token)).status, 403);
+    assert.equal((await req("GET", `/api/team/events/${e.body.id}/substitute`, undefined, other.token)).status, 404);
+    const s = (await req("GET", `/api/team/events/${e.body.id}/substitute`, undefined, a.token)).body.text;
+    assert.ok(s.includes("פעולת אומץ") && s.includes("התוכנית"));
+    assert.equal((await req("POST", "/api/team/events", { title: "x", date: "bad" }, a.token)).status, 400);
+    assert.equal((await req("DELETE", `/api/team/events/${e.body.id}`, undefined, a.token)).status, 200);
+  });
+});
+
+describe("שלב 38: פיילוט ומשוב (251–260)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok, extra = {}) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: { ...(tok ? H(tok) : {}), ...extra } });
+  let adm, a, b;
+  before(async () => {
+    for (const pw of ["a-new-strong-pass", "admin123"]) {
+      const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "admin", password: pw }) });
+      if (r.status === 200 && !r.body.user.mustChangePw) { adm = r.body.token; break; }
+    }
+    a = (await req("POST", "/api/auth/register", { username: "v38a", password: "password123", displayName: "מדריך ה", signupCode: "shevet-code" })).body;
+    b = (await req("POST", "/api/auth/register", { username: "v38b", password: "password123", displayName: "מדריך ו", signupCode: "shevet-code" })).body;
+  });
+  it("252/259: משימות מזוהות אוטומטית", async () => {
+    assert.equal((await req("GET", "/api/me/pilot")).status, 401);
+    let p = (await req("GET", "/api/me/pilot", undefined, a.token)).body;
+    assert.equal(p.done, 0);
+    assert.equal(p.next.id, "doc");
+    await req("POST", "/api/write/docs", { template: "classic" }, a.token);
+    p = (await req("GET", "/api/me/pilot", undefined, a.token)).body;
+    assert.equal(p.done, 1);
+    assert.equal(p.next.id, "stages");
+  });
+  it("253: שאלון נשמר ומתעדכן פעם אחת למשתמש", async () => {
+    assert.equal((await req("POST", "/api/me/survey", { ease: 9, wouldUse: true }, a.token)).status, 400);
+    assert.equal((await req("POST", "/api/me/survey", { ease: 4, missing: "חסר ייצוא PDF", wouldUse: true }, a.token)).status, 200);
+    assert.equal((await req("POST", "/api/me/survey", { ease: 5, missing: "", wouldUse: true }, a.token)).status, 200);
+    assert.equal((await req("GET", "/api/me/survey", undefined, a.token)).body.ease, 5);
+    await req("POST", "/api/me/survey", { ease: 2, missing: "מסובך", wouldUse: false }, b.token);
+  });
+  it("254: דיווח תקלה גם בלי התחברות, ודורש טקסט", async () => {
+    assert.equal((await req("POST", "/api/report", { text: "x" })).status, 400);
+    assert.equal((await req("POST", "/api/report", { text: "הכפתור לא נלחץ", page: "/write", device: "אייפון" })).status, 201);
+    assert.equal((await req("POST", "/api/report", { text: "גם כאן", page: "/team" }, a.token)).status, 201);
+  });
+  it("255-257, 260: לוח אדמין, מפת שימוש והצבעות", async () => {
+    await req("GET", "/api/write/docs", undefined, a.token, { "X-Page": "/write/123" });
+    assert.equal((await req("GET", "/api/admin/pilot", undefined, a.token)).status, 401);
+    const d = (await req("GET", "/api/admin/pilot", undefined, adm)).body;
+    assert.equal(d.surveys.n, 2);
+    assert.equal(d.surveys.avgEase, 3.5);
+    assert.equal(d.surveys.wouldUsePct, 50);
+    assert.equal(d.bugs.length, 2);
+    assert.equal(d.bugs.find((x) => x.username === "v38a").text, "גם כאן");
+    assert.ok(d.pages.some((x) => x.page === "/write/:id"), "עמודים מנורמלים");
+    assert.ok(d.firstDoc.users >= 1);
+    assert.ok(d.report.text.includes("דיווחי תקלה"));
+    assert.equal((await req("PATCH", `/api/admin/bugs/${d.bugs[0].id}`, { status: "done" }, adm)).status, 200);
+    const r1 = await req("POST", "/api/feature-requests", { title: "מצב לילה אוטומטי" }, a.token);
+    assert.equal(r1.status, 201);
+    assert.equal((await req("POST", `/api/feature-requests/${r1.body.id}/vote`, {}, b.token)).body.voted, true);
+    let list = (await req("GET", "/api/feature-requests", undefined, b.token)).body;
+    assert.equal(list[0].votes, 2);
+    assert.equal(list[0].voted, true);
+    assert.equal((await req("POST", `/api/feature-requests/${r1.body.id}/vote`, {}, b.token)).body.voted, false);
+    list = (await req("GET", "/api/feature-requests", undefined, a.token)).body;
+    assert.equal(list[0].votes, 1);
+    for (const t of ["רעיון שני לבדיקה", "רעיון שלישי לבדיקה"]) assert.equal((await req("POST", "/api/feature-requests", { title: t }, a.token)).status, 201);
+    assert.equal((await req("POST", "/api/feature-requests", { title: "רעיון רביעי לבדיקה" }, a.token)).status, 409);
+    assert.equal((await req("PATCH", `/api/admin/feature-requests/${r1.body.id}`, { status: "planned" }, a.token)).status, 401);
+    assert.equal((await req("PATCH", `/api/admin/feature-requests/${r1.body.id}`, { status: "planned" }, adm)).status, 200);
+    assert.equal((await req("POST", "/api/admin/pilot/report", {}, adm)).status, 400);
+  });
+});
+
+describe("שלב 39: בדיקת קול, בטיחות, גיל ושאלות (261–270)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let a;
+  const long = "זה משפט ארוך מאוד שממשיך ומתארך ועובר מנושא לנושא בלי נקודה אחת כדי לעצור לנשום ולכן קשה מאוד להגיד אותו בקול לפני קבוצה של חניכים שמחכים";
+  const doc = (extra = {}) => ({
+    title: "פעולה בטיחות",
+    meta: { ageGroup: "כיתה ד' - מעורב", groupSize: 24, equipment: ["חבלים"], ...extra },
+    blocks: [
+      { id: "b1", kind: "open", title: "פתיחה", minutes: 1, text: `${long} ${long} ${long} ${long}`, note: "" },
+      { id: "b2", kind: "body", title: "משחק מירוץ", minutes: 15, text: "רצים במירוץ ליד הבריכה וקופצים מעל החבל. אנחנו רוצים להתמודד עם אתגר ולדון בערכים.", note: "" },
+      { id: "b3", kind: "peak", title: "שיא", minutes: 10, text: "הסבר על הפתרון של הקבוצה", note: "" },
+      { id: "b4", kind: "close", title: "סיכום", minutes: 5, text: "מסכמים", note: "" },
+    ],
+  });
+  before(async () => {
+    a = (await req("POST", "/api/auth/register", { username: "v39a", password: "password123", displayName: "מדריך ז", signupCode: "shevet-code" })).body;
+  });
+  it("261/262: בדיקת קול מחשבת זמן ומסמנת משפטים קשים", async () => {
+    assert.equal((await req("POST", "/api/write/voice-check", doc())).status, 401);
+    const r = (await req("POST", "/api/write/voice-check", doc(), a.token)).body;
+    assert.ok(r.totalSpeakMin > 0);
+    assert.equal(r.blocks.length, 4);
+    assert.ok(r.hardSentences.some((h) => h.blockId === "b1" && h.reasons.some((x) => /מילים/.test(x))));
+    assert.ok(r.blocks[0].ratio > 0.6, "פתיחה של דקה כמעט כולה דיבור");
+  });
+  it("263/264: בטיחות מזהה סיכונים, מחשב יחס ומתחשב בגיל", async () => {
+    const r = (await req("POST", "/api/write/safety", doc(), a.token)).body;
+    const ids = r.risks.map((x) => x.id);
+    assert.ok(ids.includes("running") && ids.includes("water"), ids.join());
+    assert.equal(r.ok, false);
+    assert.ok(r.ratio.perGuide <= 4, "מים + שכבה צעירה");
+    assert.equal(r.ratio.guidesNeeded, Math.ceil(24 / r.ratio.perGuide));
+    const withSafety = doc();
+    withSafety.blocks.push({ id: "b9", kind: "free", title: "בטיחות", minutes: 0, text: "מציל נוכח ומוסמך. גבולות גזרה ואות עצירה. לא רצים ליד המים.", note: "" });
+    const r2 = (await req("POST", "/api/write/safety", withSafety, a.token)).body;
+    assert.ok(r2.missing < r.missing);
+  });
+  it("265: אנשי קשר לחירום נשמרים לכל משתמש בנפרד", async () => {
+    assert.equal((await req("PUT", "/api/write/emergency", { contacts: [{ name: "רכז", phone: "abc" }] }, a.token)).status, 400);
+    assert.equal((await req("PUT", "/api/write/emergency", { contacts: [{ name: "רכז שבט", phone: "050-1234567" }] }, a.token)).status, 200);
+    const g = (await req("GET", "/api/write/emergency", undefined, a.token)).body;
+    assert.equal(g.contacts[0].name, "רכז שבט");
+    assert.equal(g.national.length, 3);
+    const b = (await req("POST", "/api/auth/register", { username: "v39b", password: "password123", displayName: "מדריך ח", signupCode: "shevet-code" })).body;
+    assert.equal((await req("GET", "/api/write/emergency", undefined, b.token)).body.contacts.length, 0);
+  });
+  it("266-268: התאמה לגיל מחליפה מילים, מקצרת שלבים ויוצרת עותק", async () => {
+    const y = (await req("POST", "/api/write/age-adapt", { level: "young", doc: doc() }, a.token)).body;
+    assert.ok(y.blocks[1].text.includes("לנסות לפתור") && y.blocks[1].text.includes("דברים חשובים"));
+    assert.ok(y.blocks[1].minutes <= 12);
+    assert.ok(y.blocks[3].text.includes("משפט אחד"));
+    assert.ok(y.changes.length >= 3);
+    const o = (await req("POST", "/api/write/age-adapt", { level: "old", doc: doc() }, a.token)).body;
+    assert.ok(o.blocks[2].text.includes("שאלה למחשבה"));
+    const d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    const c = await req("POST", `/api/write/docs/${d.id}/age-copy`, { level: "old" }, a.token);
+    assert.equal(c.status, 201);
+    const got = (await req("GET", `/api/write/docs/${c.body.id}`, undefined, a.token)).body;
+    assert.match(got.title, /בוגרים/);
+    assert.equal(got.meta.ageGroup, "כיתה י' - מעורב");
+    assert.equal((await req("POST", "/api/write/docs/999999/age-copy", { level: "old" }, a.token)).status, 404);
+  });
+  it("269/270: שאלות לשלב ובנק אישי", async () => {
+    const block = doc().blocks[1];
+    const r = (await req("POST", "/api/write/stage-questions", { block, value: "עבודת צוות", ageGroup: "כיתה ז' - מעורב" }, a.token)).body;
+    assert.equal(r.questions.length, 3);
+    assert.ok(new Set(r.questions.map((q) => q.q)).size === 3);
+    const q = r.questions[0].q;
+    assert.equal((await req("POST", "/api/write/question-bank", { text: q, used: true }, a.token)).status, 201);
+    await req("POST", "/api/write/question-bank", { text: q, used: true }, a.token);
+    const bank = (await req("GET", "/api/write/question-bank", undefined, a.token)).body;
+    assert.equal(bank.length, 1);
+    assert.equal(bank[0].uses, 2);
+    const again = (await req("POST", "/api/write/stage-questions", { block }, a.token)).body;
+    assert.equal(again.fromBank[0].text, q);
+    assert.equal((await req("DELETE", `/api/write/question-bank/${bank[0].id}`, undefined, a.token)).status, 200);
   });
 });

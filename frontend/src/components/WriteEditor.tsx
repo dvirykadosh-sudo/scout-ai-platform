@@ -13,6 +13,9 @@ import { CommentsModal, cleanText, useDictation, wordDiff } from "./WriteMore3";
 import { ImportStagesModal, QuestionsModal, RunLogModal, ShortcutsModal, SummarySheet } from "./WriteMore2";
 import { BackupPlanModal, ReadinessModal, StationsModal, TourButton, TribeMethodsModal } from "./WriteFinal";
 import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
+import { MoreToolsModal, OutdoorHint } from "./WriteV36";
+import { EditorProgress } from "./Polish";
+import { AgeAdaptModal, SafetyModal, StageQuestionsModal, VoiceCheckModal } from "./WriteV39";
 import { GapsPanel, HelpModal, PrefsModal, SearchModal, StageCompare, useCatalog, type InsertFn } from "./WriteHelp";
 import { KINDS, KIND_LABEL, Md, countWords, emptyBlock, newBlockId, flatten, readAloud, sumMinutes, useHistory, type Block, type Doc, type Kind, type Snap } from "./WriteParts";
 
@@ -83,6 +86,8 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const [runOn, setRunOn] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [qOpen, setQOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions">("");
   const [fin, setFin] = useState<"" | "stations" | "backup" | "ready" | "tribe">("");
   const [stagesOpen, setStagesOpen] = useState(false);
   const [keysOpen, setKeysOpen] = useState(false);
@@ -677,10 +682,12 @@ export function WriteEditor({ initial }: { initial: Doc }) {
         )}
       </div>
 
+      <OutdoorHint snap={state} onOpen={() => setFin("backup")} />
       <div className="write-bar card glass" role="region" aria-label="סרגל כלים ומצב המסמך">
         <p className={`write-status st-${status}`} role="status" aria-live="polite">
           {statusText}
         </p>
+        <EditorProgress total={total} target={target ?? undefined} blocks={state.blocks} />
         <div className="actions">
           <button type="button" className="btn btn-small" onClick={h.undo} disabled={!h.canUndo}>
             ביטול
@@ -735,6 +742,9 @@ export function WriteEditor({ initial }: { initial: Doc }) {
           </button>
           <button type="button" className="btn btn-small" onClick={() => setFin("tribe")} disabled={!cur}>
             מתודות השבט
+          </button>
+          <button type="button" className="btn btn-small" onClick={() => setMoreOpen(true)}>
+            כלים נוספים
           </button>
           <TourButton kind="write" />
           <button type="button" className="btn btn-small" onClick={printSummary}>
@@ -1112,13 +1122,18 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       <TribeMethodsModal open={fin === "tribe"} onClose={() => setFin("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
       <QuestionsModal open={qOpen} onClose={() => setQOpen(false)} token={token} value={state.meta.value ?? ""} age={state.meta.ageGroup} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
       <ImportStagesModal open={stagesOpen} onClose={() => setStagesOpen(false)} token={token} currentId={initial.id} onApply={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs.map((b) => ({ ...b, id: newBlockId(), done: false }))].slice(0, 60) }))} />
+      <MoreToolsModal open={moreOpen} onClose={() => setMoreOpen(false)} snap={state} docId={initial.id} token={token} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} onOpened={(id) => router.push(`/write/${id}`)} onTool={(t) => { setMoreOpen(false); setTool(t); }} />
+      <VoiceCheckModal open={tool === "voice"} onClose={() => setTool("")} snap={state} token={token} />
+      <SafetyModal open={tool === "safety"} onClose={() => setTool("")} snap={state} token={token} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, 60) }))} />
+      <AgeAdaptModal open={tool === "age"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onOpened={(id) => router.push(`/write/${id}`)} />
+      <StageQuestionsModal open={tool === "questions"} onClose={() => setTool("")} block={cur} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <ShortcutsModal open={keysOpen} onClose={() => setKeysOpen(false)} />
       {runOn && <RunMode snap={state} onClose={() => setRunOn(false)} />}
       <SnippetsModal open={snipOpen} onClose={() => setSnipOpen(false)} token={token} current={cur?.text ?? ""} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} docId={initial.id} token={token} />
       <ReadabilityModal open={readOpen} onClose={() => setReadOpen(false)} snap={state} token={token} onTitle={(t) => h.set((s) => ({ ...s, title: t }))} onClean={cleanAll} />
       <CommentsModal open={comOpen} onClose={() => setComOpen(false)} docId={initial.id} token={token} onCount={setComCount} titleOf={(id) => { const b = state.blocks.find((x) => x.id === id); return b ? b.title || KIND_LABEL[b.kind] : "שלב שנמחק"; }} />
-      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} snap={state} token={token} />
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} snap={state} token={token} docId={initial.id} />
       <PrepModal open={prepOpen} onClose={() => setPrepOpen(false)} snap={state} token={token} />
       <ImportModal
         open={importOpen}

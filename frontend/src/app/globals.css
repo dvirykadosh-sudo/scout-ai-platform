@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=Rubik:wght@500;700&display=swap");
 
 /* ───────────── tokens ───────────── */
 :root {
@@ -1968,3 +1968,172 @@ html.hc .cal-event { background: #000; border-width: 2px; }
 
 .status-banner { position: sticky; top: 0; z-index: 60; background: #3b2a00; color: #ffe9a8; border-bottom: 2px solid var(--focus); padding: 8px 16px; text-align: center; }
 html.light .status-banner { background: #fff3cd; color: #4a3500; }
+
+.write-run-sun { background: #fff !important; color: #000 !important; }
+.write-run-sun .write-run-clock, .write-run-sun .write-run-title, .write-run-sun .hint { color: #000 !important; }
+.write-run-sun .write-run-text { font-weight: 700; line-height: 1.7; }
+.write-run-sun .btn { background: #000; color: #fff; border-color: #000; }
+
+.cmdk-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; display: grid; place-items: start center; padding-top: 12vh; }
+.cmdk { width: min(560px, 92vw); display: grid; gap: .6rem; }
+.cmdk input { width: 100%; }
+.cmdk li.is-sel .btn { outline: 3px solid var(--focus); }
+html.compact .card { padding: .7rem .9rem; }
+html.compact .page { padding-top: .6rem; }
+html.compact h1, html.compact h2 { margin-block: .4rem; }
+html.compact .btn { padding-block: .35rem; }
+html.compact .plain-list li { padding-block: .25rem; }
+
+
+/* ───────────── שלב 40: עומק ועיצוב (271–285) ───────────── */
+/* 276: רדיוסים וצללים אחידים */
+:root {
+  --r-sm: 8px; --r-md: 14px; --r-lg: 20px;
+  --sh-1: 0 2px 8px rgba(10, 4, 30, 0.28);
+  --sh-2: 0 8px 24px rgba(10, 4, 30, 0.34);
+  --sh-3: 0 20px 60px rgba(10, 4, 30, 0.5);
+  --mint: #7be0b8; /* 279: ירוק מנטה לאישורים והצלחות בלבד */
+  --blue-violet: #6f6cf0; /* 279: כחול-סגול למידע משני */
+  --tint-a: rgba(138, 75, 240, 0.35); --tint-b: rgba(111, 108, 240, 0.28); --tint-c: rgba(123, 224, 184, 0.14);
+}
+html.light { --sh-1: 0 2px 8px rgba(60, 30, 120, 0.1); --sh-2: 0 8px 24px rgba(60, 30, 120, 0.14); --sh-3: 0 20px 60px rgba(60, 30, 120, 0.22); --mint: #0b6b3a; --tint-a: rgba(138, 75, 240, 0.16); --tint-b: rgba(111, 108, 240, 0.14); --tint-c: rgba(11, 107, 58, 0.07); }
+/* 285: גוון עונתי עדין */
+html[data-season="autumn"] { --tint-c: rgba(255, 170, 80, 0.14); }
+html[data-season="winter"] { --tint-c: rgba(120, 190, 255, 0.16); }
+html[data-season="spring"] { --tint-c: rgba(255, 150, 210, 0.13); }
+html[data-season="summer"] { --tint-c: rgba(255, 220, 90, 0.12); }
+.card { border-radius: var(--r-lg); box-shadow: var(--sh-1); }
+.btn { border-radius: var(--r-md); }
+
+/* 280: גופן כותרות */
+h1, h2.section-title, .page-title, .card-title { font-family: "Rubik", "Heebo", system-ui, sans-serif; }
+
+/* 272: שכבות רקע */
+.depth-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.depth-bg .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.9; }
+.depth-bg .b1 { width: 420px; height: 420px; top: -80px; inset-inline-end: -60px; background: var(--tint-a); }
+.depth-bg .b2 { width: 360px; height: 360px; bottom: 5%; inset-inline-start: -80px; background: var(--tint-b); }
+.depth-bg .b3 { width: 300px; height: 300px; top: 45%; inset-inline-start: 40%; background: var(--tint-c); }
+html.hc .depth-bg { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .depth-bg .b1 { transform: translateY(calc(var(--scroll-y, 0) * -0.06px)); }
+  .depth-bg .b2 { transform: translateY(calc(var(--scroll-y, 0) * 0.04px)); }
+  .depth-bg .b3 { transform: translateY(calc(var(--scroll-y, 0) * -0.03px)); }
+
+  /* 271: הטיה עדינה */
+  .activity-card, .home-menu .card, .examples-list > li, .last-hero { transition: transform 0.18s ease-out, box-shadow 0.18s; transform-style: preserve-3d; }
+  .tilting { transform: perspective(900px) rotateX(var(--tx, 0deg)) rotateY(var(--ty, 0deg)) translateY(-2px); box-shadow: var(--sh-2); }
+
+  /* 273: הנשר צף */
+  .emblem-logo, .emblem-art { animation: float-y 6s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(10, 4, 30, 0.4)); }
+  @keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+  /* 277: כניסת עמוד */
+  .page-in { animation: page-in 0.32s ease-out; }
+  @keyframes page-in { from { transform: translateY(8px) scale(0.995); } to { transform: none; } }
+  /* 278: הופעה הדרגתית (תנועה בלבד, בלי שקיפות, כדי לא לפגוע בקריאות) */
+  .reveal { transform: translateY(16px); transition: transform 0.45s ease-out; }
+  .reveal.reveal-in { transform: none; }
+
+  /* 288: אנימציית נשמר */
+}
+/* 274: כפתור שנלחץ פנימה */
+.btn { transition: transform 0.08s, box-shadow 0.12s; }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.985); box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.35); }
+html.hc .btn:active:not(:disabled) { box-shadow: none; }
+.btn-primary { box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25), var(--sh-1); }
+.btn-primary:active:not(:disabled) { box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.35); }
+
+/* 275: זכוכית בחלונות */
+dialog.modal { background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); border-radius: var(--r-lg); box-shadow: var(--sh-3); }
+html.light dialog.modal { background: rgba(255, 255, 255, 0.94); }
+html.hc dialog.modal { background: #000; backdrop-filter: none; }
+dialog.modal::backdrop { backdrop-filter: blur(5px); }
+
+/* 281: איור במצב ריק */
+.empty { text-align: center; }
+.empty-art { width: 120px; height: 90px; color: var(--glow); opacity: 0.85; margin: 0 auto 8px; display: block; }
+/* 282 */
+.kind-icon { vertical-align: -3px; margin-inline-end: 2px; }
+/* 283 */
+.last-hero { border-inline-start: 5px solid var(--accent-2); }
+/* 284: שכבות גיל. הצבע מלווה טקסט, הוא לא נושא את המידע לבדו */
+.age-chip { border-inline-start: 4px solid var(--line); }
+.age-young { border-inline-start-color: var(--mint); }
+.age-mid { border-inline-start-color: var(--blue-violet); }
+.age-old { border-inline-start-color: var(--accent-2); }
+html.hc .age-chip { border-inline-start-color: currentColor; }
+@media print { .depth-bg { display: none; } }
+.glance-cell.age-young, .glance-cell.age-mid, .glance-cell.age-old { border-inline-start: 4px solid var(--line); padding-inline-start: 8px; }
+.glance-cell.age-young { border-inline-start-color: var(--mint); }
+.glance-cell.age-mid { border-inline-start-color: var(--blue-violet); }
+.glance-cell.age-old { border-inline-start-color: var(--accent-2); }
+
+/* ───────────── שלב 41: 286–300 ───────────── */
+/* 286: מצב כהה בגווני סגול עמוקים */
+html:not(.light):not(.hc) { --bg: #150a30; --panel: #1f1048; --page-bg: radial-gradient(1100px 560px at 85% -8%, #43208a 0%, transparent 60%), radial-gradient(900px 520px at 0% 105%, #2a1470 0%, transparent 62%), #150a30; }
+/* 296: ערכות צבעים */
+html[data-palette="blue"]:not(.hc) { --accent: #1f5fbf; --accent-2: #4a8cf0; --glow: #7db1ff; --btn-bg: linear-gradient(135deg, #1f5fbf, #4a8cf0); --line: rgba(125, 177, 255, 0.4); --link: #cfe2ff; --page-bg: radial-gradient(1100px 560px at 85% -8%, #1d3f86 0%, transparent 60%), #0e1830; --bg: #0e1830; --panel: #14234a; --tint-a: rgba(74, 140, 240, 0.35); }
+html.light[data-palette="blue"] { --accent: #1a4f9e; --accent-2: #2468c9; --glow: #2468c9; --link: #12408a; --btn-bg: linear-gradient(135deg, #1a4f9e, #2468c9); --page-bg: radial-gradient(1000px 520px at 85% -8%, #d7e6ff 0%, transparent 60%), #f1f6ff; --bg: #f1f6ff; --panel: #fff; --line: rgba(26, 79, 158, 0.4); }
+html[data-palette="green"]:not(.hc) { --accent: #1b7a52; --accent-2: #2fb37c; --glow: #6fe0b0; --btn-bg: linear-gradient(135deg, #1b7a52, #2fb37c); --line: rgba(111, 224, 176, 0.4); --link: #c9f5e2; --page-bg: radial-gradient(1100px 560px at 85% -8%, #14614a 0%, transparent 60%), #0b1f19; --bg: #0b1f19; --panel: #11302a; --tint-a: rgba(47, 179, 124, 0.3); }
+html.light[data-palette="green"] { --accent: #11633f; --accent-2: #17835a; --glow: #17835a; --link: #0b5233; --btn-bg: linear-gradient(135deg, #11633f, #17835a); --page-bg: radial-gradient(1000px 520px at 85% -8%, #d6f5e6 0%, transparent 60%), #f1faf5; --bg: #f1faf5; --panel: #fff; --line: rgba(17, 99, 63, 0.4); }
+
+/* 287: שלד עם נצנוץ */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-line { background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  /* 288: נשמר */
+  .write-status.st-saved::before { content: "✓ "; display: inline-block; color: var(--mint); animation: pop 0.5s ease-out; }
+  @keyframes pop { 0% { transform: scale(0.2); opacity: 0; } 60% { transform: scale(1.4); } 100% { transform: scale(1); opacity: 1; } }
+  /* 292: מיקרו-אנימציות לשלבים */
+  .write-block { animation: block-in 0.3s ease-out; }
+  @keyframes block-in { from { transform: translateY(-8px) scale(0.99); } to { transform: none; } }
+  /* 294: יעד הגרירה */
+  .write-block.is-drop { transition: box-shadow 0.12s; }
+  .splash { animation: splash-out 1.6s ease-in-out forwards; }
+  @keyframes splash-out { 0% { opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+  .splash img { animation: splash-pop 1.2s ease-out; }
+  @keyframes splash-pop { from { transform: scale(0.6); } to { transform: scale(1); } }
+}
+.write-status.st-saved::before { content: "✓ "; color: var(--mint); }
+.write-block.is-drop { box-shadow: 0 -6px 0 0 var(--accent-2), 0 -14px 24px -8px var(--glow); }
+.write-block.is-drop::before { content: ""; position: absolute; inset: 0; border: 2px dashed var(--accent-2); border-radius: var(--r-lg); pointer-events: none; }
+.write-block { position: relative; }
+.write-handle { cursor: grab; }
+.write-handle:active { cursor: grabbing; }
+/* 289: הצצה בריחוף */
+.activity-card .snippet { max-height: 3.2em; overflow: hidden; transition: max-height 0.25s; }
+.activity-card:hover .snippet, .activity-card:focus-within .snippet { max-height: 14em; }
+.activity-card:hover { box-shadow: var(--sh-2); }
+/* 290, 291: סרגל דביק עם התקדמות */
+.write-bar { position: sticky; top: 0; z-index: 30; }
+.ed-progress { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.92em; }
+.ed-progress progress { width: 140px; height: 10px; accent-color: var(--accent-2); }
+/* 293: תפריט תחתון */
+.bottom-nav { display: none; }
+@media (max-width: 720px) {
+  .bottom-nav { display: block; position: fixed; inset-inline: 0; bottom: 0; z-index: 60; background: var(--panel); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-nav ul { display: flex; list-style: none; margin: 0; padding: 0; }
+  .bottom-nav li { flex: 1; }
+  .bottom-nav a { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px; justify-content: center; color: var(--text); text-decoration: none; font-size: 0.8rem; }
+  .bottom-nav a[aria-current="page"] { color: var(--link); font-weight: 700; box-shadow: inset 0 3px 0 var(--accent-2); }
+  body { padding-bottom: 64px; }
+}
+/* 295 */
+.splash { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: var(--bg); color: var(--text); pointer-events: none; font-size: 1.6rem; font-weight: 800; }
+.splash img { border-radius: 50%; }
+/* 297: הדפסה באותו עיצוב כמו Word */
+@media print {
+  h1, .page-title { border-bottom: 4px solid #4a3fc9; padding-bottom: 6px; color: #2a1766 !important; }
+  h2, h3 { color: #4a3fc9 !important; }
+  .bottom-nav, .splash, .write-bar { display: none !important; }
+}
+/* 298: גרפים נקיים */
+.bar-fill { border-radius: 999px; }
+.bar-fill + .bar-num, .bar-num { font-variant-numeric: tabular-nums; }
+.sg-swatch { display: inline-block; width: 22px; height: 22px; border-radius: 6px; vertical-align: middle; border: 1px solid var(--line); }
+.sg-gap { margin-inline-end: 6px; }
+
+/* סרטון הסבר בדף הבית */
+.home-video video { width: 100%; max-height: 62vh; aspect-ratio: 16 / 9; border-radius: var(--r-md); background: #000; display: block; }
+.home-video details { margin-top: 10px; }

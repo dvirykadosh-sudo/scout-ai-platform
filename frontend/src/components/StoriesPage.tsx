@@ -56,6 +56,7 @@ export function StoriesPage() {
               <p className="meta">
                 {s.type} · ערך: {s.value}
               </p>
+              <p className="hint">קריאה בקול: כ-{Math.max(1, Math.round(s.text.split(/\s+/).length / 120))} דקות</p>
               <p>{s.text}</p>
               <p>
                 <strong>שאלה לשיחה: </strong>

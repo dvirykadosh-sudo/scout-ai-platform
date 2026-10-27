@@ -7,7 +7,8 @@ import { ACTION_LABELS } from "@/lib/constants";
 import type { LogRow, SessionRow, Stats } from "@/lib/types";
 import { AdminAnnouncements } from "./CommunityParts";
 import { AdminWriteMetrics } from "./WriteFinal";
-import { AdminSystem } from "./SystemParts";
+import { AdminOps, AdminSystem } from "./SystemParts";
+import { AdminPilot } from "./PilotParts";
 import { AdminFlags, AdminReport, AdminStorage } from "./CareParts";
 import { AdminApproval, AdminBackups, AdminFeatured, AdminInsights, AdminLogo } from "./AdminExtras";
 import { AdminAudit, AdminSecurity, AdminUsers } from "./AdminAccounts";
@@ -179,6 +180,8 @@ function Dashboard() {
           </section>
 
           <AdminSystem />
+          <AdminOps />
+          <AdminPilot />
           {canSee(staff, "content") && <AdminInsights />}
           {canSee(staff, "contentEdit") && (
             <>

@@ -9,6 +9,10 @@ import { QuickStart } from "./QuickStart";
 import { RemindersBanner } from "./RemindersBanner";
 import { ThisWeek } from "./ThisWeek";
 import { TourButton } from "./WriteFinal";
+import { UpcomingCard } from "./WriteV36";
+import { NextStepCard } from "./PilotParts";
+import { HomeVideo } from "./HomeVideo";
+import { LastDocHero } from "./Polish";
 import { Skeleton } from "./ui";
 
 /** מבנה דף הבית: ברכה, שלוש פעולות עיקריות, ולשוניות שמפרידות בין האזורים. */
@@ -17,6 +21,8 @@ export function HomeShell() {
   return (
     <>
       <HomeWelcome />
+      <HomeVideo />
+      <LastDocHero />
       <HomeMenu
         onCreate={() => {
           setTab("create");
@@ -26,6 +32,8 @@ export function HomeShell() {
       <div className="home-tour">
         <TourButton kind="home" />
       </div>
+      <NextStepCard />
+      <UpcomingCard />
       <AnnouncementsBanner />
       <HomeTabs
         active={tab}
