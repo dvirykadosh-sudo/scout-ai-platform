@@ -43,7 +43,7 @@ export function HomeVideo() {
       <h2 id="hv-title" className="section-title">איך משתמשים באתר: סרטון של דקה</h2>
       <video ref={ref} controls muted playsInline preload="metadata" poster="/intro-poster.jpg" aria-describedby="hv-steps">
         <source src="/intro.mp4" type="video/mp4" />
-        <track kind="captions" src="/intro.vtt" srcLang="he" label="עברית" default />
+        <track kind="captions" src="/intro.vtt" srcLang="he" label="עברית" />
       </video>
       <p className="hint">הסרטון מתנגן בלי קול. להפעלת הקריינות לחצו על סמל הרמקול.</p>
       <details>

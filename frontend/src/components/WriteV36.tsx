@@ -77,7 +77,7 @@ interface Att {
 }
 
 /** 206, 212, 214, 220: כלים נוספים לעורך. */
-export function MoreToolsModal({ open, onClose, snap, docId, token, onInsert, onOpened, onTool }: { open: boolean; onClose: () => void; snap: Snap; docId: number; token: string | null; onInsert: (t: string) => void; onOpened: (id: number) => void; onTool: (t: "voice" | "safety" | "age" | "questions") => void }) {
+export function MoreToolsModal({ open, onClose, snap, docId, token, onInsert, onOpened, onTool }: { open: boolean; onClose: () => void; snap: Snap; docId: number; token: string | null; onInsert: (t: string) => void; onOpened: (id: number) => void; onTool: (t: "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print") => void }) {
   const toast = useToast();
   const [cheers, setCheers] = useState<Cheer[]>([]);
   const [mood, setMood] = useState("הכול");
@@ -127,6 +127,16 @@ export function MoreToolsModal({ open, onClose, snap, docId, token, onInsert, on
           <button type="button" className="btn" onClick={() => onTool("safety")}>בדיקת בטיחות</button>
           <button type="button" className="btn" onClick={() => onTool("age")}>התאמה לגיל</button>
           <button type="button" className="btn" onClick={() => onTool("questions")}>שאלות לדיון לשלב</button>
+        </div>
+      </section>
+      <section aria-labelledby="mt-create">
+        <h3 id="mt-create">יצירה והדפסה</h3>
+        <div className="actions">
+          <button type="button" className="btn" onClick={() => onTool("map")}>מפת תחנות</button>
+          <button type="button" className="btn" onClick={() => onTool("read")}>הקראה בקול</button>
+          <button type="button" className="btn" onClick={() => onTool("practice")}>תרגול קולי</button>
+          <button type="button" className="btn" onClick={() => onTool("story")}>פתיחה וחידון</button>
+          <button type="button" className="btn" onClick={() => onTool("print")}>הדפסות ומשחקים</button>
         </div>
       </section>
       <section aria-labelledby="mt-time">

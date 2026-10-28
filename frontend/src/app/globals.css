@@ -2137,3 +2137,89 @@ html.light[data-palette="green"] { --accent: #11633f; --accent-2: #17835a; --glo
 /* סרטון הסבר בדף הבית */
 .home-video video { width: 100%; max-height: 62vh; aspect-ratio: 16 / 9; border-radius: var(--r-md); background: #000; display: block; }
 .home-video details { margin-top: 10px; }
+
+/* ───────────── שלב 46: עומק ותלת-ממד (301–325) ───────────── */
+:root { --blur: 8px; --sh-dx: 0px; }
+.card { box-shadow: var(--sh-dx) 6px 18px rgba(10, 4, 30, 0.3); }
+html.light .card { box-shadow: var(--sh-dx) 6px 18px rgba(60, 30, 120, 0.12); }
+/* 301, 302: לוגו בשכבות */
+.logo3d { perspective: 700px; display: block; }
+.logo3d-stage { position: relative; display: inline-block; transform-style: preserve-3d; max-width: 100%; }
+.logo3d-front { position: relative; }
+.logo3d-back { position: absolute; inset: 0; margin: auto; max-height: 170px; max-width: 100%; opacity: 0; pointer-events: none; }
+.logo3d-sheen { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0; mix-blend-mode: soft-light; background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255, 255, 255, 0.9), transparent 55%); }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc) .logo3d-stage { transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform 0.15s ease-out; }
+  html:not(.hc) .logo3d-back { opacity: 0.35; filter: blur(1.5px) brightness(0.7); }
+  .logo3d-back.l1 { transform: translateZ(-14px); }
+  .logo3d-back.l2 { transform: translateZ(-28px); opacity: 0.22; }
+  .logo3d-back.l3 { transform: translateZ(-42px); opacity: 0.12; }
+  html:not(.hc) .logo3d-sheen { opacity: 0.55; }
+  .logo3d-front { filter: drop-shadow(0 8px 14px rgba(10, 4, 30, 0.45)); }
+}
+/* 303 */
+.embers, .confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 150; }
+.embers { z-index: 0; }
+/* 309: צורות עומק בקצב שונה */
+.parallax-art { position: fixed; inset: 0; z-index: -1; pointer-events: none; color: var(--glow); opacity: 0.16; overflow: hidden; }
+.parallax-art .pl { position: absolute; }
+.parallax-art .p1 { top: 12%; inset-inline-start: 6%; }
+.parallax-art .p2 { top: 55%; inset-inline-end: 8%; }
+.parallax-art .p3 { top: 78%; inset-inline-start: 32%; }
+html.hc .parallax-art { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .parallax-art .p1 { transform: translateY(calc(var(--scroll-y, 0) * -0.12px)) rotate(calc(var(--scroll-y, 0) * 0.03deg)); }
+  .parallax-art .p2 { transform: translateY(calc(var(--scroll-y, 0) * -0.2px)) rotate(calc(var(--scroll-y, 0) * -0.02deg)); }
+  .parallax-art .p3 { transform: translateY(calc(var(--scroll-y, 0) * -0.08px)); }
+}
+/* 310: כפתורים מתכתיים מוגבהים */
+.btn-primary { background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 45%), var(--btn-bg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -2px 0 rgba(0, 0, 0, 0.25), 0 4px 0 rgba(0, 0, 0, 0.3), var(--sh-1); }
+.btn-primary:focus-visible { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 0 3px var(--focus), 0 0 22px var(--glow); }
+html.hc .btn-primary { background-image: none; box-shadow: none; }
+/* 311: זכוכית דינמית */
+.write-bar, .bottom-nav { -webkit-backdrop-filter: blur(var(--blur)) saturate(140%); backdrop-filter: blur(var(--blur)) saturate(140%); }
+.write-bar { background: var(--glass); }
+html.hc .write-bar, html.hc .bottom-nav { backdrop-filter: none; background: #000; }
+/* 304: כרטיסים מתהפכים */
+.flip-wrap { margin: 12px 0; }
+.flip-grid { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; perspective: 1000px; }
+.flip-card { position: relative; display: block; width: 100%; min-height: 200px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; transform-style: preserve-3d; }
+.flip-face { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px; justify-content: center; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--sh-2); backface-visibility: hidden; overflow: auto; }
+.flip-back { transform: rotateY(180deg); font-size: 0.95rem; line-height: 1.5; justify-content: flex-start; }
+.flip-front em { color: var(--muted); font-style: normal; font-size: 0.85rem; }
+@media (prefers-reduced-motion: no-preference) { .flip-card { transition: transform 0.55s; } .flip-card.is-flipped { transform: rotateY(180deg); } }
+@media (prefers-reduced-motion: reduce) { .flip-face { backface-visibility: visible; } .flip-card.is-flipped .flip-front { display: none; } .flip-card:not(.is-flipped) .flip-back { display: none; } .flip-back { transform: none; } }
+html.hc .flip-face { backface-visibility: visible; } html.hc .flip-card.is-flipped .flip-front { display: none; } html.hc .flip-card:not(.is-flipped) .flip-back { display: none; } html.hc .flip-back { transform: none; }
+/* 305: ערימת קלפים */
+.list.stacked { display: block; padding-top: 20px; }
+.list.stacked > li { margin-top: -62px; transition: transform 0.25s, margin 0.25s; position: relative; }
+.list.stacked > li:first-child { margin-top: 0; }
+.list.stacked > li:hover, .list.stacked > li:focus-within { transform: translateY(-14px) scale(1.01); z-index: 5; }
+@media (max-width: 720px) { .list.stacked > li { margin-top: -40px; } }
+@media print { .list.stacked > li { margin-top: 0; } }
+/* 306: Coverflow */
+.coverflow { display: flex; align-items: center; gap: 8px; }
+.cf-track { list-style: none; margin: 0; padding: 18px 8px; display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; flex: 1; perspective: 900px; scrollbar-width: thin; }
+.cf-item { flex: 0 0 min(78%, 340px); scroll-snap-align: center; transform: rotateY(var(--cf-r, 0deg)) scale(var(--cf-s, 1)); transition: transform 0.2s; }
+.cf-item > .card { margin: 0; height: 100%; }
+/* 315: ערכת מדורה */
+html[data-palette="fire"]:not(.hc):not(.light) { --accent: #b3471d; --accent-2: #ff8a3d; --glow: #ffb26b; --btn-bg: linear-gradient(135deg, #b3471d, #ff8a3d); --line: rgba(255, 178, 107, 0.4); --link: #ffe2c4; --bg: #1c0d0a; --panel: #2c1610; --page-bg: radial-gradient(1100px 560px at 85% -8%, #5a2412 0%, transparent 60%), radial-gradient(900px 520px at 0% 105%, #3a1a3a 0%, transparent 62%), #1c0d0a; --tint-a: rgba(255, 138, 61, 0.28); --tint-b: rgba(179, 71, 29, 0.28); }
+html.light[data-palette="fire"] { --accent: #a23e14; --accent-2: #c2561f; --glow: #c2561f; --link: #7a2c0b; --btn-bg: linear-gradient(135deg, #a23e14, #c2561f); --page-bg: radial-gradient(1000px 520px at 85% -8%, #ffe6d0 0%, transparent 60%), #fff7f0; --bg: #fff7f0; --panel: #fff; --line: rgba(162, 62, 20, 0.4); }
+/* 320: קלפי הדפסה כקלפי משחק */
+.print-card { border: 3px solid var(--accent-2); border-radius: 16px; background: linear-gradient(160deg, var(--panel), rgba(138, 75, 240, 0.12)); box-shadow: inset 0 0 0 4px var(--panel), inset 0 0 0 5px var(--line), var(--sh-1); }
+@media print { .print-card { border: 2px solid #4a3fc9 !important; border-radius: 12px !important; background: #fff !important; box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 4px #4a3fc9 !important; } }
+/* 322 */
+.gauge { width: min(220px, 100%); display: block; margin: 8px auto; color: var(--text); }
+@media (prefers-reduced-motion: no-preference) { .gauge-needle { transition: transform 1s cubic-bezier(.3, 1.4, .5, 1); } }
+/* 325 */
+.holiday-float { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+.holiday-float span { position: absolute; top: -40px; font-size: 28px; opacity: 0.8; }
+@media (prefers-reduced-motion: no-preference) { .holiday-float span { animation: fall 12s linear infinite; } @keyframes fall { to { transform: translateY(110vh) rotate(40deg); } } }
+@media (prefers-reduced-motion: reduce) { .holiday-float { display: none; } }
+.holiday-chip { position: fixed; top: 8px; inset-inline-start: 8px; z-index: 45; margin: 0; padding: 4px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-weight: 700; }
+html.hc .holiday-float { display: none; }
+.holiday-chip { top: 58px; }
+html.light .emblem.has-logo .brand-title { color: var(--accent); text-shadow: none !important; }
+
+/* שלב 47 */
+.station-map { width: 100%; max-height: 360px; border: 1px solid var(--line); border-radius: var(--r-md); cursor: crosshair; background: #fff; }

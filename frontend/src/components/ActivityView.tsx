@@ -1,3 +1,4 @@
+import { FlipStages } from "./Depth3D";
 import { AgeBadge, ageLevel } from "./Polish";
 import { KIND_LABELS } from "@/lib/kind-labels";
 import type { Activity } from "@/lib/types";
@@ -63,6 +64,7 @@ export function ActivityBody({ a }: { a: Activity }) {
         </div>
       </dl>
       <StageTable stages={a.stages} />
+      <FlipStages stages={a.stages} />
       {a.conclusionNote && <p className="conclusion">{a.conclusionNote}</p>}
     </>
   );

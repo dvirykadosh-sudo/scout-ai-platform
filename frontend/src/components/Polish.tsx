@@ -200,7 +200,7 @@ export function Splash() {
   );
 }
 
-const PALETTES = [["purple", "סגול"], ["blue", "כחול"], ["green", "ירוק"]] as const;
+const PALETTES = [["purple", "סגול"], ["blue", "כחול"], ["green", "ירוק"], ["fire", "מדורה"]] as const;
 /** 296: ערכת צבעים לבחירה. */
 export function PaletteToggle() {
   const [p, setP] = useState("purple");

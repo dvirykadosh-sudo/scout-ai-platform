@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, api } from "@/lib/api";
 import { PaletteToggle } from "./Polish";
+import { Logo3D } from "./Depth3D";
 import { NavBadge } from "./CareParts";
 import { useA11y, useAuth } from "./Providers";
 
@@ -47,8 +48,7 @@ function Emblem() {
   return (
     <div className={`emblem ${LOGO_URL ? "has-logo" : ""}`}>
       {LOGO_URL ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="emblem-logo" src={LOGO_URL} alt="סמל שבט מעוז" />
+        <Logo3D src={LOGO_URL} />
       ) : (
         <svg className="emblem-art" viewBox="0 0 440 190" role="img" aria-label="סמל נשר (מקום שמור ללוגו השבט)">
           <defs>

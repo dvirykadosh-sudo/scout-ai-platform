@@ -1,6 +1,7 @@
 "use client";
 
 // רעיונות 188–200: תחנות, תוכנית גיבוי, ציון מוכנות, מתודות השבט, מדדי אדמין, השרת מתעורר, סיור מודרך ומשוב.
+import { Gauge } from "./Depth3D";
 import { useCallback, useEffect, useState } from "react";
 import { API_URL, api, errorMessage, fmtDate, storageGet, storageSet } from "@/lib/api";
 import { useAuth, useToast } from "./Providers";
@@ -145,9 +146,7 @@ export function ReadinessModal({ open, onClose, token, snap }: { open: boolean; 
           <p>
             <strong className="big-score">{r.score}</strong> מתוך 100 · {r.label}
           </p>
-          <div className="meter" role="img" aria-label={`ציון מוכנות ${r.score} מתוך 100`}>
-            <span style={{ width: `${r.score}%` }} />
-          </div>
+          <Gauge score={r.score} />
           <ul className="plain-list">
             {r.items.map((i) => (
               <li key={i.label}>

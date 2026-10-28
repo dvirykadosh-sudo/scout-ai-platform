@@ -1,3 +1,4 @@
+import { DepthLayers } from "@/components/Depth3D";
 import { BottomNav, Effects, Splash } from "@/components/Polish";
 import { SiteFooter, SiteHeader } from "@/components/Chrome";
 import { ServerWake } from "@/components/WriteFinal";
@@ -25,6 +26,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               דלג לתוכן הראשי
             </a>
             <Effects />
+            <DepthLayers />
             <SiteHeader />
             <ServerWake />
             <StatusBanners />

@@ -3608,3 +3608,44 @@ describe("שלב 39: בדיקת קול, בטיחות, גיל ושאלות (261�
     assert.equal((await req("DELETE", `/api/write/question-bank/${bank[0].id}`, undefined, a.token)).status, 200);
   });
 });
+
+describe("שלב 47: יצירה והדפסה (326–335)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let a;
+  before(async () => {
+    a = (await req("POST", "/api/auth/register", { username: "v47a", password: "Str0ng-e2e-pw-26", displayName: "מדריך בדיקה", signupCode: "shevet-code", acceptTerms: true })).body;
+  });
+  const doc = () => ({
+    title: "אחריות אישית",
+    meta: {},
+    blocks: [
+      { id: "b1", kind: "open", title: "פתיחה", minutes: 5, text: "נפתח בשאלה על אחריות. כל חניך מספר רגע שבו לקח אחריות על משימה קבוצתית. אחריות היא לא רק מילה גדולה." },
+      { id: "b2", kind: "body", title: "גוף", minutes: 20, text: "נחלק את הקבוצה לצוותים. כל צוות מקבל משימה קבוצתית ועליו לחלק אחריות בין החברים. המשימה היא לבנות גשר מחבלים לפני שהזמן נגמר." },
+    ],
+  });
+  it("מילות מפתח עם משפט הקשר", async () => {
+    const r = (await req("POST", "/api/write/keywords", doc(), a.token)).body;
+    assert.ok(r.words.length >= 3);
+    assert.ok(r.words.some((w) => w.word === "אחריות"));
+    assert.ok(r.words.every((w) => w.word.length >= 4 && !w.clue.includes(w.word)));
+  });
+  it("סיפורי פתיחה: שלושה, שונים", async () => {
+    const r = (await req("POST", "/api/write/story-ideas", { topic: "אחריות אישית" }, a.token)).body;
+    assert.equal(r.ideas.length, 3);
+    assert.equal(new Set(r.ideas.map((i) => i.text)).size, 3);
+    assert.ok(r.ideas.every((i) => i.text.includes("אחריות אישית")));
+  });
+  it("חידון השלמה ותפקידים", async () => {
+    const q = (await req("POST", "/api/write/quiz", doc(), a.token)).body;
+    for (const it of q.items) {
+      assert.ok(it.q.includes("_____") && it.options.includes(it.answer) && it.options.length === 3);
+    }
+    const empty = (await req("POST", "/api/write/quiz", { title: "", blocks: [] }, a.token)).body;
+    assert.equal(empty.items.length, 0);
+    assert.ok(empty.note);
+    const roles = (await req("GET", "/api/write/role-sets", undefined, a.token)).body;
+    assert.ok(roles["דיון"].length >= 5);
+    assert.equal((await req("POST", "/api/write/keywords", doc())).status, 401);
+  });
+});

@@ -27,6 +27,7 @@ import { registerWriteFinalRoutes } from "./routes-write-final.js";
 import { registerWriteV36Routes } from "./routes-write-v36.js";
 import { registerOpsRoutes } from "./routes-ops.js";
 import { registerWriteV39Routes } from "./routes-write-v39.js";
+import { registerWriteV47Routes } from "./routes-write-v47.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
 import { maintenanceGuard, maintenanceMessage } from "./ops.js";
 import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
@@ -543,6 +544,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerWriteFinalRoutes(app, { db, limiter, fail, requireUser });
   registerWriteV36Routes(app, { db, limiter, fail, requireUser });
   registerWriteV39Routes(app, { db, limiter, fail, requireUser });
+  registerWriteV47Routes(app, { limiter, requireUser });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
   registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
   registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });

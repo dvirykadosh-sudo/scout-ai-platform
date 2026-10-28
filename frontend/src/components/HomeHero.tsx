@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, storageGet, storageSet } from "@/lib/api";
 import type { Activity, ListResponse } from "@/lib/types";
+import { Coverflow } from "./Depth3D";
 import { ActivityGlance } from "./ActivityView";
 import { TopicSuggestions } from "./TopicSuggestions";
 
@@ -85,16 +86,16 @@ export function HomeInspiration() {
           <h2 id="ex-title" className="section-title">
             מהמאגר, כדי לקבל השראה
           </h2>
-          <ul className="examples-list">
+          <Coverflow label="פעולות מומלצות מהמאגר">
             {examples.map((a) => (
-              <li key={a.id} className="card glass">
+              <div key={a.id} className="card glass">
                 <h3 className="card-title">
                   <Link href={`/library/${a.id}`}>{a.title}</Link>
                 </h3>
                 <ActivityGlance a={a} />
-              </li>
+              </div>
             ))}
-          </ul>
+          </Coverflow>
         </section>
       )}
     </>

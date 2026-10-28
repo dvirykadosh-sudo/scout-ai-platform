@@ -15,6 +15,7 @@ import { BackupPlanModal, ReadinessModal, StationsModal, TourButton, TribeMethod
 import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
 import { MoreToolsModal, OutdoorHint } from "./WriteV36";
 import { EditorProgress } from "./Polish";
+import { MapModal, PracticeModal, PrintablesModal, ReadAloudModal, StoryQuizModal } from "./WriteV47";
 import { AgeAdaptModal, SafetyModal, StageQuestionsModal, VoiceCheckModal } from "./WriteV39";
 import { GapsPanel, HelpModal, PrefsModal, SearchModal, StageCompare, useCatalog, type InsertFn } from "./WriteHelp";
 import { KINDS, KIND_LABEL, Md, countWords, emptyBlock, newBlockId, flatten, readAloud, sumMinutes, useHistory, type Block, type Doc, type Kind, type Snap } from "./WriteParts";
@@ -87,7 +88,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const [logOpen, setLogOpen] = useState(false);
   const [qOpen, setQOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions">("");
+  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print">("");
   const [fin, setFin] = useState<"" | "stations" | "backup" | "ready" | "tribe">("");
   const [stagesOpen, setStagesOpen] = useState(false);
   const [keysOpen, setKeysOpen] = useState(false);
@@ -1126,6 +1127,11 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       <VoiceCheckModal open={tool === "voice"} onClose={() => setTool("")} snap={state} token={token} />
       <SafetyModal open={tool === "safety"} onClose={() => setTool("")} snap={state} token={token} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, 60) }))} />
       <AgeAdaptModal open={tool === "age"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onOpened={(id) => router.push(`/write/${id}`)} />
+      <MapModal open={tool === "map"} onClose={() => setTool("")} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <ReadAloudModal open={tool === "read"} onClose={() => setTool("")} snap={state} block={cur} />
+      <PracticeModal open={tool === "practice"} onClose={() => setTool("")} block={cur} />
+      <StoryQuizModal open={tool === "story"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <PrintablesModal open={tool === "print"} onClose={() => setTool("")} snap={state} token={token} />
       <StageQuestionsModal open={tool === "questions"} onClose={() => setTool("")} block={cur} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <ShortcutsModal open={keysOpen} onClose={() => setKeysOpen(false)} />
       {runOn && <RunMode snap={state} onClose={() => setRunOn(false)} />}

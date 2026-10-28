@@ -45,6 +45,8 @@ export function Library() {
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [favOnly, setFavOnly] = useState(false);
+  const [stack, setStack] = useState(false);
+  useEffect(() => { try { setStack(localStorage.getItem("scout.stack") === "1"); } catch {} }, []);
   const [minRating, setMinRating] = useState("");
   const [adv, setAdv] = useState<Adv>(NO_ADV);
   const [hydrated, setHydrated] = useState(false);
@@ -400,7 +402,12 @@ export function Library() {
         </div>
       )}
 
-      <ul className="list" aria-busy={loading}>
+      <p className="no-print">
+        <button type="button" className="btn btn-small" aria-pressed={stack} onClick={() => { setStack(!stack); try { localStorage.setItem("scout.stack", stack ? "0" : "1"); } catch {} }}>
+          {stack ? "תצוגת רשימה" : "תצוגת ערימה"}
+        </button>
+      </p>
+      <ul className={`list${stack ? " stacked" : ""}`} aria-busy={loading}>
         {data?.items.map((a: Activity) => (
           <li key={a.id} className="card glass activity-card">
             {a.kind && KIND_LABELS[a.kind] && (

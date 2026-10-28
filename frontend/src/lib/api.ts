@@ -70,6 +70,12 @@ export async function downloadDocx(id: number, title: string): Promise<void> {
   a.remove();
   // revoking immediately can cancel the download in some browsers
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  try {
+    if (!localStorage.getItem("scout.celebrated")) {
+      localStorage.setItem("scout.celebrated", "1");
+      window.dispatchEvent(new Event("scout:celebrate"));
+    }
+  } catch {}
 }
 
 /** Sends a Word/txt file to the server and gets its plain text back. */
