@@ -3,6 +3,7 @@
 // שלב 46 (301–325): עומק ותלת-ממד. הכול נכבה בהפחתת תנועה ובניגודיות גבוהה, ויש תחליף סטטי.
 import { Children, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Stage } from "@/lib/types";
+import { TrailStages } from "./Depth3D2";
 
 const calm = () => typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.classList.contains("hc");
 
@@ -15,6 +16,8 @@ export function Logo3D({ src }: { src: string }) {
     const set = (nx: number, ny: number) => {
       el.style.setProperty("--ry", `${(nx * 16).toFixed(1)}deg`);
       el.style.setProperty("--rx", `${(-ny * 12).toFixed(1)}deg`);
+      el.style.setProperty("--ex", `${(nx * 1.6).toFixed(2)}px`);
+      el.style.setProperty("--ey", `${(ny * 1.0).toFixed(2)}px`);
       el.style.setProperty("--mx", `${((nx + 1) * 50).toFixed(0)}%`);
       el.style.setProperty("--my", `${((ny + 1) * 50).toFixed(0)}%`);
     };
@@ -43,6 +46,8 @@ export function Logo3D({ src }: { src: string }) {
         <img className="logo3d-back l2" src={src} alt="" aria-hidden="true" />
         <img className="logo3d-back l1" src={src} alt="" aria-hidden="true" />
         <img className="emblem-logo logo3d-front" src={src} alt="סמל שבט מעוז" />
+        <span className="logo3d-eye" style={{ left: "47.3%" }} aria-hidden="true" />
+        <span className="logo3d-eye" style={{ left: "52.7%" }} aria-hidden="true" />
         <span className="logo3d-sheen" aria-hidden="true" />
       </div>
     </div>
@@ -179,12 +184,17 @@ export function DepthLayers() {
 /** 304: שלבי הפעולה ככרטיסים שמתהפכים. */
 export function FlipStages({ stages }: { stages: Stage[] }) {
   const [on, setOn] = useState(false);
+  const [trail, setTrail] = useState(false);
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   return (
     <div className="flip-wrap">
       <button type="button" className="btn btn-small" aria-pressed={on} onClick={() => setOn(!on)}>
         {on ? "חזרה לטבלה" : "תצוגת כרטיסים"}
+      </button>{" "}
+      <button type="button" className="btn btn-small" aria-pressed={trail} onClick={() => setTrail(!trail)}>
+        {trail ? "הסתרת השביל" : "תצוגת שביל"}
       </button>
+      {trail && <TrailStages stages={stages} />}
       {on && (
         <ul className="flip-grid" aria-label="שלבי הפעולה ככרטיסים">
           {stages.map((s, i) => (

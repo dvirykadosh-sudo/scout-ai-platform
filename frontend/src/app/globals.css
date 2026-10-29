@@ -2223,3 +2223,83 @@ html.light .emblem.has-logo .brand-title { color: var(--accent); text-shadow: no
 
 /* שלב 47 */
 .station-map { width: 100%; max-height: 360px; border: 1px solid var(--line); border-radius: var(--r-md); cursor: crosshair; background: #fff; }
+
+/* ───────────── שלב 48: הנדחים משלב 46 ───────────── */
+/* 313 */
+.logo3d-eye { position: absolute; top: 45.8%; width: 1.6%; aspect-ratio: 1; margin-inline-start: -0.8%; border-radius: 50%; background: #120a30; pointer-events: none; opacity: 0; transform: translate(var(--ex, 0), var(--ey, 0)); }
+@media (prefers-reduced-motion: no-preference) { html:not(.hc) .logo3d-eye { opacity: 0.9; } }
+/* 316: עמודות מוגבהות בכל הגרפים */
+.bar-track, .assist-progress, .meter { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4); }
+.bar-fill, .assist-progress > span, .meter > span { background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 55%), var(--btn-bg); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), 0 5px 10px rgba(0, 0, 0, 0.25); border-radius: 999px; }
+html.hc .bar-fill, html.hc .assist-progress > span, html.hc .meter > span { box-shadow: none; background-image: none; }
+/* 307: גלגל */
+.wheel-wrap { margin: 12px 0 18px; }
+.wheel-scene { perspective: 900px; height: 150px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.wheel-ring { list-style: none; padding: 0; margin: 0; position: relative; width: 140px; height: 48px; transform-style: preserve-3d; transform: translateZ(-260px) rotateY(var(--wheel-rot, 0deg)); }
+.wheel-ring li { position: absolute; inset: 0; transform: rotateY(calc(var(--k) * 360deg / var(--wheel-n))) translateZ(260px); }
+.wheel-item { width: 100%; height: 100%; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; box-shadow: var(--sh-1); }
+.wheel-item[aria-current="true"] { background: var(--btn-bg); color: var(--on-accent); }
+@media (prefers-reduced-motion: no-preference) { .wheel-ring { transition: transform 0.6s cubic-bezier(.3, 1.2, .5, 1); } }
+@media (prefers-reduced-motion: reduce) { .wheel-scene { height: auto; perspective: none; overflow: visible; } .wheel-ring { transform: none; display: flex; flex-wrap: wrap; gap: 8px; width: auto; height: auto; } .wheel-ring li { position: static; transform: none; } .wheel-item { padding: 8px 12px; } }
+html.hc .wheel-scene { height: auto; perspective: none; overflow: visible; } html.hc .wheel-ring { transform: none; display: flex; flex-wrap: wrap; gap: 8px; width: auto; height: auto; } html.hc .wheel-ring li { position: static; transform: none; } html.hc .wheel-item { padding: 8px 12px; }
+/* 308: שביל */
+.trail-scene { perspective: 800px; margin: 10px 0; }
+.trail-plane { width: 100%; max-height: 260px; display: block; box-shadow: var(--sh-2); border-radius: 20px; }
+@media (prefers-reduced-motion: no-preference) { html:not(.hc) .trail-plane { transform: rotateX(48deg) scale(0.92); transform-origin: 50% 80%; margin-top: -30px; } }
+.trail-list { padding-inline-start: 22px; }
+/* 317 */
+.map3d { perspective: 900px; display: flex; justify-content: center; }
+.map3d-svg { width: min(300px, 80%); max-height: 380px; filter: drop-shadow(0 18px 18px rgba(10, 4, 30, 0.45)); }
+@media (prefers-reduced-motion: no-preference) { html:not(.hc) .map3d-svg { transform: rotateX(var(--rx, 30deg)) rotateY(var(--ry, 0deg)); transition: transform 0.2s; } }
+/* 318, 319: ספר */
+.book { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.book-pages { position: relative; width: min(360px, 90%); aspect-ratio: 3 / 4; perspective: 1400px; }
+.book-page { position: absolute; inset: 0; padding: 22px; border: 1px solid var(--line); border-radius: 6px 16px 16px 6px; background: var(--panel); box-shadow: var(--sh-2); overflow: auto; transform-origin: right center; backface-visibility: hidden; }
+.book-page.turned { visibility: hidden; }
+.book-cover { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: var(--btn-bg); color: var(--on-accent); border-radius: 4px 12px 12px 4px; margin: -22px; padding: 22px; }
+@media (prefers-reduced-motion: no-preference) { .book-page { transition: transform 0.7s ease, visibility 0s 0.7s; } .book-page.turned { transform: rotateY(160deg); } }
+.book-page:not(.turned) { visibility: visible; }
+/* 321 */
+.badges3d { list-style: none; padding: 0; margin: 12px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; perspective: 600px; }
+.badge3d { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 0.85rem; }
+.badge3d-face { width: 64px; height: 64px; display: grid; place-items: center; font-size: 28px; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #ccc, #777); color: #333; box-shadow: 0 6px 0 #555, 0 10px 14px rgba(0, 0, 0, 0.4), inset 0 2px 3px rgba(255, 255, 255, 0.6); }
+.badge3d.done .badge3d-face { background: radial-gradient(circle at 30% 25%, #ffe58a, #e0a100); color: #5a3d00; box-shadow: 0 6px 0 #9a6b00, 0 10px 14px rgba(0, 0, 0, 0.4), inset 0 2px 3px rgba(255, 255, 255, 0.8); }
+@media (prefers-reduced-motion: no-preference) { .badge3d-face { transition: transform 0.4s; } .badge3d:hover .badge3d-face { transform: rotateY(360deg); } }
+/* 324 */
+.stage-deck { perspective: 1000px; position: relative; margin: 10px 0; }
+.stage-card { position: relative; z-index: 2; padding: 24px; border: 2px solid var(--accent-2); border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--sh-3); min-height: 200px; }
+.stage-card h3 { font-size: 1.8rem; margin-top: 0; }
+.stage-text { font-size: 1.35rem; line-height: 1.7; }
+.stage-next { position: absolute; inset-inline: 18px; bottom: -14px; z-index: 1; padding: 6px 14px; border-radius: 0 0 var(--r-md) var(--r-md); background: var(--btn-bg); color: var(--on-accent); opacity: 0.8; font-size: 0.9rem; }
+@media (prefers-reduced-motion: no-preference) { html:not(.hc) .stage-card { transform: rotateX(3deg); } }
+.stage-clock { font-size: 3rem; font-weight: 800; text-align: center; margin: 14px 0 6px; font-variant-numeric: tabular-nums; }
+
+/* ───── שלב 50 (336–345) ───── */
+.illus-grid { list-style: none; padding: 0; margin: 0 0 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+.illus-grid li { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.illus-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border: 2px solid var(--line); border-radius: var(--r-md); background: var(--field); color: var(--text); cursor: pointer; font: inherit; }
+.illus-btn.on { border-color: var(--glow); box-shadow: 0 0 0 2px var(--glow) inset; }
+.illus-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.illus-act { display: flex; gap: 4px; justify-content: center; }
+.merge-list { list-style: none; padding: 0; display: grid; gap: 10px; }
+.merge-row { border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px; }
+.merge-row.m-changed { border-inline-start: 6px solid #d98a00; }
+.merge-row.m-onlyA { border-inline-start: 6px solid #2a7fd4; }
+.merge-row.m-onlyB { border-inline-start: 6px solid #1d9a5a; }
+.merge-row.m-same { opacity: .8; }
+.merge-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0; }
+.merge-cols p { margin: 2px 0; }
+.viewer-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #1d9a5a; }
+.meter-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
+.meter-list li { display: grid; grid-template-columns: 130px 1fr 32px auto; gap: 8px; align-items: center; }
+.meter-name { min-height: 44px; border: 2px solid var(--line); border-radius: var(--r-md); background: var(--field); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.meter-name:active { transform: scale(.97); }
+.meter-bar { height: 14px; border-radius: 8px; background: var(--line); overflow: hidden; display: block; }
+.meter-bar > span { display: block; height: 100%; background: var(--glow); transition: width .25s; }
+.meter-n { text-align: center; font-weight: 700; }
+.meter-tip { padding: 8px 10px; border-radius: var(--r-md); background: rgba(217, 138, 0, .15); }
+.rules-out { white-space: pre-wrap; background: var(--field); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px; font-family: inherit; max-height: 320px; overflow: auto; }
+.bi-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.bi-table td { border: 1px solid var(--line); padding: 6px 8px; }
+@media (max-width: 560px) { .merge-cols { grid-template-columns: 1fr; } .meter-list li { grid-template-columns: 100px 1fr 28px auto; } }
+@media (prefers-reduced-motion: reduce) { .meter-bar > span { transition: none; } .meter-name:active { transform: none; } }

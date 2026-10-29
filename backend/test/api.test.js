@@ -3649,3 +3649,120 @@ describe("שלב 47: יצירה והדפסה (326–335)", () => {
     assert.equal((await req("POST", "/api/write/keywords", doc())).status, 401);
   });
 });
+
+describe("security hardening (v49)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const mk = async (u) => (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + "xx", signupCode: "shevet-code" }) })).body.token;
+
+  it("pages carry a strict CSP, frame-ancestors none and permissions policy", async () => {
+    const r = await fetch(base + "/api/health");
+    const csp = r.headers.get("content-security-policy") || "";
+    assert.match(csp, /frame-ancestors 'none'/);
+    assert.match(r.headers.get("permissions-policy") || "", /camera=\(\)/);
+    assert.equal(r.headers.get("x-content-type-options"), "nosniff");
+  });
+
+  it("CORS does not echo a foreign origin", async () => {
+    const r = await fetch(base + "/api/health", { headers: { origin: "https://evil.example" } });
+    assert.notEqual(r.headers.get("access-control-allow-origin"), "https://evil.example");
+    assert.notEqual(r.headers.get("access-control-allow-origin"), "*");
+  });
+
+  it("a forged alg=none token is rejected", async () => {
+    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const forged = `${b64({ alg: "none", typ: "JWT" })}.${b64({ sub: 1, username: "admin", role: "ADMIN" })}.`;
+    const r = await j("/api/admin/users", { headers: H(forged) });
+    assert.equal(r.status, 401);
+  });
+
+  it("a regular user cannot reach admin routes", async () => {
+    const t = await mk("secuser1");
+    for (const p of ["/api/admin/users", "/api/admin/audit", "/api/admin/blocks"]) {
+      const r = await j(p, { headers: H(t) });
+      assert.ok([401, 403].includes(r.status), p + " -> " + r.status);
+    }
+  });
+
+  it("one user cannot read or delete another user's private data", async () => {
+    const a = await mk("secalice");
+    const b = await mk("secbobby");
+    const c = await j("/api/me/collections", { method: "POST", headers: H(a), body: JSON.stringify({ name: "פרטי של אליס" }) });
+    assert.equal(c.status, 201);
+    const del = await j(`/api/collections/${c.body.id}`, { method: "DELETE", headers: H(b) });
+    assert.ok([403, 404].includes(del.status), "delete status " + del.status);
+    const mine = await j("/api/me/collections", { headers: H(b) });
+    assert.ok(!JSON.stringify(mine.body).includes("פרטי של אליס"));
+  });
+
+  it("SQL injection strings in search params do not break or leak", async () => {
+    for (const q of ["' OR 1=1 --", "\"; DROP TABLE activities; --", "%' UNION SELECT * FROM users --"]) {
+      const r = await j(`/api/activities?author=${encodeURIComponent(q)}&sort=${encodeURIComponent(q)}`);
+      assert.ok(r.status === 200 || r.status === 400, "status " + r.status);
+      if (r.status === 200) assert.equal(r.body.items.length, 0);
+    }
+    const ok = await j("/api/activities");
+    assert.equal(ok.status, 200);
+  });
+
+  it("oversized JSON bodies are refused", async () => {
+    const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "x", password: "y".repeat(300_000) }) });
+    assert.equal(r.status, 413);
+  });
+});
+
+describe("write v50 (336-345)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  let tok;
+  const req = (m, p, body, t = tok) => j(p, { method: m, headers: t ? H(t) : {}, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const blocks = [
+    { id: "a1", title: "פתיחה בשאלה", kind: "open", minutes: 10, text: "שואלים את החניכים מה זה אחריות אישית ומדוע אחריות חשובה בקבוצה." },
+    { id: "a2", title: "דיון בקבוצות", kind: "body", minutes: 15, text: "מחלקים לקבוצות קטנות ודנים במקרים של אחריות בשבט ובבית הספר." },
+  ];
+  before(async () => { tok = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "v50user", password: "Passw0rd!xyz", displayName: "דביר נבדק", signupCode: "shevet-code" }) })).body.token; });
+
+  it("holiday templates list and fetch", async () => {
+    const l = await req("GET", "/api/write/holidays");
+    assert.ok(l.body.length >= 8);
+    const h = await req("GET", "/api/write/holidays/hanuka");
+    assert.equal(h.status, 200);
+    assert.ok(h.body.stages.length >= 4);
+    assert.equal((await req("GET", "/api/write/holidays/nope")).status, 404);
+  });
+  it("merge plan aligns, flags changes and extras", async () => {
+    const b = [{ ...blocks[0], text: blocks[0].text + " ועוד משפט" }, { id: "b3", title: "משחק חדש לגמרי", kind: "peak", minutes: 10, text: "כדורגל קבוצות" }];
+    const r = await req("POST", "/api/write/merge-plan", { a: blocks, b });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.rows[0].state, "changed");
+    assert.ok(r.body.rows.some((x) => x.state === "onlyA"));
+    assert.ok(r.body.rows.some((x) => x.state === "onlyB"));
+    const same = await req("POST", "/api/write/merge-plan", { a: blocks, b: blocks });
+    assert.ok(same.body.rows.every((x) => x.state === "same"));
+  });
+  it("hooks, game rules, series and translation sheet", async () => {
+    const doc = { title: "אחריות אישית", meta: { value: "אחריות", ageGroup: "כיתה ז' - מעורב" }, blocks };
+    const h = await req("POST", "/api/write/hooks", doc);
+    assert.equal(h.body.hooks.length, 6);
+    const g = await req("POST", "/api/write/game-rules", { name: "מירוץ הדגלים", players: 20, space: "outdoor", goal: "להביא את הדגל לבסיס", style: "teams" });
+    assert.match(g.body.text, /## בטיחות/);
+    assert.equal((await req("POST", "/api/write/game-rules", { name: "x", goal: "מטרה" })).status, 400);
+    const n = await req("POST", "/api/write/next-series", doc);
+    assert.equal(n.body.items.length, 3);
+    const t = await req("POST", "/api/write/translate-sheet", { lang: "ru", doc });
+    assert.equal(t.body.stages[0].kind, "Начало");
+    assert.ok(t.body.glossary.some((x) => x.he === "אחריות"));
+    assert.equal((await req("POST", "/api/write/translate-sheet", { lang: "fr", doc })).status, 400);
+  });
+  it("viewer presence reaches only the owner", async () => {
+    const d = await req("POST", "/api/write/docs", { title: "נוכחות", meta: {}, blocks: [] });
+    assert.equal(d.status, 201, JSON.stringify(d.body));
+    const sh = await req("POST", `/api/write/docs/${d.body.id}/share`, {});
+    const p = await j(`/api/write/shared/${sh.body.token}/presence`, { method: "POST", body: JSON.stringify({ cid: "client-123456", name: "אורח", blockId: "a1" }) });
+    assert.equal(p.status, 200);
+    const mine = await req("GET", `/api/write/docs/${d.body.id}/presence`);
+    assert.equal(mine.body.viewers.length, 1);
+    assert.equal(mine.body.viewers[0].name, "אורח");
+    const other = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "v50other", password: "Passw0rd!xyz", displayName: "אחר נבדק", signupCode: "shevet-code" }) })).body.token;
+    assert.equal((await req("GET", `/api/write/docs/${d.body.id}/presence`, null, other)).status, 404);
+    assert.equal((await j(`/api/write/shared/bad-token/presence`, { method: "POST", body: JSON.stringify({ cid: "client-123456" }) })).status, 404);
+  });
+});

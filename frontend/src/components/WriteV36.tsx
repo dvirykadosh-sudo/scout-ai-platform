@@ -1,6 +1,7 @@
 "use client";
 
 // שלב 36 (201–220): הקרוב אליי, ציוד לשבוע, כלים נוספים לעורך (זמנים, קריאות, נוכחות, קיצור ל-10 דקות).
+import type { V50Tool } from "./WriteV50";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
@@ -77,7 +78,7 @@ interface Att {
 }
 
 /** 206, 212, 214, 220: כלים נוספים לעורך. */
-export function MoreToolsModal({ open, onClose, snap, docId, token, onInsert, onOpened, onTool }: { open: boolean; onClose: () => void; snap: Snap; docId: number; token: string | null; onInsert: (t: string) => void; onOpened: (id: number) => void; onTool: (t: "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print") => void }) {
+export function MoreToolsModal({ open, onClose, snap, docId, token, onInsert, onOpened, onTool }: { open: boolean; onClose: () => void; snap: Snap; docId: number; token: string | null; onInsert: (t: string) => void; onOpened: (id: number) => void; onTool: (t: "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print" | "stage" | V50Tool) => void }) {
   const toast = useToast();
   const [cheers, setCheers] = useState<Cheer[]>([]);
   const [mood, setMood] = useState("הכול");
@@ -137,6 +138,17 @@ export function MoreToolsModal({ open, onClose, snap, docId, token, onInsert, on
           <button type="button" className="btn" onClick={() => onTool("practice")}>תרגול קולי</button>
           <button type="button" className="btn" onClick={() => onTool("story")}>פתיחה וחידון</button>
           <button type="button" className="btn" onClick={() => onTool("print")}>הדפסות ומשחקים</button>
+          <button type="button" className="btn" onClick={() => onTool("stage")}>מצב במה</button>
+          <button type="button" className="btn" onClick={() => onTool("illus")}>ספריית איורים</button>
+          <button type="button" className="btn" onClick={() => onTool("holiday")}>תבניות לחגים</button>
+          <button type="button" className="btn" onClick={() => onTool("hooks")}>שאלות פתיחה</button>
+          <button type="button" className="btn" onClick={() => onTool("rules")}>כללי משחק</button>
+          <button type="button" className="btn" onClick={() => onTool("translate")}>דף עזר באנגלית/רוסית</button>
+          <button type="button" className="btn" onClick={() => onTool("series")}>הפעולה הבאה בסדרה</button>
+          <button type="button" className="btn" onClick={() => onTool("merge")}>מיזוג שתי גרסאות</button>
+          <button type="button" className="btn" onClick={() => onTool("vnotes")}>הקלטה קולית לשלב</button>
+          <button type="button" className="btn" onClick={() => onTool("meter")}>מד השתתפות</button>
+          <button type="button" className="btn" onClick={() => onTool("viewers")}>מי צופה עכשיו</button>
         </div>
       </section>
       <section aria-labelledby="mt-time">

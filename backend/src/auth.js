@@ -21,7 +21,7 @@ export function signToken(user, sid) {
 export const signChallenge = (userId, purpose = "2fa") => jwt.sign({ sub: userId, purpose }, config.jwtSecret, { expiresIn: "5m" });
 export function readChallenge(token, purpose = "2fa") {
   try {
-    const p = jwt.verify(String(token), config.jwtSecret);
+    const p = jwt.verify(String(token), config.jwtSecret, { algorithms: ["HS256"] });
     return p.purpose === purpose ? p : null;
   } catch {
     return null;
@@ -53,7 +53,7 @@ function readToken(req) {
   let out = null;
   if (header.startsWith("Bearer ")) {
     try {
-      const p = jwt.verify(header.slice(7), config.jwtSecret);
+      const p = jwt.verify(header.slice(7), config.jwtSecret, { algorithms: ["HS256"] });
       if (p.purpose) throw new Error("not a session token");
       const db = req.db;
       if (!db) out = p;

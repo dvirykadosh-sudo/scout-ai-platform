@@ -12,7 +12,7 @@ const Close = ({ onClose }: { onClose: () => void }) => (<button type="button" c
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const plain = (t: string) => t.replace(/[#>*|_`]/g, " ").replace(/\s+/g, " ").trim();
 
-function printHtml(title: string, body: string, toast: ReturnType<typeof useToast>) {
+export function printHtml(title: string, body: string, toast: ReturnType<typeof useToast>) {
   const w = window.open("", "_blank", "width=900,height=1000");
   if (!w) return toast("הדפדפן חסם את החלון. אפשרו חלונות קופצים ונסו שוב.", { kind: "error" });
   w.document.write(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${esc(title)}</title><style>

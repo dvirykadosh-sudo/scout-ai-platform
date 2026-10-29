@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useAuth, useToast } from "./Providers";
+import { IsraelMap3D } from "./Depth3D2";
 import { Field } from "./ui";
 
 interface Ev {
@@ -61,6 +62,7 @@ export function TeamPage() {
   };
   return (
     <>
+      <IsraelMap3D />
       <form className="card" onSubmit={add} aria-label="הוספת פעולה ללוח">
         <h2>הוספת פעולה שאני מעביר/ה</h2>
         <Field label="שם הפעולה" htmlFor="tm-title">

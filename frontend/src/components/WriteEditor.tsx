@@ -15,6 +15,8 @@ import { BackupPlanModal, ReadinessModal, StationsModal, TourButton, TribeMethod
 import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
 import { MoreToolsModal, OutdoorHint } from "./WriteV36";
 import { EditorProgress } from "./Polish";
+import { StageModeModal } from "./Depth3D2";
+import { GameRulesModal, HolidayModal, HooksModal, IllustrationsModal, MergeModal, ParticipationModal, SeriesModal, TranslateModal, ViewersModal, VoiceNotesModal, type V50Tool } from "./WriteV50";
 import { MapModal, PracticeModal, PrintablesModal, ReadAloudModal, StoryQuizModal } from "./WriteV47";
 import { AgeAdaptModal, SafetyModal, StageQuestionsModal, VoiceCheckModal } from "./WriteV39";
 import { GapsPanel, HelpModal, PrefsModal, SearchModal, StageCompare, useCatalog, type InsertFn } from "./WriteHelp";
@@ -88,7 +90,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const [logOpen, setLogOpen] = useState(false);
   const [qOpen, setQOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print">("");
+  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print" | "stage" | V50Tool>("");
   const [fin, setFin] = useState<"" | "stations" | "backup" | "ready" | "tribe">("");
   const [stagesOpen, setStagesOpen] = useState(false);
   const [keysOpen, setKeysOpen] = useState(false);
@@ -1132,6 +1134,17 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       <PracticeModal open={tool === "practice"} onClose={() => setTool("")} block={cur} />
       <StoryQuizModal open={tool === "story"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <PrintablesModal open={tool === "print"} onClose={() => setTool("")} snap={state} token={token} />
+      <IllustrationsModal open={tool === "illus"} onClose={() => setTool("")} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <HolidayModal open={tool === "holiday"} onClose={() => setTool("")} token={token} onAdd={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs].slice(0, 60) }))} />
+      <MergeModal open={tool === "merge"} onClose={() => setTool("")} token={token} currentId={initial.id} blocks={state.blocks} onApply={(bs) => h.set((st) => ({ ...st, blocks: bs }))} />
+      <ViewersModal open={tool === "viewers"} onClose={() => setTool("")} token={token} docId={initial.id} blocks={state.blocks} />
+      <VoiceNotesModal open={tool === "vnotes"} onClose={() => setTool("")} docId={initial.id} block={cur} />
+      <HooksModal open={tool === "hooks"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <ParticipationModal open={tool === "meter"} onClose={() => setTool("")} docId={initial.id} />
+      <GameRulesModal open={tool === "rules"} onClose={() => setTool("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <TranslateModal open={tool === "translate"} onClose={() => setTool("")} token={token} snap={state} />
+      <SeriesModal open={tool === "series"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} onOpened={(id) => router.push(`/write/${id}`)} />
+      <StageModeModal open={tool === "stage"} onClose={() => setTool("")} blocks={state.blocks} />
       <StageQuestionsModal open={tool === "questions"} onClose={() => setTool("")} block={cur} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <ShortcutsModal open={keysOpen} onClose={() => setKeysOpen(false)} />
       {runOn && <RunMode snap={state} onClose={() => setRunOn(false)} />}

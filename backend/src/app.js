@@ -28,6 +28,7 @@ import { registerWriteV36Routes } from "./routes-write-v36.js";
 import { registerOpsRoutes } from "./routes-ops.js";
 import { registerWriteV39Routes } from "./routes-write-v39.js";
 import { registerWriteV47Routes } from "./routes-write-v47.js";
+import { registerWriteV50Routes } from "./routes-write-v50.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
 import { maintenanceGuard, maintenanceMessage } from "./ops.js";
 import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
@@ -56,10 +57,39 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   // behind a hosting proxy (Render, Fly...) req.ip must be the visitor, not the proxy
   if (config.isProd) app.set("trust proxy", 1);
   // strict headers for the API; pages (Next.js) need inline scripts, so no CSP there
-  const apiHelmet = helmet();
-  const pageHelmet = helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false });
+  const apiHelmet = helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"], formAction: ["'none'"] } }, hsts: config.isProd ? { maxAge: 63072000, includeSubDomains: true } : false });
+  // pages: Next.js needs inline scripts/styles, everything else is locked to this origin
+  const pageHelmet = helmet({
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        mediaSrc: ["'self'", "blob:"],
+        connectSrc: ["'self'"],
+        workerSrc: ["'self'"],
+        manifestSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: config.isProd ? [] : null,
+      },
+    },
+    hsts: config.isProd ? { maxAge: 63072000, includeSubDomains: true } : false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  });
+  app.use((req, res, next) => {
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(self), geolocation=(), payment=(), usb=()");
+    res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+    next();
+  });
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
-  app.use(cors({ origin: config.webOrigin }));
+  // CORS: only the configured site origin (same-origin calls need no CORS at all); no wildcard, no credentials
+  app.use(cors({ origin: config.webOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"], maxAge: 600 }));
   app.use(express.json({ limit: "200kb" }));
   app.use(maintenanceGuard(db));
   app.use(pageCountMiddleware(db));
@@ -78,6 +108,27 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       skip: () => config.nodeEnv === "test",
       handler: (req, res) => res.status(429).json(fail("RATE_LIMIT", "יותר מדי בקשות. נסו שוב בעוד כמה דקות")),
     });
+
+  // ── הגבלת קצב כללית לכל ה-API (בנוסף להגבלות הפרטניות): קריאות נדיבות, כתיבות מחמירות ──
+  const apiReadLimit = limiter(60_000, 300);
+  const apiWriteLimit = limiter(60_000, 90);
+  app.use("/api", (req, res, next) => {
+    if (req.path.startsWith("/health")) return next();
+    return (["GET", "HEAD", "OPTIONS"].includes(req.method) ? apiReadLimit : apiWriteLimit)(req, res, next);
+  });
+
+  // ── יצירת פעולות בלי התחברות (עותק, התאמה, "מהיר"...): מגבלה לכתובת ותקרה יומית כללית נגד הצפת המסד ──
+  const anonCreateIp = limiter(60 * 60_000, 15);
+  const ANON_CREATE = /^\/api\/activities\/(quick|\d+\/(duplicate|similar|upgrade-peak|shorten|adapt))\/?$/;
+  app.use((req, res, next) => {
+    if (req.method !== "POST" || !ANON_CREATE.test(req.path) || optionalAuth(req)) return next();
+    if (config.nodeEnv !== "test") {
+      const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+      const n = db.prepare("SELECT COUNT(*) AS c FROM activities WHERE owner_id IS NULL AND is_seed = 0 AND created_at >= ?").get(since).c;
+      if (n >= 300) return res.status(429).json(fail("DAILY_CAP", "הגענו למכסה היומית של פעולות בלי התחברות. התחברו כמדריכים כדי להמשיך"));
+    }
+    return anonCreateIp(req, res, next);
+  });
 
   // ── כתובות חסומות: לפני כל השאר, גם לדפים וגם ל-API ──
   app.use((req, res, next) => {
@@ -545,6 +596,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerWriteV36Routes(app, { db, limiter, fail, requireUser });
   registerWriteV39Routes(app, { db, limiter, fail, requireUser });
   registerWriteV47Routes(app, { limiter, requireUser });
+  registerWriteV50Routes(app, { db, limiter, requireUser });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
   registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
   registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });

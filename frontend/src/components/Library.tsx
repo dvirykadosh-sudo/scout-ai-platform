@@ -1,5 +1,6 @@
 "use client";
 
+import { FlipBookModal } from "./Depth3D2";
 import { EmptyArt, KindIcon } from "./Polish";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -46,6 +47,7 @@ export function Library() {
   const [reloadKey, setReloadKey] = useState(0);
   const [favOnly, setFavOnly] = useState(false);
   const [stack, setStack] = useState(false);
+  const [bookOpen, setBookOpen] = useState(false);
   useEffect(() => { try { setStack(localStorage.getItem("scout.stack") === "1"); } catch {} }, []);
   const [minRating, setMinRating] = useState("");
   const [adv, setAdv] = useState<Adv>(NO_ADV);
@@ -461,9 +463,13 @@ export function Library() {
           <button type="button" className="btn btn-primary" onClick={makeBooklet} disabled={bookBusy}>
             {bookBusy ? "יוצר..." : "הורדת חוברת"}
           </button>
+          <button type="button" className="btn" onClick={() => setBookOpen(true)}>
+            עיון כספר
+          </button>
           <button type="button" className="btn" onClick={() => setPicked([])}>
             ניקוי בחירה
           </button>
+          <FlipBookModal open={bookOpen} onClose={() => setBookOpen(false)} title={bookTitle} picks={picked} />
         </section>
       )}
     </>

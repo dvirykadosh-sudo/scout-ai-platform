@@ -454,6 +454,17 @@ export function SharedView({ token }: { token: string }) {
       .then(setD)
       .catch((e) => setErr(errorMessage(e)));
   }, [token]);
+  // 339: מדווחים לבעלים באיזה שלב אנחנו נמצאים (בלי עריכה, בלי נתונים אישיים)
+  const [cur, setCur] = useState("");
+  useEffect(() => {
+    if (!d) return;
+    let cid = "";
+    try { cid = sessionStorage.getItem("scout.viewer.cid") || ""; if (!cid) { cid = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem("scout.viewer.cid", cid); } } catch { cid = Math.random().toString(36).slice(2) + "xxxxxx"; }
+    const send = () => api(`/api/write/shared/${encodeURIComponent(token)}/presence`, { method: "POST", body: { cid, name: "צופה", blockId: cur } }).catch(() => {});
+    send();
+    const t = setInterval(send, 15000);
+    return () => clearInterval(t);
+  }, [d, token, cur]);
   if (err)
     return (
       <p className="error-box" role="alert">
@@ -470,7 +481,7 @@ export function SharedView({ token }: { token: string }) {
       </p>
       <p className="hint">צפייה בלבד · עודכן {fmtDate(d.updatedAt)} · הקישור תקף עד {fmtDate(d.expiresAt)}</p>
       {d.blocks.map((b) => (
-        <section key={b.id} className={`card glass kind-${b.kind}`}>
+        <section key={b.id} className={`card glass kind-${b.kind}`} onClick={() => setCur(b.id)} onFocus={() => setCur(b.id)}>
           <h2 className="section-title">
             {b.title || KIND_LABEL[b.kind]}
             {b.minutes ? ` (${b.minutes} דקות)` : ""}
