@@ -29,6 +29,8 @@ import { registerOpsRoutes } from "./routes-ops.js";
 import { registerWriteV39Routes } from "./routes-write-v39.js";
 import { registerWriteV47Routes } from "./routes-write-v47.js";
 import { registerWriteV50Routes } from "./routes-write-v50.js";
+import { registerWriteV51Routes } from "./routes-write-v51.js";
+import { registerAccountV52Routes, regSettings } from "./routes-accounts-v52.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
 import { maintenanceGuard, maintenanceMessage } from "./ops.js";
 import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
@@ -163,7 +165,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   if (serveStatic) app.use(express.static(path.join(here, "..", "public")));
 
-  const signupOpen = () => !!config.signupCode || !config.isProd;
+  const signupOpen = () => !!config.signupCode || !!regSettings(db).code || !config.isProd;
 
   // ── לוגו השבט: מועלה על ידי האדמין, נשמר כקובץ ליד מסד הנתונים ──
   const logoFile = dbFile === ":memory:" ? null : path.join(path.dirname(path.resolve(dbFile)), "logo.bin");
@@ -189,7 +191,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), startedAt: bootedAt.toISOString(), maintenance: maintenanceMessage(db) }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
-    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode, logoVersion: logo?.v ?? null }),
+    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode || !!regSettings(db).code, logoVersion: logo?.v ?? null }),
   );
 
   app.get("/api/logo", (req, res) => {
@@ -597,10 +599,12 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerWriteV39Routes(app, { db, limiter, fail, requireUser });
   registerWriteV47Routes(app, { limiter, requireUser });
   registerWriteV50Routes(app, { db, limiter, requireUser });
+  registerWriteV51Routes(app, { limiter, requireUser });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
   registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
   registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });
   registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen });
+  registerAccountV52Routes(app, { db, mailer, limiter, fail, requireUser, requireAdmin });
 
   // מחיקה אוטומטית של יומני כניסות, מבקרים וחיבורים ישנים (לפי ההגדרה), פעם בכמה שעות
   try {

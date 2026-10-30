@@ -2303,3 +2303,28 @@ html.hc .wheel-scene { height: auto; perspective: none; overflow: visible; } htm
 .bi-table td { border: 1px solid var(--line); padding: 6px 8px; }
 @media (max-width: 560px) { .merge-cols { grid-template-columns: 1fr; } .meter-list li { grid-template-columns: 100px 1fr 28px auto; } }
 @media (prefers-reduced-motion: reduce) { .meter-bar > span { transition: none; } .meter-name:active { transform: none; } }
+
+/* ───── שלב 51 (346–366) ───── */
+.energy-svg { width: 100%; max-width: 420px; color: var(--glow); border: 1px solid var(--line); border-radius: var(--r-md); }
+.score-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 8px; }
+.score-list li { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 6px; align-items: center; }
+.score-n { font-size: 1.6rem; font-weight: 800; min-width: 70px; text-align: center; }
+.score-n.lead { color: var(--ok); }
+.wheel-out { font-size: 1.4rem; font-weight: 800; min-height: 2em; margin: 10px 0; }
+.wheel-vis { font-size: 2.4rem; font-weight: 800; text-align: center; min-height: 1.4em; color: var(--glow); }
+.noise-bar { height: 22px; border-radius: 12px; background: var(--line); overflow: hidden; margin: 12px 0; }
+.noise-bar > span { display: block; height: 100%; background: var(--ok); transition: width .12s; }
+.noise-bar > span.hot { background: var(--danger); }
+.check-list { list-style: none; padding: 0; display: grid; gap: 8px; }
+@media (max-width: 560px) { .score-list li { grid-template-columns: 1fr 1fr 1fr 1fr; } .score-list li input { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: reduce) { .noise-bar > span { transition: none; } }
+
+/* ───── שלב 52 (367–387) ───── */
+.hp-field { position: absolute; inset-inline-start: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.score-ring { display: inline-grid; place-items: center; width: 92px; height: 92px; border-radius: 50%; border: 8px solid var(--glow); font-size: 1.8rem; font-weight: 800; }
+.score-ring.low { border-color: var(--danger); }
+.score-ring.high { border-color: var(--ok); }
+.sec-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.sec-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.sec-table th, .sec-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: start; }
+.danger-zone { border: 2px solid var(--danger); border-radius: var(--r-md); padding: 12px; margin-top: 12px; }

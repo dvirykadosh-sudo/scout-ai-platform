@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, downloadBooklet, errorMessage, fmtDate } from "@/lib/api";
 import type { Activity, Run } from "@/lib/types";
+import { SecurityPlus } from "./AccountV52";
 import { ChangePassword, LoginForm, RegisterForm, useSignupInfo } from "./AuthForms";
 import { useAuth, useToast } from "./Providers";
 import { SecurityPanel } from "./SecurityPanel";
@@ -316,6 +317,7 @@ export function AccountPanel() {
       {pwOpen && <ChangePassword onDone={() => setPwOpen(false)} />}
       <NotificationsPanel />
       <SecurityPanel />
+      <SecurityPlus />
       <MyActivities />
       <Forgotten />
       <MyTags />

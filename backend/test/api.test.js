@@ -3766,3 +3766,196 @@ describe("write v50 (336-345)", () => {
     assert.equal((await j(`/api/write/shared/bad-token/presence`, { method: "POST", body: JSON.stringify({ cid: "client-123456" }) })).status, 404);
   });
 });
+
+describe("write v51 insights (346-366)", () => {
+  let tok;
+  const post = (tool, doc) => j(`/api/write/insights/${tool}`, { method: "POST", headers: { authorization: `Bearer ${tok}` }, body: JSON.stringify(doc) });
+  before(async () => { tok = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "v51user", password: "Passw0rd!xyz", displayName: "נבדק חמישים", signupCode: "shevet-code" }) })).body.token; });
+  const doc = {
+    title: "מדורה ואחריות",
+    meta: { minutes: 35, groupSize: 24, value: "אחריות", ageGroup: "כיתה ז' - מעורב" },
+    blocks: [
+      { id: "a", title: "פתיחה", kind: "open", minutes: 20, text: "כולם יושבים במעגל בשקט ומקשיבים לסיפור. החניכים כותבים פתק עם עט על דף נייר ואחר כך מדברים בדיון ארוך מאוד על המשמעות של האחריות האישית בתוך הקבוצה שלנו ובתוך הבית ובבית הספר ובכל מקום." },
+      { id: "b", title: "דיון", kind: "body", minutes: 15, text: "שיחה והקשבה בקבוצות." },
+      { id: "c", title: "מירוץ", kind: "peak", minutes: 10, text: "משחק תחרות עם חבל, כדור ומדורה בחוץ." },
+    ],
+  };
+  it("requires login and rejects unknown tools", async () => {
+    assert.equal((await j("/api/write/insights/pace", { method: "POST", body: "{}" })).status, 401);
+    assert.equal((await post("nope", doc)).status, 404);
+  });
+  it("pace flags long opening and total mismatch", async () => {
+    const r = await post("pace", doc);
+    assert.equal(r.body.total, 45);
+    assert.ok(r.body.issues.some((i) => /הפתיחה ארוכה/.test(i.text)));
+    assert.ok(r.body.issues.some((i) => /היעד 35/.test(i.text)));
+  });
+  it("energy has a point per stage and advice", async () => {
+    const r = await post("energy", doc);
+    assert.equal(r.body.points.length, 3);
+    assert.ok(r.body.points[2].energy >= 5);
+    assert.ok(r.body.points[0].energy <= 3);
+  });
+  it("gear scales with group size", async () => {
+    const r = await post("gear", doc);
+    const pens = r.body.items.find((x) => x.item === "עטים");
+    assert.equal(pens.qty, 24);
+    assert.ok(r.body.items.some((x) => /גפרורים/.test(x.item)));
+  });
+  it("clarity, inclusive, tips, preflight, reflect, closing work", async () => {
+    assert.ok((await post("clarity", doc)).body.issues.length >= 1);
+    assert.ok((await post("inclusive", doc)).body.hits.some((h) => h.found === "כולם"));
+    assert.equal((await post("tips", doc)).body.tips.length, 3);
+    assert.ok((await post("preflight", doc)).body.items.some((x) => /דלי מים/.test(x)));
+    assert.equal((await post("reflect", doc)).body.questions.length, 5);
+    assert.ok((await post("closing", doc)).body.lines.length >= 2);
+    assert.equal((await post("pace", { title: "", meta: {}, blocks: [] })).status, 200);
+  });
+});
+
+describe("accounts v52 (367-387)", () => {
+  let adm;
+  const A = () => ({ authorization: `Bearer ${adm}` });
+  const reg = (u, extra = {}) => j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + " נבדק", signupCode: "shevet-code", ...extra }) });
+  const rq = (m, p, body, t) => j(p, { method: m, headers: t ? { authorization: `Bearer ${t}` } : A(), ...(body ? { body: JSON.stringify(body) } : {}) });
+  before(async () => {
+    const { hashPassword } = await import("../src/auth.js");
+    db.prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at, display_name, staff_role) VALUES (?,?,?,?,?,?,?)").run("v52admin", await hashPassword("Adm1n!Strong99"), "ADMIN", 0, new Date().toISOString(), "אדמין בדיקה", "SUPER");
+    adm = (await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "v52admin", password: "Adm1n!Strong99" }) })).body.token;
+    assert.ok(adm);
+  });
+
+  it("honeypot, reserved names and bad forms are refused", async () => {
+    assert.equal((await reg("botuser1", { website: "http://spam" })).status, 400);
+    assert.equal((await reg("botuser2", { formAge: 300 })).status, 400);
+    assert.equal((await reg("admin")).status, 400);
+    assert.equal((await reg("מנהל")).status, 400);
+    assert.equal((await reg("goodhuman", { formAge: 9000 })).status, 201);
+  });
+
+  it("invite: single use, hashed, usable without the signup code, then spent", async () => {
+    const c = await rq("POST", "/api/admin/security/invites", { label: "מדריכי צפון", maxUses: 1, days: 3 });
+    assert.equal(c.status, 201);
+    const code = c.body.code;
+    assert.equal((await j(`/api/auth/invite/${code}`)).body.valid, true);
+    const list = await rq("GET", "/api/admin/security/invites");
+    assert.ok(!JSON.stringify(list.body).includes(code));
+    const r1 = await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "invitee1", password: "Passw0rd!xyz", displayName: "מוזמן ראשון", inviteCode: code }) });
+    assert.equal(r1.status, 201);
+    const r2 = await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "invitee2", password: "Passw0rd!xyz", displayName: "מוזמן שני", inviteCode: code }) });
+    assert.equal(r2.status, 403);
+    assert.equal((await j(`/api/auth/invite/${code}`)).body.valid, false);
+    assert.ok([401, 403].includes((await j("/api/admin/security/invites", { headers: { authorization: `Bearer ${r1.body.token}` } })).status));
+  });
+
+  it("approval queue holds new users until approved", async () => {
+    assert.equal((await rq("PUT", "/api/admin/security/registration", { approval: true })).status, 200);
+    const r = await reg("waiting1");
+    assert.equal(r.status, 202);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "waiting1", password: "Passw0rd!xyz" }) })).status, 403);
+    const q = await rq("GET", "/api/admin/security/pending");
+    const row = q.body.find((x) => x.username === "waiting1");
+    assert.ok(row);
+    assert.equal((await rq("POST", `/api/admin/security/pending/${row.id}`, { approve: true })).status, 200);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "waiting1", password: "Passw0rd!xyz" }) })).status, 200);
+    await rq("PUT", "/api/admin/security/registration", { approval: false });
+  });
+
+  it("domain allowlist, daily cap and rotated code", async () => {
+    await rq("PUT", "/api/admin/security/registration", { domains: ["tzofim.org.il"] });
+    assert.equal((await reg("dom1", { email: "a@gmail.com" })).status, 400);
+    assert.equal((await reg("dom2")).status, 400);
+    assert.equal((await reg("dom3", { email: "a@tzofim.org.il" })).status, 201);
+    await rq("PUT", "/api/admin/security/registration", { domains: [] });
+    await rq("PUT", "/api/admin/security/registration", { newCode: "new-code-77" });
+    assert.equal((await reg("rot1")).status, 403);
+    assert.equal((await reg("rot2", { signupCode: "new-code-77" })).status, 201);
+    await rq("PUT", "/api/admin/security/registration", { clearCode: true });
+    await rq("PUT", "/api/admin/security/registration", { dailyCap: 1 });
+    assert.equal((await reg("cap1")).status, 429);
+    await rq("PUT", "/api/admin/security/registration", { dailyCap: 0 });
+    assert.equal((await reg("cap2")).status, 201);
+  });
+
+  it("bulk import creates users with temp passwords and skips bad rows", async () => {
+    const r = await rq("POST", "/api/admin/security/import-users", { rows: [{ displayName: "דנה כהן" }, { displayName: "דנה כהן" }, { displayName: "x y", username: "ab" }, { displayName: "רון לוי", email: "ron@example.com" }] });
+    assert.equal(r.status, 201);
+    assert.equal(r.body.created.length, 3);
+    assert.equal(r.body.skipped.length, 1);
+    const names = r.body.created.map((c) => c.username);
+    assert.equal(new Set(names).size, 3);
+    const login = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: names[0], password: r.body.created[0].tempPassword }) });
+    assert.equal(login.status, 200);
+    assert.equal(login.body.user.mustChangePassword ?? login.body.user.mustChangePw ?? true, true);
+    assert.equal((await rq("POST", "/api/admin/security/import-users", { rows: [] })).status, 400);
+  });
+
+  it("new device is flagged on a second, different device", async () => {
+    const mk = (ua) => j("/api/auth/login", { method: "POST", headers: { "user-agent": ua }, body: JSON.stringify({ username: "goodhuman", password: "Passw0rd!xyz" }) });
+    await mk("Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36");
+    await mk("Mozilla/5.0 (iPhone; CPU iPhone OS 17) Safari/604.1");
+    const u = db.prepare("SELECT id FROM users WHERE username = 'goodhuman'").get();
+    const rows = db.prepare("SELECT device, new_device FROM auth_sessions WHERE user_id = ? ORDER BY created_at").all(u.id);
+    assert.ok(rows.some((r) => r.new_device === 1), JSON.stringify(rows));
+    const tok = (await mk("Mozilla/5.0 (iPhone; CPU iPhone OS 17) Safari/604.1")).body.token;
+    const h = await rq("GET", "/api/me/login-history", null, tok);
+    assert.ok(h.body.sessions.some((s) => s.newDevice));
+    const ev = await rq("GET", "/api/me/security-events", null, tok);
+    assert.ok(ev.body.events.some((e) => e.action === "login.newdevice"));
+  });
+
+  it("account expiry blocks login and live sessions", async () => {
+    const t = (await reg("temp1")).body.token;
+    const id = db.prepare("SELECT id FROM users WHERE username = 'temp1'").get().id;
+    assert.equal((await rq("POST", "/api/admin/security/expiry", { id, date: "2020-01-01" })).status, 200);
+    assert.equal((await rq("GET", "/api/auth/me", null, t)).status, 401);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "temp1", password: "Passw0rd!xyz" }) })).status, 401);
+    assert.equal((await rq("POST", "/api/admin/security/expiry", { id, date: null })).status, 200);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "temp1", password: "Passw0rd!xyz" }) })).status, 200);
+    assert.equal((await rq("POST", "/api/admin/security/expiry", { id: 1, date: "2030-01-01" })).status, 403);
+  });
+
+  it("security score reflects 2FA and contact state", async () => {
+    const t = (await reg("scorer1")).body.token;
+    const s = await rq("GET", "/api/me/security-score", null, t);
+    assert.equal(s.status, 200);
+    assert.ok(s.body.score < 80);
+    assert.equal(s.body.items.find((i) => i.key === "2fa").ok, false);
+    assert.equal(s.body.items.find((i) => i.key === "password").ok, true);
+  });
+
+  it("export and self-delete (needs password and confirmation, keeps activities detached)", async () => {
+    const t = (await reg("leaver1")).body.token;
+    const ex = await rq("GET", "/api/me/export", null, t);
+    assert.equal(ex.status, 200);
+    assert.equal(ex.body.user.username, "leaver1");
+    assert.ok(!JSON.stringify(ex.body).includes("password_hash"));
+    assert.equal((await rq("POST", "/api/me/delete", { password: "wrong", confirm: "מחיקה" }, t)).status, 400);
+    assert.equal((await rq("POST", "/api/me/delete", { password: "Passw0rd!xyz", confirm: "no" }, t)).status, 400);
+    assert.equal((await rq("POST", "/api/me/delete", { password: "Passw0rd!xyz", confirm: "מחיקה" }, t)).status, 200);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "leaver1", password: "Passw0rd!xyz" }) })).status, 401);
+    assert.equal((await rq("POST", "/api/me/delete", { password: "Adm1n!Strong99", confirm: "מחיקה" }, adm)).status, 403);
+  });
+
+  it("admin tools: hardening report, lockouts, inactive sweep, revoke all", async () => {
+    const h = await rq("GET", "/api/admin/security/hardening");
+    assert.equal(h.status, 200);
+    assert.ok(h.body.checks.length >= 8);
+    assert.ok(h.body.checks.find((c) => c.key === "admin2fa").ok === false);
+    for (let i = 0; i < 4; i++) await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "lockme", password: "bad-pass-1" }) });
+    const lk = await rq("GET", "/api/admin/security/lockouts");
+    assert.ok(Array.isArray(lk.body));
+    if (lk.body.length) assert.equal((await rq("POST", "/api/admin/security/lockouts/release", { key: lk.body[0].key })).status, 200);
+    db.prepare("UPDATE users SET last_login_at = '2020-01-01T00:00:00.000Z' WHERE username = 'dom3'").run();
+    const inact = await rq("GET", "/api/admin/security/inactive?days=180");
+    const d3 = inact.body.users.find((u) => u.username === "dom3");
+    assert.ok(d3);
+    assert.equal((await rq("POST", "/api/admin/security/inactive/disable", { ids: [d3.id] })).body.disabled, 1);
+    const t = (await reg("victim1")).body.token;
+    const ra = await rq("POST", "/api/admin/security/revoke-all", {});
+    assert.ok(ra.body.revoked >= 1);
+    assert.equal((await rq("GET", "/api/auth/me", null, t)).status, 401);
+    assert.equal((await rq("GET", "/api/auth/me", null, adm)).status, 200);
+    assert.equal((await j("/api/admin/security/hardening", { headers: { authorization: `Bearer ${t}` } })).status, 401);
+  });
+});

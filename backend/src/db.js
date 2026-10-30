@@ -408,6 +408,18 @@ CREATE TABLE IF NOT EXISTS announcements (
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS invites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  label TEXT NOT NULL,
+  code_hash TEXT NOT NULL UNIQUE,
+  hint TEXT NOT NULL,
+  max_uses INTEGER NOT NULL DEFAULT 1,
+  uses INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  revoked_at TEXT
+);
 CREATE TABLE IF NOT EXISTS login_attempts (
   key TEXT PRIMARY KEY,
   count INTEGER NOT NULL DEFAULT 0,
@@ -513,6 +525,10 @@ function migrate(db) {
   add("users", "terms_accepted_at", "TEXT");
   add("users", "terms_version", "TEXT");
   add("users", "password_changed_at", "TEXT");
+  add("users", "pending_approval", "INTEGER NOT NULL DEFAULT 0");
+  add("users", "invite_id", "INTEGER");
+  add("users", "expires_at", "TEXT");
+  add("auth_sessions", "new_device", "INTEGER NOT NULL DEFAULT 0");
   add("audit_log", "prev_hash", "TEXT");
   add("audit_log", "hash", "TEXT");
   // כתובת מייל או טלפון מזוהים רק כשהם מאומתים, ולכן הייחודיות נבדקת רק עליהם

@@ -1,0 +1,132 @@
+// בדיקות דפדפן לשלב 52 (367–387).
+import { chromium, request } from "playwright-core";
+import AxeBuilder from "@axe-core/playwright";
+const B = process.env.BASE_URL || "http://localhost:5055";
+const CODE = process.env.SIGNUP_CODE || "maoz2026";
+const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
+const NEW_PW = "E2e-new-pass-2026";
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+let fails = 0;
+const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
+const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n").slice(0, 6).join(" | ")); } };
+const axeIn = (p, sel) => new AxeBuilder({ page: p }).include(sel).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+const axeMsg = (r) => r.violations.map((v) => v.id + " " + v.nodes.map((n) => n.target.join(" ")).join("; ")).join(" || ");
+const stamp = Date.now().toString().slice(-6);
+const mk = async (storage) => {
+  const c = await browser.newContext({ viewport: { width: 1280, height: 1000 }, locale: "he-IL" });
+  await c.addInitScript((st) => { try { localStorage.setItem("scout.hero.seen", "1"); if (st) localStorage.setItem("scout.session", st); } catch {} }, storage || null);
+  return c;
+};
+let adminSession;
+await step("admin login", async () => {
+  const api = await request.newContext();
+  let L = await api.post(B + "/api/auth/login", { data: { username: "admin", password: ADMIN_PW } });
+  if (L.status() !== 200) L = await api.post(B + "/api/auth/login", { data: { username: "admin", password: NEW_PW } });
+  let b = await L.json();
+  if (b.user?.mustChangePw) {
+    await api.post(B + "/api/auth/change-password", { headers: { authorization: `Bearer ${b.token}` }, data: { currentPassword: ADMIN_PW, newPassword: NEW_PW } });
+    b = await (await api.post(B + "/api/auth/login", { data: { username: "admin", password: NEW_PW } })).json();
+  }
+  adminSession = JSON.stringify({ token: b.token, user: b.user });
+  ok(!!b.token, "admin token");
+});
+const actx = await mk(adminSession);
+const A = await actx.newPage();
+A.on("pageerror", (e) => console.log("PAGEERROR", e.message));
+const card = () => A.locator('section[aria-labelledby="acl-title"]');
+const openTab = async (name) => { await A.goto(B + "/admin", { waitUntil: "networkidle" }); await card().getByRole("button", { name, exact: true }).click(); };
+let code = "";
+await step("create invite", async () => {
+  await openTab("הזמנות");
+  await card().getByLabel(/שם ההזמנה/).fill("מדריכי בדיקה");
+  await card().getByRole("button", { name: "יצירת הזמנה" }).click();
+  const link = await card().locator('p[dir="ltr"]').first().innerText({ timeout: 6000 });
+  code = link.split("/join/")[1].trim();
+  ok(code.length >= 8, "invite link shown: " + link);
+  ok((await card().getByText("מדריכי בדיקה").count()) >= 1, "listed");
+  const r = await axeIn(A, 'section[aria-labelledby="acl-title"]'); ok(r.violations.length === 0, "axe invites " + axeMsg(r));
+});
+await step("join with invite", async () => {
+  const ctx = await mk();
+  const P = await ctx.newPage();
+  await P.goto(B + "/join/" + code, { waitUntil: "networkidle" });
+  await P.getByText("הוזמנתם להצטרף: מדריכי בדיקה").waitFor({ timeout: 6000 });
+  ok((await P.getByLabel("קוד הרשמה של השבט").count()) === 0, "no signup code field");
+  const hb = await P.locator("#reg-website").boundingBox(); ok(!hb || Math.abs(hb.x) > 5000 || hb.width <= 1, "honeypot offscreen");
+  await P.getByLabel("שם להצגה").fill("מוזמן בדיקה");
+  await P.locator("#reg-user").fill("inv" + stamp);
+  await P.getByRole("button", { name: "הצעת סיסמה חזקה" }).click();
+  const pw = await P.locator("#reg-pass").inputValue();
+  ok(/^[a-z]+-[a-z]+-[a-z]+-[a-z]+-\d\d$/.test(pw), "passphrase generated: " + pw);
+  await P.getByLabel(/קראתי ואני מאשר/).check();
+  await P.waitForTimeout(2300);
+  await P.getByRole("button", { name: "הרשמה", exact: true }).click();
+  await P.getByText(/ברוכים הבאים/).first().waitFor({ timeout: 8000 });
+  await P.goto(B + "/account", { waitUntil: "networkidle" });
+  await P.getByText("ציון האבטחה שלי").waitFor({ timeout: 8000 });
+  const r = await axeIn(P, 'section[aria-labelledby="secplus-title"]'); ok(r.violations.length === 0, "axe score card " + axeMsg(r));
+  await P.getByText("כניסות אחרונות לחשבון").click();
+  // מחיקת חשבון
+  await P.getByRole("button", { name: "מחיקת החשבון שלי" }).click();
+  await P.getByLabel("סיסמה נוכחית").fill(pw);
+  const del = P.getByRole("button", { name: "מחיקה סופית" });
+  ok(await del.isDisabled(), "delete disabled until confirm");
+  await P.getByLabel(/לאישור כתבו/).fill("מחיקה");
+  await del.click();
+  await P.getByText("התחברות").first().waitFor({ timeout: 8000 });
+  await ctx.close();
+  const again = await mk();
+  const Q = await again.newPage();
+  await Q.goto(B + "/join/" + code, { waitUntil: "networkidle" });
+  await Q.getByText("ההזמנה לא תקפה").waitFor({ timeout: 6000 });
+  ok(true, "spent invite rejected");
+  await again.close();
+});
+await step("approval flow", async () => {
+  await openTab("הרשמה ואישורים");
+  await card().getByLabel(/כל הרשמה עצמית ממתינה לאישור/).click();
+  await card().getByText("כל הרשמה תחכה לאישור").first().waitFor({ timeout: 5000 }).catch(() => {});
+  const ctx = await mk();
+  const P = await ctx.newPage();
+  await P.goto(B + "/account", { waitUntil: "networkidle" });
+  await P.getByRole("button", { name: "הרשמה", exact: true }).first().click();
+  await P.getByLabel("שם להצגה").fill("ממתין בדיקה");
+  await P.locator("#reg-user").fill("wait" + stamp);
+  await P.locator("#reg-pass").fill("Str0ng-e2e-pw-26");
+  await P.getByLabel("קוד הרשמה של השבט").fill(CODE);
+  await P.getByLabel(/קראתי ואני מאשר/).check();
+  await P.waitForTimeout(2300);
+  await P.getByRole("button", { name: "הרשמה", exact: true }).last().click();
+  await P.getByText("ההרשמה התקבלה").first().waitFor({ timeout: 8000 });
+  await ctx.close();
+  await openTab("הרשמה ואישורים");
+  await card().getByText("ממתין בדיקה").waitFor({ timeout: 6000 });
+  const r = await axeIn(A, 'section[aria-labelledby="acl-title"]'); ok(r.violations.length === 0, "axe registration " + axeMsg(r));
+  await card().getByRole("button", { name: "אישור ממתין בדיקה" }).click();
+  await A.waitForTimeout(800);
+  ok((await card().getByText("ממתין בדיקה").count()) === 0, "approved and removed from queue");
+  await card().getByLabel(/כל הרשמה עצמית ממתינה לאישור/).click();
+  await A.waitForTimeout(600);
+});
+await step("import users", async () => {
+  await openTab("ייבוא משתמשים");
+  await card().getByLabel(/שורה לכל משתמש/).fill(`יובל ${stamp}\nמיכל ${stamp}, m${stamp}@example.com`);
+  await card().getByRole("button", { name: "יצירת המשתמשים" }).click();
+  await card().getByText("נוצרו 2").waitFor({ timeout: 6000 });
+  ok((await card().getByRole("button", { name: /הודעת קבלה/ }).count()) === 2, "welcome buttons");
+  const r = await axeIn(A, 'section[aria-labelledby="acl-title"]'); ok(r.violations.length === 0, "axe import " + axeMsg(r));
+});
+await step("accounts tab", async () => {
+  await openTab("חשבונות ונעילות");
+  await card().getByRole("heading", { name: "חשבונות לא פעילים" }).waitFor({ timeout: 6000 });
+  const r = await axeIn(A, 'section[aria-labelledby="acl-title"]'); ok(r.violations.length === 0, "axe accounts " + axeMsg(r));
+});
+await step("hardening tab", async () => {
+  await openTab("הקשחה");
+  await card().getByText(/ציון הקשחה: \d+ מתוך 100/).waitFor({ timeout: 6000 });
+  ok((await card().locator(".plain-list li").count()) >= 8, "8+ checks");
+  const r = await axeIn(A, 'section[aria-labelledby="acl-title"]'); ok(r.violations.length === 0, "axe hardening " + axeMsg(r));
+});
+await browser.close();
+console.log(fails ? "FAILS " + fails : "ALL OK");
+process.exit(fails ? 1 : 0);

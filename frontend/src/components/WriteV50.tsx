@@ -8,7 +8,7 @@ import { Field, Modal } from "./ui";
 import { printHtml } from "./WriteV47";
 import { newBlockId, type Block, type Snap } from "./WriteParts";
 
-export type V50Tool = "illus" | "holiday" | "merge" | "viewers" | "vnotes" | "hooks" | "meter" | "rules" | "translate" | "series";
+export type V50Tool = "illus" | "holiday" | "merge" | "viewers" | "vnotes" | "hooks" | "meter" | "rules" | "translate" | "series" | "box51";
 const docBody = (s: Snap) => ({ title: s.title, meta: s.meta, blocks: s.blocks });
 const Close = ({ onClose }: { onClose: () => void }) => (<button type="button" className="btn" onClick={onClose}>סגירה</button>);
 const copy = async (t: string, toast: ReturnType<typeof useToast>) => {

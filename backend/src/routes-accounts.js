@@ -28,6 +28,7 @@ import {
   sealSecret,
 } from "./accounts.js";
 import { config } from "./config.js";
+import { consumeInvite, dailyCapReached, effectiveSignupCode, emailDomainOk, findInvite, isNewDevice, isReservedName, regSettings } from "./routes-accounts-v52.js";
 import { audit, auditHash, nowIso } from "./db.js";
 import { escapeHtml } from "./email.js";
 import { FLAG_TEXT, TERMS_VERSION, checkCaptcha, failuresForUser, failuresFromIp, invalidateBlocks, loginFlags, logAccess, makeCaptcha, pageFrom, passwordProblems, readSettings, securityAlert, strictFor, countryOf } from "./security.js";
@@ -72,7 +73,15 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   const startSession = (req, user, method) => {
     const id = crypto.randomBytes(16).toString("hex");
     const t = nowIso();
-    db.prepare("INSERT INTO auth_sessions (id, user_id, created_at, last_seen_at, ip, user_agent, device, method) VALUES (?,?,?,?,?,?,?,?)").run(id, user.id, t, t, ip(req), ua(req), deviceLabel(ua(req)), method);
+    const dev = deviceLabel(ua(req));
+    const fresh = method !== "register" && isNewDevice(db, user.id, dev, ip(req));
+    db.prepare("INSERT INTO auth_sessions (id, user_id, created_at, last_seen_at, ip, user_agent, device, method, new_device) VALUES (?,?,?,?,?,?,?,?,?)").run(id, user.id, t, t, ip(req), ua(req), dev, method, fresh ? 1 : 0);
+    if (fresh) {
+      audit(db, user.username, "login.newdevice", { device: dev });
+      try {
+        if (mailer?.hasTransport && user.email && user.email_verified_at) mailer.enqueue("כניסה חדשה לחשבון שלכם", `<p dir="rtl">היתה כניסה לחשבון שלכם במחולל הפעולות ממכשיר חדש: ${escapeHtml(dev)}. אם זה לא אתם, החליפו סיסמה ונתקו את שאר המכשירים באזור האישי.</p>`, user.email);
+      } catch { /* מייל לא מפיל כניסה */ }
+    }
     db.prepare("UPDATE users SET last_login_at = ? WHERE id = ?").run(t, user.id);
     // חיבורים ישנים שכבר לא בשימוש לא נשמרים לנצח
     db.prepare("DELETE FROM auth_sessions WHERE user_id = ? AND (revoked_at IS NOT NULL OR last_seen_at < ?) AND created_at < ?").run(user.id, new Date(Date.now() - 90 * 86400000).toISOString(), new Date(Date.now() - 90 * 86400000).toISOString());
@@ -185,7 +194,8 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
       return res.status(401).json(fail("CAPTCHA_REQUIRED", "כדי להמשיך, ענו על השאלה הקצרה", capFields()));
     }
     const ok = await verifyPassword(password, user?.password_hash);
-    if (!user || !ok || user.disabled) {
+    if (user && ok && user.pending_approval) return res.status(403).json(fail("PENDING", "ההרשמה שלכם ממתינה לאישור מנהל השבט. נעדכן במייל כשתאושר"));
+    if (!user || !ok || user.disabled || (user.expires_at && Date.parse(user.expires_at) < Date.now())) {
       const n = registerFailure(db, key);
       audit(db, ident, "login.fail", {});
       failedLogin(req, ident, user, user?.disabled ? "disabled" : "password");
@@ -242,13 +252,25 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
 
   // ───── 82. הרשמה עם מייל וטלפון ─────
   app.post("/api/auth/register", limiter(60 * 60_000, 10), async (req, res) => {
-    if (!signupOpen()) return res.status(403).json(fail("SIGNUP_CLOSED", "ההרשמה סגורה. פנו למנהל המערכת שייצור לכם משתמש"));
-    const v = z.object({ username, password: pw, displayName: text(60).min(2, "יש להזין שם להצגה"), signupCode: text(100).optional().default(""), email: optText(120), phone: optText(30), acceptTerms: z.boolean().optional() }).parse(req.body ?? {});
+    const v = z.object({ username, password: pw, displayName: text(60).min(2, "יש להזין שם להצגה"), signupCode: text(100).optional().default(""), inviteCode: optText(40), website: optText(200), formAge: z.number().optional(), email: optText(120), phone: optText(30), acceptTerms: z.boolean().optional() }).parse(req.body ?? {});
+    // מלכודת בוטים: שדה נסתר שבן אדם לא ממלא, וזמן מילוי סביר
+    if (v.website || (v.formAge !== undefined && v.formAge < 2000)) {
+      audit(db, v.username, "register.bot", {});
+      return res.status(400).json(fail("BAD_REQUEST", "לא הצלחנו להשלים את ההרשמה. נסו שוב בעוד רגע"));
+    }
     const sameCode = (a, b) => String(a).replace(/\s+/g, "").toLowerCase() === String(b).replace(/\s+/g, "").toLowerCase();
-    if (config.signupCode && !sameCode(v.signupCode, config.signupCode)) {
+    const invite = v.inviteCode ? findInvite(db, v.inviteCode) : null;
+    if (!invite && !signupOpen()) return res.status(403).json(fail("SIGNUP_CLOSED", "ההרשמה סגורה. פנו למנהל המערכת שייצור לכם משתמש או ישלח הזמנה"));
+    if (v.inviteCode && !invite) return res.status(403).json(fail("BAD_INVITE", "קוד ההזמנה לא תקף. ייתכן שפג תוקפו או שכבר נוצל"));
+    const needCode = effectiveSignupCode(db);
+    if (!invite && needCode && !sameCode(v.signupCode, needCode)) {
       audit(db, v.username, "register.badcode", {});
       return res.status(403).json(fail("BAD_CODE", "קוד ההרשמה שגוי. בקשו אותו ממנהל השבט"));
     }
+    if (isReservedName(db, v.username) || isReservedName(db, v.displayName)) return res.status(400).json(fail("RESERVED_NAME", "השם הזה שמור למערכת. בחרו שם אחר"));
+    if (dailyCapReached(db)) return res.status(429).json(fail("DAILY_CAP", "הגענו למספר ההרשמות היומי. נסו שוב מחר או בקשו הזמנה ממנהל השבט"));
+    const reg = regSettings(db);
+    if (reg.domains.length && !invite && (!v.email || !emailDomainOk(db, normalizeEmail(v.email) || ""))) return res.status(400).json(fail("EMAIL_DOMAIN", `ההרשמה פתוחה למייל מהדומיינים: ${reg.domains.join(", ")}`));
     if (looksLikePhone(v.username)) return res.status(400).json(fail("BAD_USERNAME", "שם משתמש לא יכול להיראות כמו מספר טלפון. בחרו שם אחר"));
     if (!v.acceptTerms && config.nodeEnv !== "test") return res.status(400).json(fail("TERMS", "יש לאשר את תנאי השימוש ומדיניות הפרטיות"));
     if (checkPolicy(res, v.password, v.username, "INSTRUCTOR")) return;
@@ -260,10 +282,15 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     if (email && db.prepare("SELECT 1 FROM users WHERE lower(email) = ? AND email_verified_at IS NOT NULL").get(email)) return res.status(409).json(fail("EMAIL_TAKEN", "המייל הזה כבר משויך לחשבון אחר"));
     if (phone && db.prepare("SELECT 1 FROM users WHERE phone = ? AND phone_verified_at IS NOT NULL").get(phone)) return res.status(409).json(fail("PHONE_TAKEN", "הטלפון הזה כבר משויך לחשבון אחר"));
     const r = db
-      .prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at, display_name, email, phone, password_changed_at, terms_accepted_at, terms_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-      .run(v.username, await hashPassword(v.password), "INSTRUCTOR", 0, nowIso(), v.displayName, email, phone, nowIso(), v.acceptTerms ? nowIso() : null, v.acceptTerms ? TERMS_VERSION : null);
+      .prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at, display_name, email, phone, password_changed_at, terms_accepted_at, terms_version, pending_approval, disabled, invite_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .run(v.username, await hashPassword(v.password), "INSTRUCTOR", 0, nowIso(), v.displayName, email, phone, nowIso(), v.acceptTerms ? nowIso() : null, v.acceptTerms ? TERMS_VERSION : null, reg.approval && !invite ? 1 : 0, reg.approval && !invite ? 1 : 0, invite?.id ?? null);
+    if (invite) consumeInvite(db, invite.id);
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(Number(r.lastInsertRowid));
-    audit(db, user.username, "register", { email: !!email, phone: !!phone });
+    audit(db, user.username, "register", { email: !!email, phone: !!phone, invite: invite?.id ?? null, pending: !!user.pending_approval });
+    if (user.pending_approval) {
+      securityAlert(db, mailer, `בקשת הרשמה חדשה ממתינה לאישור: ${user.username}`);
+      return res.status(202).json({ pending: true, message: "ההרשמה התקבלה וממתינה לאישור מנהל השבט" });
+    }
     const token = startSession(req, user, "register");
     logAccess(db, req, "register", { user, page: pageFrom(req) });
     res.status(201).json({ token, user: publicUser(user) });

@@ -58,8 +58,8 @@ function readToken(req) {
       const db = req.db;
       if (!db) out = p;
       else {
-        const u = db.prepare("SELECT id, username, role, staff_role, disabled, must_change_pw FROM users WHERE id = ?").get(p.sub);
-        let live = !!u && !u.disabled;
+        const u = db.prepare("SELECT id, username, role, staff_role, disabled, must_change_pw, expires_at FROM users WHERE id = ?").get(p.sub);
+        let live = !!u && !u.disabled && !(u.expires_at && Date.parse(u.expires_at) < Date.now());
         if (live && p.sid) {
           const s = db.prepare("SELECT revoked_at, last_seen_at FROM auth_sessions WHERE id = ? AND user_id = ?").get(p.sid, p.sub);
           live = !!s && !s.revoked_at;

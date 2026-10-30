@@ -16,6 +16,7 @@ import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
 import { MoreToolsModal, OutdoorHint } from "./WriteV36";
 import { EditorProgress } from "./Polish";
 import { StageModeModal } from "./Depth3D2";
+import { ToolboxModal } from "./WriteV51";
 import { GameRulesModal, HolidayModal, HooksModal, IllustrationsModal, MergeModal, ParticipationModal, SeriesModal, TranslateModal, ViewersModal, VoiceNotesModal, type V50Tool } from "./WriteV50";
 import { MapModal, PracticeModal, PrintablesModal, ReadAloudModal, StoryQuizModal } from "./WriteV47";
 import { AgeAdaptModal, SafetyModal, StageQuestionsModal, VoiceCheckModal } from "./WriteV39";
@@ -1144,6 +1145,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       <GameRulesModal open={tool === "rules"} onClose={() => setTool("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <TranslateModal open={tool === "translate"} onClose={() => setTool("")} token={token} snap={state} />
       <SeriesModal open={tool === "series"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} onOpened={(id) => router.push(`/write/${id}`)} />
+      <ToolboxModal open={tool === "box51"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <StageModeModal open={tool === "stage"} onClose={() => setTool("")} blocks={state.blocks} />
       <StageQuestionsModal open={tool === "questions"} onClose={() => setTool("")} block={cur} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <ShortcutsModal open={keysOpen} onClose={() => setKeysOpen(false)} />
