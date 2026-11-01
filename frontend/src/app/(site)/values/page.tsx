@@ -1,6 +1,6 @@
 import { ValuesPage } from "@/components/ValuesPage";
 
-export const metadata = { title: "פעולה לפי ערך" };
+export const metadata = { title: "פעולה לפי ערך", description: "בחרו ערך מוביל וקבלו פעולה מותאמת: אחריות, חברות, אומץ, הגשמה ועוד." };
 
 export default function Page() {
   return (

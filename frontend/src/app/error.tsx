@@ -1,6 +1,10 @@
 "use client";
 
-export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
+import { useEffect } from "react";
+import { reportClientError } from "@/components/Monitor54";
+
+export default function ErrorPage({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => { reportClientError(error.message || "render error", error.stack); }, [error]);
   return (
     <main id="main" style={{ maxWidth: 560, margin: "15vh auto", padding: 16, textAlign: "center" }}>
       <h1>משהו השתבש</h1>

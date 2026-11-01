@@ -4,7 +4,7 @@ import { PageTitle } from "@/components/ui";
 import { MethodWheel } from "@/components/Depth3D2";
 import { METHODS } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "ספריית המתודות" };
+export const metadata: Metadata = { title: "ספריית המתודות", description: "ספריית המתודות החינוכיות בצופים: משחק תחרות, דיון, ייצוג, השראה ועוד, עם דוגמאות ומתי להשתמש." };
 
 export default function MethodsPage() {
   return (

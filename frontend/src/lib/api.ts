@@ -6,11 +6,13 @@ export class ApiError extends Error {
   status: number;
   code: string;
   fields?: Record<string, string[]>;
-  constructor(status: number, code: string, message: string, fields?: Record<string, string[]>) {
+  requestId?: string;
+  constructor(status: number, code: string, message: string, fields?: Record<string, string[]>, requestId?: string) {
     super(message);
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.requestId = requestId;
   }
 }
 
@@ -40,7 +42,7 @@ export async function api<T>(path: string, { method = "GET", body, token, signal
     throw new ApiError(0, "NETWORK", "אין חיבור לשרת. בדקו את האינטרנט ונסו שוב. אם האתר היה לא פעיל זמן מה, הוא מתעורר וייקח כחצי דקה.");
   }
   if (!res.ok) {
-    let data: { error?: { code?: string; message?: string; fields?: Record<string, string[]> } } = {};
+    let data: { error?: { code?: string; message?: string; fields?: Record<string, string[]>; requestId?: string } } = {};
     try {
       data = await res.json();
     } catch {
@@ -48,7 +50,7 @@ export async function api<T>(path: string, { method = "GET", body, token, signal
     }
     // התחברות שפגה: מודיעים ל-Providers כדי לנקות ולהציג הודעה ברורה
     if (res.status === 401 && token && data.error?.message === "נדרשת התחברות" && typeof window !== "undefined" && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event("scout:session-expired"));
-    throw new ApiError(res.status, data.error?.code ?? "ERROR", data.error?.message ?? "אירעה שגיאה", data.error?.fields);
+    throw new ApiError(res.status, data.error?.code ?? "ERROR", data.error?.message ?? "אירעה שגיאה", data.error?.fields, data.error?.requestId ?? res.headers.get("x-request-id") ?? undefined);
   }
   return (await res.json()) as T;
 }
@@ -91,7 +93,11 @@ export async function extractStyleFile<T>(file: File): Promise<T> {
   return data as T;
 }
 
-export const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : "אירעה שגיאה");
+/** הודעת שגיאה למשתמש. בתקלת שרת מוסיפים קוד שאפשר להעביר למנהל. */
+export const errorMessage = (e: unknown): string => {
+  if (e instanceof ApiError && e.status >= 500 && e.requestId) return `${e.message} (קוד תקלה: ${e.requestId})`;
+  return e instanceof Error ? e.message : "אירעה שגיאה";
+};
 
 /** Flattens server field errors into one list of readable lines. */
 export function fieldErrorLines(e: unknown): string[] {

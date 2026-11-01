@@ -3,6 +3,8 @@ import { BottomNav, Effects, Splash } from "@/components/Polish";
 import { SiteFooter, SiteHeader } from "@/components/Chrome";
 import { ServerWake } from "@/components/WriteFinal";
 import { CommandPalette, StatusBanners } from "@/components/SystemParts";
+import { SiteMonitor } from "@/components/Monitor54";
+import { NpsPrompt } from "@/components/Discover54";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -31,9 +33,11 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             <ServerWake />
             <StatusBanners />
             <CommandPalette />
+            <SiteMonitor />
             <main id="main" tabIndex={-1} className="page">
               {children}
             </main>
+            <NpsPrompt />
             <SiteFooter />
             <BottomNav />
             <Splash />

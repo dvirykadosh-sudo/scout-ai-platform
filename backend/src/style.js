@@ -13,8 +13,9 @@ export const styleSchema = z
     slang: z.enum(keys("slang")).default("none"),
     extra: z.string().trim().max(500).default(""),
     sample: z.string().trim().max(12000).default(""),
+    card: z.string().trim().max(3000).default(""),
   })
-  .default({ tone: "warm", address: "students", length: "normal", detail: "bullets", slang: "none", extra: "", sample: "" });
+  .default({ tone: "warm", address: "students", length: "normal", detail: "bullets", slang: "none", extra: "", sample: "", card: "" });
 
 export const DEFAULT_STYLE = styleSchema.parse(undefined);
 
@@ -100,6 +101,7 @@ export function styleGuide(style) {
     `סלנג: ${NAMES("slang", s.slang)}.`,
   ];
   if (s.extra) lines.push(`בקשות נוספות מהמדריך: ${s.extra}`);
+  if (s.card) lines.push(`כרטיס סגנון אישי (מדידות מהפעולות של המדריך):\n${s.card}`);
   return lines.join("\n");
 }
 

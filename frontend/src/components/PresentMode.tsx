@@ -1,5 +1,6 @@
 "use client";
 
+import { useWakeLock } from "./Monitor54";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -35,6 +36,7 @@ function buildSlides(a: Activity): Slide[] {
 /** מצגת מסך מלא: שקופית לכל שלב. במקלדת: חצים, רווח, F למסך מלא. בהדפסה: שקופית בכל עמוד (שמירה כ-PDF). */
 export function PresentMode() {
   const { id } = useParams<{ id: string }>();
+  useWakeLock(true);
   const [a, setA] = useState<Activity | null>(null);
   const [error, setError] = useState("");
   const [i, setI] = useState(0);

@@ -9,6 +9,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, api } from "@/lib/api";
 import { PaletteToggle } from "./Polish";
+import { ReadingToggles } from "./Comfort54";
+import { NewDot } from "./Discover54";
 import { Logo3D } from "./Depth3D";
 import { NavBadge } from "./CareParts";
 import { useA11y, useAuth } from "./Providers";
@@ -95,6 +97,7 @@ export function SiteHeader() {
         </button>
         <CompactToggle />
         <PaletteToggle />
+        <ReadingToggles />
         <button type="button" className="a11y-btn" onClick={cycleTheme}>
           תצוגה: {theme === "auto" ? "לפי המכשיר" : theme === "light" ? "בהירה" : "כהה"}
         </button>
@@ -130,6 +133,10 @@ export function SiteFooter() {
       <p className="footer-links">
         <Link href="/whats-new">מה חדש<NewBadge /></Link>
         <Link href="/install">התקנה בטלפון</Link>
+        {" · "}
+        <Link href="/coverage">מפת כיסוי<NewDot id="coverage" /></Link>
+        {" · "}
+        <Link href="/status">מצב האתר<NewDot id="status" /></Link>
         {" · "}
         <Link href="/style-guide">מדריך סגנון</Link>
         {" · "}

@@ -13,6 +13,7 @@ import { ActivityActions } from "./ActivityActions";
 import { ActivityGlance } from "./ActivityView";
 import { useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
+import { RecentlyViewed, SmartFallback, VoiceSearchButton } from "./Discover54";
 
 const PAGE_SIZE = 6;
 const SAVED_KEY = "scout.savedSearches";
@@ -240,10 +241,12 @@ export function Library() {
           תכנון תקופתי
         </Link>
       </nav>
+      <RecentlyViewed />
       <form className="card glass filters" role="search" aria-label="חיפוש וסינון פעולות" onSubmit={(e) => e.preventDefault()}>
         <div className="form-grid filters-grid">
           <Field label="חיפוש חופשי" htmlFor="f-q" className="span-2">
             <input id="f-q" type="search" list="f-q-list" value={q} onChange={(e) => setQ(e.target.value)} placeholder="שם פעולה, ערך, מילה מהתוכן..." />
+            <VoiceSearchButton onText={setQ} />
             <datalist id="f-q-list">
               {suggest.map((t) => (
                 <option key={t} value={t} />
@@ -388,6 +391,7 @@ export function Library() {
 
       {loading && !data && <Skeleton lines={5} />}
 
+      {data && data.items.length === 0 && !loading && debouncedQ.length >= 2 && !favOnly && <SmartFallback q={debouncedQ} onPick={setQ} />}
       {data && data.items.length === 0 && !loading && (
         <div className="card empty">
           <EmptyArt />

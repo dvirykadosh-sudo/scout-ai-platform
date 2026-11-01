@@ -1,6 +1,6 @@
 import { HallPage } from "@/components/CommunityParts";
 
-export const metadata = { title: "היכל התהילה" };
+export const metadata = { title: "היכל התהילה", description: "הפעולות והמדריכים המצטיינים בשבט מעוז לפי דירוגים והפעלות בפועל." };
 
 export default function Page() {
   return (

@@ -351,7 +351,7 @@ export function ServerWake() {
 }
 
 const SEEN = "scout.whatsnew.seen";
-export const LATEST_VERSION = 28;
+export const LATEST_VERSION = 54;
 export function NewBadge() {
   const [show, setShow] = useState(false);
   useEffect(() => setShow(Number(storageGet(SEEN) ?? 0) < LATEST_VERSION), []);
@@ -448,6 +448,22 @@ export function TourButton({ kind }: { kind: "home" | "write" }) {
 }
 
 export const WHATS_NEW: { v: number; title: string; items: { id: string; text: string }[] }[] = [
+  {
+    v: 54,
+    title: "שלב 54: חמישה כוכבים באמינות, בנוחות ובגילוי",
+    items: [
+      { id: "smart-search", text: "חיפוש חכם: נרדפות, כתיב מלא וחסר, תיקון שגיאות הקלדה וחיפוש בקול" },
+      { id: "coverage", text: "מפת כיסוי: אילו ערכים וכיתות חסרים במאגר, ומה כדאי לכתוב הבא" },
+      { id: "reactions", text: "תגובות אימוג'י על פעולות, וחותמת 'נבדקה על ידי הצוות'" },
+      { id: "cost", text: "אומדן עלות לפעולה לפי רשימת הציוד, עם רשימת מחירים אישית" },
+      { id: "recent", text: "המשיכו מאיפה שעצרתם: פעולות שנצפו לאחרונה" },
+      { id: "comfy", text: "קריאה נוחה, סרגל קריאה, תוכן עניינים והתקדמות קריאה, וחיסכון בנתונים" },
+      { id: "share", text: "שיתוף מהטלפון לאתר: פעולה שקיבלתם בוואטסאפ מתפרקת לשלבים. וגם קיצורים באייקון האפליקציה" },
+      { id: "stay", text: "אזהרה לפני שההתחברות פוקעת, וסנכרון התחברות והתנתקות בין לשוניות" },
+      { id: "status", text: "דף 'מצב האתר' פתוח לכולם" },
+      { id: "lab", text: "מעבדת סגנון ופירוק בעורך: מנתחת איך אתם כותבים ועוזרת לכתוב באותו סגנון" },
+    ],
+  },
   {
     v: 28,
     title: "גרסה 28: סדר בדף הבית וכלים לעורך",

@@ -1,6 +1,6 @@
 import { QuickPage } from "@/components/QuickPage";
 
-export const metadata = { title: "מצב מהיר" };
+export const metadata = { title: "מצב מהיר", description: "פעולה מוכנה תוך דקה: מצב מהיר למדריך שצריך פעולה עכשיו." };
 
 export default function Page() {
   return (

@@ -150,6 +150,7 @@ export function MoreToolsModal({ open, onClose, snap, docId, token, onInsert, on
           <button type="button" className="btn" onClick={() => onTool("meter")}>מד השתתפות</button>
           <button type="button" className="btn" onClick={() => onTool("viewers")}>מי צופה עכשיו</button>
           <button type="button" className="btn btn-primary" onClick={() => onTool("box51")}>ארגז כלים (21 כלים)</button>
+          <button type="button" className="btn btn-primary" onClick={() => onTool("lab53")}>מעבדת סגנון ופירוק</button>
         </div>
       </section>
       <section aria-labelledby="mt-time">

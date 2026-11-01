@@ -408,6 +408,62 @@ CREATE TABLE IF NOT EXISTS announcements (
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS style_profiles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  fp_json TEXT NOT NULL,
+  card TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_style_profiles_user ON style_profiles(user_id);
+CREATE TABLE IF NOT EXISTS client_errors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sig TEXT NOT NULL,
+  message TEXT NOT NULL,
+  stack TEXT,
+  page TEXT,
+  ua TEXT,
+  user_id INTEGER,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_client_errors_sig ON client_errors(sig, created_at);
+CREATE TABLE IF NOT EXISTS web_vitals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  metric TEXT NOT NULL,
+  value REAL NOT NULL,
+  page TEXT,
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_web_vitals_metric ON web_vitals(metric, at);
+CREATE TABLE IF NOT EXISTS feature_flags (
+  key TEXT PRIMARY KEY,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  percent INTEGER NOT NULL DEFAULT 100,
+  note TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reactions (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  emoji TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, activity_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_reactions_activity ON reactions(activity_id);
+CREATE TABLE IF NOT EXISTS nps_responses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  score INTEGER,
+  comment TEXT NOT NULL DEFAULT '',
+  dismissed INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nps_user ON nps_responses(user_id, created_at);
+CREATE TABLE IF NOT EXISTS user_prices (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  prices_json TEXT NOT NULL DEFAULT '{}'
+);
 CREATE TABLE IF NOT EXISTS invites (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   label TEXT NOT NULL,
@@ -528,6 +584,9 @@ function migrate(db) {
   add("users", "pending_approval", "INTEGER NOT NULL DEFAULT 0");
   add("users", "invite_id", "INTEGER");
   add("users", "expires_at", "TEXT");
+  add("activities", "verified_by", "TEXT");
+  add("activities", "verified_at", "TEXT");
+  add("activities", "verified_note", "TEXT");
   add("auth_sessions", "new_device", "INTEGER NOT NULL DEFAULT 0");
   add("audit_log", "prev_hash", "TEXT");
   add("audit_log", "hash", "TEXT");

@@ -1,6 +1,6 @@
 import { RequestsPage } from "@/components/CommunityParts";
 
-export const metadata = { title: "בקשות לפעולות" };
+export const metadata = { title: "בקשות לפעולות", description: "בקשו נושא לפעולה והצביעו על בקשות של מדריכים אחרים." };
 
 export default function Page() {
   return (

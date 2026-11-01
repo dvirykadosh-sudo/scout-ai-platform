@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createApp } from "./app.js";
 import { ensureAdmin } from "./auth.js";
 import { backupDirFor, startBackupSchedule } from "./backup.js";
+import { getActivity } from "./activities.js";
 import { assertProductionSafe, config } from "./config.js";
 import { openDb } from "./db.js";
 import { createMailer } from "./email.js";
@@ -44,7 +45,14 @@ const handle = web.getRequestHandler();
 
 const app = createApp({ db, mailer, serveStatic: false, dbFile: config.dbPath });
 app.set("restartOnRestore", true);
-app.use((req, res) => handle(req, res));
+// שלב 55: עמוד פעולה שלא קיים מחזיר קוד 404 אמיתי (בלי זה גוגל ירשום "200 עם הודעת שגיאה").
+// Next.js כבר שלח "200" כשהוא מגלה זאת בתוך מבנה הטעינה, לכן הקוד נקבע כאן, לפני שהוא מתחיל.
+const LIB = /^\/library\/([^/?#]+)(?:\/(?:cards|brief))?\/?(?:[?#].*)?$/;
+app.use((req, res) => {
+  const m = LIB.exec(req.url);
+  if (m && m[1] !== "import" && !(/^\d{1,9}$/.test(m[1]) && getActivity(db, Number(m[1])))) res.statusCode = 404;
+  return handle(req, res);
+});
 app.listen(config.port, "0.0.0.0", () => {
   console.log(`האתר פועל על פורט ${config.port}`);
 });

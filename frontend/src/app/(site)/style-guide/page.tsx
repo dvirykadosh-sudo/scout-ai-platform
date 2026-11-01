@@ -1,7 +1,7 @@
 import { PageTitle } from "@/components/ui";
 import { EmptyArt, KindIcon, AgeBadge } from "@/components/Polish";
 
-export const metadata = { title: "מדריך סגנון" };
+export const metadata = { title: "מדריך סגנון", description: "מדריך סגנון לכתיבת פעולות: טון, פנייה, אורך ודוגמאות, כדי שהפעולות ישמעו כמו מדריך אמיתי." };
 
 const KINDS = ["peak", "content", "value", "intro", "summary", "social", "field"];
 const COLORS = [

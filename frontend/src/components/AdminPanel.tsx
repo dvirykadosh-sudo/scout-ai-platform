@@ -13,6 +13,7 @@ import { AdminFlags, AdminReport, AdminStorage } from "./CareParts";
 import { AdminApproval, AdminBackups, AdminFeatured, AdminInsights, AdminLogo } from "./AdminExtras";
 import { AdminAudit, AdminSecurity, AdminUsers } from "./AdminAccounts";
 import { AdminAccessControl } from "./AdminV52";
+import { AdminMonitor } from "./AdminV54";
 import { canSee } from "@/lib/staff";
 import { AdminAccessLog, AdminBlocks, AdminSecurityOverview, AdminSecuritySettings, AdminVisitors } from "./AdminAccess";
 import { ChangePassword, LoginForm } from "./AuthForms";
@@ -197,6 +198,7 @@ function Dashboard() {
             <>
               <AdminSecurity />
               <AdminAccessControl />
+              <AdminMonitor />
               <AdminUsers />
             </>
           )}

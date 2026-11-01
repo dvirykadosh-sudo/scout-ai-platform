@@ -2,7 +2,7 @@ import Link from "next/link";
 import { KindGuide } from "@/components/KindGuide";
 import { YearMix } from "@/components/YearMix";
 
-export const metadata = { title: "סוגי פעולות" };
+export const metadata = { title: "סוגי פעולות", description: "כל סוגי הפעולות במחולל: פעולת שיא, פעולת תוכן, פעולת משחק, מעגל סיכום ועוד, עם הסבר מתי משתמשים בכל סוג." };
 
 export default function Page() {
   return (

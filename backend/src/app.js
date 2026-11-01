@@ -30,6 +30,9 @@ import { registerWriteV39Routes } from "./routes-write-v39.js";
 import { registerWriteV47Routes } from "./routes-write-v47.js";
 import { registerWriteV50Routes } from "./routes-write-v50.js";
 import { registerWriteV51Routes } from "./routes-write-v51.js";
+import { registerWriteV53Routes } from "./routes-write-v53.js";
+import { registerV54Routes } from "./routes-v54.js";
+import compression from "compression";
 import { registerAccountV52Routes, regSettings } from "./routes-accounts-v52.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
 import { maintenanceGuard, maintenanceMessage } from "./ops.js";
@@ -52,6 +55,15 @@ import { emergencySchema, importParsedSchema, regenSchema, adminUserPatchSchema,
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fail = (code, message, fields) => ({ error: { code, message, ...(fields ? { fields } : {}) } });
+
+// שלב 55: מפתח פנימי שבו שרת הדפים (Next.js, אותו תהליך) קורא ל-API בלי להיספר כמבקר ובלי להעמיס על מגבלת הקצב.
+// ההכרה דורשת גם מפתח אקראי וגם חיבור מהמחשב עצמו, כך שמבחוץ אי אפשר לנצל את זה.
+process.env.INTERNAL_SSR_KEY ||= crypto.randomBytes(16).toString("hex");
+export const isInternal = (req) => {
+  const k = req.headers["x-internal-ssr"];
+  const a = req.socket?.remoteAddress || "";
+  return typeof k === "string" && k === process.env.INTERNAL_SSR_KEY && /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(a);
+};
 
 export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPath }) {
   const app = express();
@@ -89,6 +101,22 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
     next();
   });
+  // שלב 54: מזהה בקשה (433/428), Server-Timing ודחיסת gzip לתשובות ה-API
+  app.use((req, res, next) => {
+    const rid = crypto.randomBytes(5).toString("hex");
+    const t0 = process.hrtime.bigint();
+    res.setHeader("X-Request-Id", rid);
+    if (req.path.startsWith("/api")) res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    const head = res.writeHead;
+    res.writeHead = function (...args) {
+      if (!res.headersSent) res.setHeader("Server-Timing", `app;dur=${(Number(process.hrtime.bigint() - t0) / 1e6).toFixed(1)}`);
+      return head.apply(this, args);
+    };
+    const json = res.json.bind(res);
+    res.json = (body) => (res.statusCode >= 500 && body?.error && typeof body.error === "object" && !body.error.requestId ? json({ ...body, error: { ...body.error, requestId: rid } }) : json(body));
+    next();
+  });
+  app.use("/api", compression({ threshold: 1024 }));
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
   // CORS: only the configured site origin (same-origin calls need no CORS at all); no wildcard, no credentials
   app.use(cors({ origin: config.webOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"], maxAge: 600 }));
@@ -115,7 +143,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   const apiReadLimit = limiter(60_000, 300);
   const apiWriteLimit = limiter(60_000, 90);
   app.use("/api", (req, res, next) => {
-    if (req.path.startsWith("/health")) return next();
+    if (req.path.startsWith("/health") || isInternal(req)) return next();
     return (["GET", "HEAD", "OPTIONS"].includes(req.method) ? apiReadLimit : apiWriteLimit)(req, res, next);
   });
 
@@ -143,7 +171,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   // ── מעקב מבקרים (ללוח האדמין): חיבור לפי כתובת ודפדפן, ורישום "ביקור" אחד בכל 30 דקות ──
   const visitSeen = new Map();
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api") && !req.path.startsWith("/api/health")) {
+    if (req.path.startsWith("/api") && !req.path.startsWith("/api/health") && !isInternal(req)) {
       const ua = String(req.headers["user-agent"] || "").slice(0, 200);
       const hash = ipHash(req.ip);
       const shown = readSettings(db).visitorIpMode === "hashed" ? `h:${hash.slice(0, 10)}` : req.ip || "";
@@ -224,6 +252,9 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
   app.put("/api/me/style", requireUser(), (req, res) => {
     const style = styleSchema.parse(req.body?.style ?? undefined);
+    if (req.body?.style?.card === undefined) {
+      try { style.card = JSON.parse(db.prepare("SELECT style_json FROM users WHERE id = ?").get(req.user.id)?.style_json || "{}").card || ""; } catch { /* ignore */ }
+    }
     db.prepare("UPDATE users SET style_json = ? WHERE id = ?").run(JSON.stringify(style), req.user.id);
     res.json({ style });
   });
@@ -600,6 +631,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerWriteV47Routes(app, { limiter, requireUser });
   registerWriteV50Routes(app, { db, limiter, requireUser });
   registerWriteV51Routes(app, { limiter, requireUser });
+  registerWriteV53Routes(app, { db, limiter, fail, requireUser });
+  registerV54Routes(app, { db, dbFile, limiter, fail, requireUser, requireAdmin, audit, mailer, config, bootedAt });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
   registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
   registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });

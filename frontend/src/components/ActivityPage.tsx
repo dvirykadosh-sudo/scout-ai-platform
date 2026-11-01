@@ -18,12 +18,14 @@ import { RatingBadge, Ratings } from "./Ratings";
 import { RunsLog } from "./RunsLog";
 import { isAdminUser, useAuth } from "./Providers";
 import { Skeleton } from "./ui";
+import { PageToc } from "./Comfort54";
+import { CostPanel, Reactions, VerifiedBadge, pushRecent } from "./Discover54";
 
-export function ActivityPage() {
+export function ActivityPage({ initial = null }: { initial?: Activity | null }) {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { token, user } = useAuth();
-  const [a, setA] = useState<Activity | null>(null);
+  const [a, setA] = useState<Activity | null>(initial);
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [summary, setSummary] = useState<{ count: number; average: number } | null>(null);
@@ -43,6 +45,7 @@ export function ActivityPage() {
   }, [id]);
 
   useEffect(load, [load]);
+  useEffect(() => { if (a && a.status === "PUBLISHED") pushRecent({ id: a.id, title: a.title }); }, [a]);
 
   if (notFound)
     return (
@@ -74,6 +77,7 @@ export function ActivityPage() {
           <Link href="/library">חזרה למאגר</Link>
         </p>
         <h1>{a.title}</h1>
+        <VerifiedBadge v={a.verified} />
         <p className="print-only">{a.tribe}</p>
         <p>
           <RatingBadge average={rating.average} count={rating.count} />
@@ -87,6 +91,8 @@ export function ActivityPage() {
           הפעולה הזאת ממתינה לאישור של מנהל השבט, ולכן היא עוד לא מופיעה במאגר המשותף. הקישור הישיר עובד.
         </p>
       )}
+      <PageToc />
+      <CostPanel activityId={a.id} />
       <PrepChecklist activity={a} />
       <SafetyPanel activityId={a.id} canManage={!!user && (isAdminUser(user) || (!a.isSeed && a.ownerId === user.id))} onChanged={load} />
       <NewbieTips activityId={a.id} />
@@ -101,6 +107,7 @@ export function ActivityPage() {
       <div className="card glass no-print">
         <Ratings activityId={a.id} onSummary={onSummary} />
       </div>
+      <Reactions activityId={a.id} />
     </>
   );
 }
