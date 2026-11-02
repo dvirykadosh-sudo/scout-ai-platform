@@ -1,0 +1,26 @@
+:root { color-scheme: light dark; --bg: #f6f2ff; --fg: #1c1233; --muted: #4a3d73; --accent: #5d2fa3; --line: #8a6cc7; --danger: #8f1239; --danger-bg: #ffe4ec; }
+@media (prefers-color-scheme: dark) { :root { --bg: #130e26; --fg: #efe9ff; --muted: #c9bdee; --accent: #b27cff; --line: #7a5cc0; --danger: #ffb3c6; --danger-bg: #4a1530; } }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px; width: 400px; max-height: 600px; overflow-y: auto; background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, "Segoe UI", Arial, sans-serif; }
+header { display: flex; justify-content: space-between; align-items: center; }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 15px; margin: 12px 0 4px; }
+.hint { color: var(--muted); font-size: 12.5px; margin: 6px 0; }
+label { display: block; margin-top: 8px; font-weight: 600; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.row label { margin: 0; font-weight: 400; display: flex; gap: 4px; align-items: center; }
+input[type="url"], input[type="password"], input[type="text"], textarea { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+button { font: inherit; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: inherit; cursor: pointer; margin-top: 8px; }
+button.primary { background: var(--accent); color: #fff; width: 100%; }
+button.link { border: 0; text-decoration: underline; margin: 0; padding: 2px 4px; color: var(--accent); }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #ffb700; outline-offset: 1px; }
+section { margin-top: 10px; }
+.box { border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
+.box.urgent { border-color: var(--danger); background: var(--danger-bg); border-width: 3px; }
+.box.attention { border-color: var(--danger); border-style: dashed; }
+.box h2 { margin-top: 0; }
+ul, ol { margin: 4px 0; padding-inline-start: 1.3em; }
+blockquote { margin: 4px 0; padding: 4px 8px; border-inline-start: 3px solid var(--line); white-space: pre-wrap; }
+.variant { margin-top: 8px; }
+.variant textarea { min-height: 52px; }
+.err { color: var(--danger); font-weight: 600; }

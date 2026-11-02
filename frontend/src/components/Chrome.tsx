@@ -134,6 +134,10 @@ export function SiteFooter() {
         <Link href="/whats-new">מה חדש<NewBadge /></Link>
         <Link href="/install">התקנה בטלפון</Link>
         {" · "}
+        <Link href="/story">סיפור אישי<NewDot id="story" /></Link>
+        {" · "}
+        <Link href="/chat">עוזר שיחות<NewDot id="chat" /></Link>
+        {" · "}
         <Link href="/coverage">מפת כיסוי<NewDot id="coverage" /></Link>
         {" · "}
         <Link href="/status">מצב האתר<NewDot id="status" /></Link>

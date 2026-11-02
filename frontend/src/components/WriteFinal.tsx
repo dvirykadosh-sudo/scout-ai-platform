@@ -351,7 +351,7 @@ export function ServerWake() {
 }
 
 const SEEN = "scout.whatsnew.seen";
-export const LATEST_VERSION = 54;
+export const LATEST_VERSION = 57;
 export function NewBadge() {
   const [show, setShow] = useState(false);
   useEffect(() => setShow(Number(storageGet(SEEN) ?? 0) < LATEST_VERSION), []);
@@ -448,6 +448,28 @@ export function TourButton({ kind }: { kind: "home" | "write" }) {
 }
 
 export const WHATS_NEW: { v: number; title: string; items: { id: string; text: string }[] }[] = [
+  {
+    v: 57,
+    title: "שלב 57: עוזר שיחות ותוסף למחשב",
+    items: [
+      { id: "chat-analyze", text: "העלאת שיחה עם חניך או עם השכבה (ייצוא וואטסאפ): מה מחכה לתשובה, מצב רוח, מי מתרחק, ומה כדאי לעשות" },
+      { id: "chat-safety", text: "זיהוי סימני מצוקה והצקות, עם הנחיות פעולה, קווי סיוע ובלי תגובות אוטומטיות במצבים כאלה" },
+      { id: "chat-reply", text: "ניסוח תגובות לפי הכוונה, בדיקת תגובה לפני שליחה, הודעות מוכנות לשכבה ופתיחת שיחה עם חניך שנעלם" },
+      { id: "chat-privacy", text: "פרטיות: השיחה לא נשמרת, שמות הופכים ל'חניך א'', ומה ששומרים הוא סיכום בלי טקסט ל-30 יום" },
+      { id: "chat-ext", text: "תוסף לכרום ולאדג' שמסתיר שמות במחשב שלכם לפני שהוא שולח, ולא שולח הודעות בשמכם" },
+    ],
+  },
+  {
+    v: 56,
+    title: "שלב 56: סטודיו סיפור אישי וכתיבה אנושית",
+    items: [
+      { id: "story-build", text: "סיפור אישי בארבעה חלקים (מצב, רגע שבירה, רגש, לקח), עם שלוש הצעות לפתיחה וארבע לסיום" },
+      { id: "story-voice", text: "ליטוש הקול: ניקוי תמלול, עברית מדוברת או רשמית, ניקוי קלישאות, הוראות במה ובדיקת הקראה" },
+      { id: "story-score", text: "מדד חום ואנושיות עם הסבר מה לשפר, ו'המילים שלי' שמסמן אם הסיפור נשמע כמוכם" },
+      { id: "story-memories", text: "ספריית זיכרונות וציטוטי חניכים בעילום שם, עם חסימה אוטומטית של פרטים מזהים" },
+      { id: "story-activity", text: "כפתור 'הסיפור שלי' בעמוד הפעולה: פתיחה וסיום אישיים או הסיפור כולו, עם גרסה לחזרה" },
+    ],
+  },
   {
     v: 54,
     title: "שלב 54: חמישה כוכבים באמינות, בנוחות ובגילוי",

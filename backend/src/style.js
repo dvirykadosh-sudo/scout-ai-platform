@@ -14,8 +14,10 @@ export const styleSchema = z
     extra: z.string().trim().max(500).default(""),
     sample: z.string().trim().max(12000).default(""),
     card: z.string().trim().max(3000).default(""),
+    // שלב 56 (466): "המילים שלי". מילים שהמדריך אומר ומילים שלעולם לא.
+    voice: z.object({ say: z.array(z.string().trim().max(30)).max(40).default([]), never: z.array(z.string().trim().max(30)).max(40).default([]) }).default({ say: [], never: [] }),
   })
-  .default({ tone: "warm", address: "students", length: "normal", detail: "bullets", slang: "none", extra: "", sample: "", card: "" });
+  .default({ tone: "warm", address: "students", length: "normal", detail: "bullets", slang: "none", extra: "", sample: "", card: "", voice: { say: [], never: [] } });
 
 export const DEFAULT_STYLE = styleSchema.parse(undefined);
 
@@ -102,6 +104,8 @@ export function styleGuide(style) {
   ];
   if (s.extra) lines.push(`בקשות נוספות מהמדריך: ${s.extra}`);
   if (s.card) lines.push(`כרטיס סגנון אישי (מדידות מהפעולות של המדריך):\n${s.card}`);
+  if (s.voice?.say?.length) lines.push(`מילים וביטויים שהמדריך אוהב להגיד: ${s.voice.say.join(", ")}.`);
+  if (s.voice?.never?.length) lines.push(`מילים שהמדריך לעולם לא אומר, אל תשתמש בהן: ${s.voice.never.join(", ")}.`);
   return lines.join("\n");
 }
 
@@ -109,7 +113,8 @@ export const HUMAN_RULES = `כתוב כמו מדריך אמיתי שמדבר ל�
 - משפטים קצרים וטבעיים, עברית מדוברת ולא רשמית יתר על המידה.
 - ציין מה המדריך אומר בפועל (בציטוט), לא רק מה "יתבקשו" לעשות.
 - בלי ניסוחים כמו "החניכים יתבקשו", "בהתאם לנושא", "במסגרת הפעילות", "לאחר מכן".
-- דוגמאות קונקרטיות וקצרות, ושאלות פתוחות שמזמינות תשובה אמיתית.`;
+- דוגמאות קונקרטיות וקצרות, ושאלות פתוחות שמזמינות תשובה אמיתית.
+- אל תמציא סיפור אישי, חוויה או זיכרון של המדריך. אם סופק סיפור אישי של המדריך, שלב אותו כפי שנכתב, ואם לא סופק, השאר מקום לסיפור שלו ("כאן המדריך מספר רגע אישי").`;
 
 // ───────────── Word / text extraction ─────────────
 

@@ -4225,3 +4225,378 @@ describe("stage 55 seo plumbing", () => {
     assert.equal(count(), before + 1, "a wrong key is treated as an ordinary visitor");
   });
 });
+
+describe("stage 56 (453-469) סטודיו סיפור אישי", () => {
+  let tok, tok2;
+  const hh = (t) => ({ authorization: `Bearer ${t}` });
+  const P = (path, t, body, method = "POST") => j(path, { method, headers: t ? hh(t) : {}, body: body === undefined ? undefined : JSON.stringify(body) });
+  const STORY = 'היה לי בן 14 והמדריך שלי ביקש ממני לקחת את הקבוצה בטיול ללילה בחורשה. אני זוכר את הריח של העשן מהמדורה. ואז אחד החניכים לחש לי: "אני רוצה הביתה". התביישתי שאני לא יודע מה להגיד. ישבתי לידו ושתקתי חמש דקות. מאז אני יודע שלפעמים הדבר הכי טוב הוא להישאר.';
+  before(async () => {
+    const mk = async (u) => (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + " נבדק", signupCode: "shevet-code" }) })).body.token;
+    tok = await mk("u56a");
+    tok2 = await mk("u56b");
+  });
+
+  it("כל הנתיבים דורשים התחברות", async () => {
+    for (const [m, p] of [["POST", "/api/story/analyze"], ["POST", "/api/story/build"], ["GET", "/api/story/memories"], ["GET", "/api/story/stories"], ["GET", "/api/story/dict"], ["POST", "/api/story/ai"], ["POST", "/api/activities/1/add-my-story"]]) {
+      assert.equal((await P(p, null, m === "POST" ? {} : undefined, m)).status, 401, p);
+    }
+  });
+
+  it("המילים שלי: נשמרות, מנוקות, לא נמחקות בשמירת סגנון, ונכנסות להנחיה למודל", async () => {
+    assert.deepEqual((await P("/api/story/dict", tok, undefined, "GET")).body, { say: [], never: [] });
+    const put = await P("/api/story/dict", tok, { say: [" יאללה ", "יאללה", "תקשיבו"], never: ["אחי"] }, "PUT");
+    assert.deepEqual(put.body, { say: ["יאללה", "תקשיבו"], never: ["אחי"] });
+    const sv = await P("/api/me/style", tok, { style: { tone: "warm" } }, "PUT");
+    assert.equal(sv.status, 200);
+    assert.deepEqual(sv.body.style.voice, { say: ["יאללה", "תקשיבו"], never: ["אחי"] });
+    const { styleGuide } = await import("../src/style.js");
+    const g = styleGuide(sv.body.style);
+    assert.match(g, /אוהב להגיד: יאללה, תקשיבו/);
+    assert.match(g, /לעולם לא אומר[^]*אחי/);
+    assert.deepEqual((await P("/api/story/dict", tok2, undefined, "GET")).body, { say: [], never: [] }, "משתמש אחר לא רואה");
+  });
+
+  it("ניתוח: ציון, קלישאות, פרטים חסרים, הקראה ופגיעות במילון", async () => {
+    const r = await P("/api/story/analyze", tok, { text: STORY + " יאללה אחי." });
+    assert.equal(r.status, 200);
+    assert.ok(r.body.score.score >= 50, "ציון " + r.body.score.score);
+    assert.ok(r.body.score.parts.some((p) => p.key === "dict"));
+    assert.equal(r.body.dict.neverHits[0].word, "אחי");
+    assert.ok(r.body.read.seconds > 5);
+    const g = await P("/api/story/analyze", tok, { text: "חשוב לציין שאחריות היא ערך חשוב מאוד בעולם של היום. בסופו של דבר, כל אחד מאיתנו צריך ללמוד לקחת אחריות, להיות הגון ולעזור לאחרים. זהו מסע מרתק שמלמד אותנו משמעות." });
+    assert.ok(g.body.score.score < 35);
+    assert.ok(g.body.cliches.items.length >= 3);
+    assert.equal((await P("/api/story/analyze", tok, { text: "x".repeat(12001) })).status, 400);
+  });
+
+  it("כלי טקסט: ניקוי תמלול, רגיסטר, קלישאות, הוראות במה, גילאים, השוואה", async () => {
+    const vc = await P("/api/story/voice-clean", tok, { text: "אממ אני אני הלכתי לים ואז פתאום ירד גשם והיה קר מאוד ואז כולם רצו הביתה" });
+    assert.ok(!vc.body.text.includes("אממ") && !/אני אני/.test(vc.body.text));
+    assert.equal((await P("/api/story/register", tok, { text: "אולם על כן הלכנו.", level: 2 })).body.text, "אבל אז הלכנו.");
+    assert.equal((await P("/api/story/register", tok, { text: "x", level: 5 })).status, 400);
+    assert.match((await P("/api/story/fix-cliches", tok, { text: "על מנת להצליח, בסופו של דבר עבדנו." })).body.text, /^כדי להצליח, בסוף עבדנו\.$/);
+    assert.ok((await P("/api/story/directions", tok, { text: STORY })).body.directions.length >= 3);
+    const ag = (await P("/api/story/ages", tok, { text: STORY })).body;
+    assert.match(ag.young.text, /\(עוצרים\)/);
+    assert.ok(!/מאז אני יודע/.test(ag.older.text));
+    const d = (await P("/api/story/diff", tok, { a: "אני הלכתי הביתה", b: "אני רצתי הביתה" })).body;
+    assert.deepEqual([d.added, d.deleted, d.same], [1, 1, 2]);
+  });
+
+  it("בניית סיפור: חלקים, פתיחות, סיומים וסוגי רגעים", async () => {
+    const r = (await P("/api/story/build", tok, { situation: "הייתי מדריך צעיר", turn: "חניך אחד לחש שהוא רוצה הביתה", feeling: "בושה", learning: "שלפעמים להישאר זה הכול", value: "אחריות", want: "שתדעו שאפשר להישאר" })).body;
+    assert.equal(r.parts.length, 5);
+    assert.equal(r.openings.length, 3);
+    assert.equal(r.closings.length, 4);
+    assert.equal(r.moment.id, "responsibility");
+    assert.equal((await P("/api/story/build", tok, { situation: "x".repeat(1600) })).status, 400);
+    assert.equal((await j("/api/story/moments", { headers: hh(tok) })).body.values.length, 14);
+    assert.equal((await j("/api/story/moments?value=" + encodeURIComponent("יושר"), { headers: hh(tok) })).body.moments.length, 3);
+    assert.equal((await j("/api/story/moments?value=nope", { headers: hh(tok) })).status, 404);
+  });
+
+  it("זיכרונות: שמות מוסתרים, ציטוט חניך דורש עילום שם או אישור, ופרטים מזהים ורגישים נחסמים", async () => {
+    const mem = await P("/api/story/memories", tok, { kind: "memory", title: "הלילה בחורשה", body: "ישבנו עם דני ליד המדורה והוא סיפר לי הכול", value: "אחריות", tags: ["טיול"], maskNames: ["דני"] });
+    assert.equal(mem.status, 201);
+    assert.match(mem.body.body, /עם חניך א' ליד/);
+    assert.ok(!mem.body.body.includes("דני"));
+    const q = { kind: "quote", title: "אמר לי", body: "אני רוצה שמישהו יקשיב לי", value: "הקשבה" };
+    assert.equal((await P("/api/story/memories", tok, { ...q, consent: "self" })).body.error?.code ?? (await P("/api/story/memories", tok, { ...q, consent: "self" })).body.code, "CONSENT_REQUIRED");
+    const phone = await P("/api/story/memories", tok, { ...q, body: "תתקשרו אליו 052-1234567", consent: "anonymous" });
+    assert.equal(phone.status, 422);
+    assert.match(JSON.stringify(phone.body), /מספר טלפון/);
+    const sens = await P("/api/story/memories", tok, { ...q, body: "הוא סיפר שיש לו אבחון וריטלין", consent: "anonymous" });
+    assert.equal(sens.status, 422);
+    const ok = await P("/api/story/memories", tok, { ...q, consent: "approved" });
+    assert.equal(ok.status, 201);
+    assert.equal(ok.body.consent, "approved");
+    assert.equal((await j("/api/story/memories?kind=quote", { headers: hh(tok) })).body.length, 1);
+    assert.equal((await j("/api/story/memories?q=" + encodeURIComponent("מדורה"), { headers: hh(tok) })).body.length, 1);
+    assert.equal((await j("/api/story/memories?value=" + encodeURIComponent("הקשבה"), { headers: hh(tok) })).body.length, 1);
+    const withMem = (await j("/api/story/moments?value=" + encodeURIComponent("אחריות"), { headers: hh(tok) })).body;
+    assert.equal(withMem.memories.length, 1);
+    // פרטיות בין משתמשים
+    assert.equal((await j("/api/story/memories", { headers: hh(tok2) })).body.length, 0);
+    assert.equal((await P(`/api/story/memories/${mem.body.id}`, tok2, undefined, "DELETE")).status, 404);
+    assert.equal((await P(`/api/story/memories/${mem.body.id}`, tok, undefined, "DELETE")).status, 204);
+    assert.equal((await P(`/api/story/memories/${mem.body.id}`, tok, undefined, "DELETE")).status, 404);
+  });
+
+  it("סיפורים: גרסאות, השוואה, ואישור שדורש קריאה ונשלל בכל שינוי", async () => {
+    const c = await P("/api/story/stories", tok, { title: "הלילה בחורשה", value: "אחריות", age: "ד'", body: STORY, opening: "שאלה: יצא לכם פעם להרגיש בושה?", closing: "אני רוצה שתדעו שאפשר להישאר." });
+    assert.equal(c.status, 201);
+    const id = c.body.id;
+    assert.equal(c.body.approved, false);
+    assert.equal(c.body.versions.length, 1);
+    const base = { title: "הלילה בחורשה", value: "אחריות", age: "ד'", body: STORY, opening: "שאלה: יצא לכם פעם להרגיש בושה?", closing: "אני רוצה שתדעו שאפשר להישאר." };
+    assert.equal((await P(`/api/story/stories/${id}`, tok, { ...base, approved: true }, "PUT")).body.error?.code ?? "CONFIRM_REQUIRED", "CONFIRM_REQUIRED");
+    const rawNoConfirm = await P(`/api/story/stories/${id}`, tok, { ...base, approved: true }, "PUT");
+    assert.equal(rawNoConfirm.status, 422);
+    const ap = await P(`/api/story/stories/${id}`, tok, { ...base, approved: true, confirm: true }, "PUT");
+    assert.equal(ap.status, 200);
+    assert.equal(ap.body.approved, true);
+    assert.equal(ap.body.versions.length, 1, "אישור לבד לא יוצר גרסה");
+    const edit = await P(`/api/story/stories/${id}`, tok, { ...base, body: STORY + " ועוד משפט אחד.", versionLabel: "אחרי עריכה" }, "PUT");
+    assert.equal(edit.body.approved, false, "שינוי בטקסט שולל אישור");
+    assert.equal(edit.body.versions.length, 2);
+    assert.equal(edit.body.versions[1].label, "אחרי עריכה");
+    const d = (await P("/api/story/diff", tok, { a: edit.body.versions[0].text, b: edit.body.versions[1].text })).body;
+    assert.ok(d.added >= 3 && d.deleted === 0);
+    assert.equal((await P("/api/story/stories", tok, { title: "קצר", body: "קצר מדי" })).status, 201);
+    const short = (await j("/api/story/stories", { headers: hh(tok) })).body.find((s) => s.title === "קצר");
+    assert.equal((await P(`/api/story/stories/${short.id}`, tok, { title: "קצר", body: "קצר מדי", approved: true, confirm: true }, "PUT")).status, 422);
+    assert.equal((await j(`/api/story/stories/${id}`, { headers: hh(tok2) })).status, 404);
+    assert.equal((await P(`/api/story/stories/${id}`, tok2, undefined, "DELETE")).status, 404);
+  });
+
+  it("הוספה לפעולה: רק בעלים, רק סיפור מאושר, פתיחה וסיום או במלואו, עם גרסה", async () => {
+    const act = (await P("/api/activities/quick", tok, { kind: "value", topic: "אחריות בטיול" })).body;
+    const list = (await j("/api/story/stories", { headers: hh(tok) })).body;
+    const st = list.find((s) => s.title === "הלילה בחורשה");
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id })).status, 422, "לא מאושר");
+    const full = (await j(`/api/story/stories/${st.id}`, { headers: hh(tok) })).body;
+    await P(`/api/story/stories/${st.id}`, tok, { title: full.title, value: full.value, age: full.age, body: full.body, opening: full.opening, closing: full.closing, approved: true, confirm: true }, "PUT");
+    const sug = (await j(`/api/story/suggest?activityId=${act.id}`, { headers: hh(tok) })).body;
+    assert.equal(sug.stories.length, 1);
+    assert.equal(sug.stories[0].match >= 2, true, "אותו ערך");
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok2, { storyId: st.id })).status, 403);
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: 99999 })).status, 404);
+    const r = await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id, mode: "bookend" });
+    assert.equal(r.status, 200);
+    assert.match(r.body.stages[0].content, /^פתיחה אישית \(הלילה בחורשה\): שאלה: יצא לכם/);
+    assert.match(r.body.stages.at(-1).content, /סיום אישי: אני רוצה שתדעו שאפשר להישאר\.$/);
+    const vs = await j(`/api/activities/${act.id}/versions`, { headers: hh(tok) });
+    assert.ok(vs.body.items.some((v) => /סיפור אישי/.test(v.note || "")));
+    const r2 = await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id, mode: "full", stage: 2 });
+    assert.match(r2.body.stages[2].content, /הסיפור שלי \(הלילה בחורשה\): היה לי בן 14/);
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id, mode: "full", stage: 9 })).status, 400);
+  });
+
+  it("ליטוש עם מודל: בלי מפתח מחזיר הנחיה להעתקה, עם מפתח מחזיר טקסט ואזהרות המצאה, ונופל להנחיה בכשל", async () => {
+    const { config } = await import("../src/config.js");
+    const noKey = (await P("/api/story/ai", tok, { text: STORY, goal: "young", age: "כיתה ד'" })).body;
+    assert.equal(noKey.mode, "prompt");
+    assert.match(noKey.prompt, /אל תמציא עובדות/);
+    assert.match(noKey.prompt, /יאללה/, "המילון האישי בהנחיה");
+    assert.equal((await P("/api/story/ai", tok, { text: "קצר" })).status, 400);
+    const prevKey = config.ai.key, realFetch = globalThis.fetch;
+    config.ai.key = "test-key";
+    try {
+      let mode = "ok";
+      globalThis.fetch = async (url, opts) => {
+        if (!String(url).startsWith("https://api.anthropic.com")) return realFetch(url, opts);
+        if (mode === "fail") return new Response("no", { status: 500 });
+        return new Response(JSON.stringify({ content: [{ text: JSON.stringify({ text: "סיפור חדש ומלוטש. בן 15 הייתי, ואמרתי \"אני לא מפחד\" וכולם שמעו.", changes: ["קיצור"] }) }] }), { status: 200, headers: { "content-type": "application/json" } });
+      };
+      const ok = (await P("/api/story/ai", tok, { text: STORY, goal: "polish" })).body;
+      assert.equal(ok.mode, "ai");
+      assert.match(ok.text, /מלוטש/);
+      assert.equal(ok.warnings.length, 2, "מספר 15 וציטוט שלא היו");
+      mode = "fail";
+      assert.equal((await P("/api/story/ai", tok, { text: STORY })).body.mode, "prompt");
+    } finally { globalThis.fetch = realFetch; config.ai.key = prevKey; }
+  });
+});
+
+describe("stage 57 (470-502) עוזר שיחות", () => {
+  let tok, tok2;
+  const hh = (t) => ({ authorization: `Bearer ${t}` });
+  const P = (path, t, body, method = "POST", extra = {}) => j(path, { method, headers: { ...(t ? hh(t) : {}), ...extra }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const X = (path, ext, body, method = "POST") => j(path, { method, headers: { "x-maoz-ext": ext }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const CHAT = [
+    "12.10.2026, 18:05 - דביר צופים: היי דני, מחר פעולה ב-17:00",
+    "12.10.2026, 18:20 - דני כהן: אפשר להגיע באיחור? יש לי חוג עד 17:30",
+    "13.10.2026, 09:10 - דביר צופים: בטח דני. הטלפון שלי 052-1234567",
+    "14.10.2026, 20:00 - דני כהן: אני לא רוצה לבוא יותר ZZMARK ואין לי חברים",
+  ].join("\n");
+  before(async () => {
+    const mk = async (u) => (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + " נבדק", signupCode: "shevet-code" }) })).body.token;
+    tok = await mk("u57a");
+    tok2 = await mk("u57b");
+  });
+
+  it("כל הנתיבים דורשים התחברות, וכותרת תוסף שגויה נדחית", async () => {
+    for (const [m, p] of [["POST", "/api/chat/parse"], ["POST", "/api/chat/analyze"], ["POST", "/api/chat/reply"], ["POST", "/api/chat/check-reply"], ["POST", "/api/chat/announce"], ["GET", "/api/chat/saved"], ["GET", "/api/chat/followups"], ["GET", "/api/chat/tokens"], ["GET", "/api/chat/ping"], ["POST", "/api/chat/ai"], ["GET", "/api/chat/outreach"]]) {
+      assert.equal((await P(p, null, m === "POST" ? {} : undefined, m)).status, 401, p);
+    }
+    for (const bad of ["x", "mx_123", "mx_" + "z".repeat(48), "mx_" + "a".repeat(48)]) assert.equal((await X("/api/chat/ping", bad, undefined, "GET")).status, 401, bad);
+  });
+
+  it("פענוח ואחר כך ניתוח: השמות מוסתרים, ההודעה הממתינה והתגובות המוצעות", async () => {
+    const pr = (await P("/api/chat/parse", tok, { text: CHAT })).body;
+    assert.equal(pr.format, "android");
+    assert.equal(pr.count, 4);
+    assert.deepEqual(pr.participants.map((x) => x.name).sort(), ["דביר צופים", "דני כהן"]);
+    const r = await P("/api/chat/analyze", tok, { text: CHAT, me: "דביר צופים", kid: "m", guide: "f" });
+    assert.equal(r.status, 200);
+    const a = r.body;
+    assert.equal(a.mode, "one");
+    assert.equal(a.pending.intent.primary, "emotional");
+    assert.equal(a.safety.level, "attention");
+    assert.ok(a.safety.cats.includes("bullying"));
+    assert.ok(a.replies.variants.length >= 2);
+    assert.ok(a.plan.length >= 1);
+    assert.equal(a.scrubbed.phone, 1);
+    const withoutAliases = JSON.stringify({ ...a, aliases: undefined });
+    assert.ok(!/דני|דביר/.test(withoutAliases), "השמות המקוריים חוזרים רק בשדה aliases");
+    assert.ok(a.aliases.some((x) => x.name === "דני כהן" && x.alias === "חניך א'"));
+    assert.ok(!/052-?1234567/.test(JSON.stringify(a)));
+  });
+
+  it("הטקסט של השיחה לא נשמר באף מקום במסד", async () => {
+    await P("/api/chat/analyze", tok, { text: CHAT, me: "דביר צופים" });
+    await P("/api/chat/reply", tok, { message: "אני לא רוצה לבוא יותר ZZMARK" });
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name);
+    for (const t of tables) {
+      const rows = JSON.stringify(db.prepare(`SELECT * FROM "${t}"`).all());
+      assert.ok(!rows.includes("ZZMARK"), `נמצא בטבלה ${t}`);
+    }
+    const audits = db.prepare("SELECT details FROM audit_log WHERE action = 'chat.analyze' ORDER BY id DESC LIMIT 1").get();
+    assert.ok(audits && !String(audits.details).includes("דני") && /"mode"/.test(String(audits.details)));
+  });
+
+  it("מצוקה חמורה: מסגרת אדומה, בלי תגובות רגילות, קווי סיוע, ובלי AI", async () => {
+    const txt = "20.10.2026, 22:00 - דביר: היי\n20.10.2026, 22:05 - נועה: אני רוצה למות ואין טעם";
+    const a = (await P("/api/chat/analyze", tok, { text: txt, me: "דביר" })).body;
+    assert.equal(a.safety.level, "urgent");
+    assert.equal(a.replies.suppressed, true);
+    assert.ok(a.replies.safe.length >= 2);
+    assert.ok(a.safety.hotlines.some((h) => h.number === "1201"));
+    assert.equal(a.plan[0].level, "urgent");
+    const ai = await P("/api/chat/ai", tok, { text: txt, me: "דביר" });
+    assert.equal(ai.status, 409);
+    assert.equal(ai.body.error.code, "SAFETY_NO_AI");
+    const one = (await P("/api/chat/reply", tok, { message: "אני לא רוצה לחיות" })).body;
+    assert.equal(one.safety.level, "urgent");
+    assert.equal(one.replies.suppressed, true);
+  });
+
+  it("הודעה בודדת, בחירת כוונה ידנית, ובדיקת תגובה", async () => {
+    const r = (await P("/api/chat/reply", tok, { message: "מתי מתחילים מחר? 052-1234567", name: "דני", kid: "m" })).body;
+    assert.equal(r.detected.primary, "question");
+    assert.match(r.replies.variants[0].text, /היי דני/);
+    const e = (await P("/api/chat/reply", tok, { intent: "emotional" })).body;
+    assert.equal(e.replies.intent, "emotional");
+    const c = (await P("/api/chat/check-reply", tok, { draft: "זה יישאר בינינו, אל תדאג", where: "private", hour: 23 })).body;
+    assert.equal(c.ok, false);
+    assert.ok(c.items.some((i) => i.code === "secrecy" && i.level === "red"));
+    assert.equal((await P("/api/chat/check-reply", tok, { draft: "x".repeat(3001) })).status, 400);
+    assert.ok((await P("/api/chat/announce", tok, { title: "פעולה", date: "יום ה'", time: "17:00", place: "החורשה", bring: ["מים"] })).body.variants.length === 4);
+    assert.ok((await P("/api/chat/outreach?reason=quiet&name=נועה", tok, undefined, "GET")).body.variants.length >= 2);
+    assert.ok((await P("/api/chat/group-messages", tok, undefined, "GET")).body.items.length >= 3);
+  });
+
+  it("שכבה: ניתוח קבוצה וגוף בקשה גדול מ-200KB", async () => {
+    const lines = [];
+    for (let i = 0; i < 4000; i++) lines.push(`${12 + (i % 15)}.10.2026, ${10 + (i % 10)}:${String(i % 60).padStart(2, "0")} - ${["נועה", "יובל", "מיכל", "דביר"][i % 4]}: ${i % 7 === 0 ? "מתי מתחילים מחר?" : "הודעה מספר " + i + " עם עוד כמה מילים כדי להאריך את השורה הזאת לבדיקה"}`);
+    const body = lines.join("\n");
+    assert.ok(body.length > 200_000);
+    const r = await P("/api/chat/analyze", tok, { text: body, me: "דביר", lastN: 1500 });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.mode, "group");
+    assert.equal(r.body.counts.messages, 1500);
+    assert.ok(r.body.faq.length >= 1);
+    const huge = await P("/api/chat/analyze", tok, { text: "א".repeat(2_600_000) });
+    assert.ok([400, 413].includes(huge.status));
+  });
+
+  it("סיכומים שמורים: רק שדות מותרים, בלי טקסט, 30 יום, פרטי לכל משתמש", async () => {
+    const a = (await P("/api/chat/analyze", tok, { text: CHAT, me: "דביר צופים" })).body;
+    const sv = await P("/api/chat/saved", tok, { title: "שיחה עם חניך א'", analysis: { ...a, evil: "<script>", pending: { text: "ZZSECRET" }, plan: [{ level: "urgent", text: "התקשר 052-7654321", why: "x" }] } });
+    assert.equal(sv.status, 201);
+    const s = sv.body.summary;
+    assert.equal(s.mode, "one");
+    assert.equal(s.safety.level, "attention");
+    assert.ok(!JSON.stringify(s).includes("ZZSECRET") && !JSON.stringify(s).includes("script") && !JSON.stringify(s).includes("7654321"));
+    assert.ok(Date.parse(sv.body.expiresAt) - Date.now() > 29 * 86_400_000);
+    assert.equal((await P("/api/chat/saved", tok, { title: "דני 052-1234567", analysis: {} })).status, 422);
+    assert.equal((await P("/api/chat/saved", tok2, undefined, "GET")).body.items.length, 0);
+    assert.equal((await P(`/api/chat/saved/${sv.body.id}`, tok2, undefined, "DELETE")).status, 404);
+    db.prepare("UPDATE chat_saved SET expires_at = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), sv.body.id);
+    assert.equal((await P("/api/chat/saved", tok, undefined, "GET")).body.items.length, 0, "נמחק אחרי פקיעה");
+    const keep = await P("/api/chat/saved", tok, { title: "לשמור", analysis: a });
+    assert.equal((await P(`/api/chat/saved/${keep.body.id}`, tok, undefined, "DELETE")).status, 200);
+  });
+
+  it("מעקבים: משימות בלבד, בלי פרטים מזהים ובלי נושאים רגישים", async () => {
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const ok = await P("/api/chat/followups", tok, { alias: "חניך א'", note: "לשאול מה שלומו אחרי הפעולה", due: yesterday });
+    assert.equal(ok.status, 201);
+    assert.equal(ok.body.overdue, true);
+    for (const [note, code] of [["התקשר 052-1234567", "PII_FOUND"], ["הוא אמר שהוא רוצה למות", "SENSITIVE"], ["הוא בטיפול פסיכולוג", "SENSITIVE"]]) {
+      const r = await P("/api/chat/followups", tok, { alias: "חניך ב'", note });
+      assert.equal(r.status, 422, note);
+      assert.equal(r.body.error.code, code);
+    }
+    const list = (await P("/api/chat/followups", tok, undefined, "GET")).body;
+    assert.equal(list.items.length, 1);
+    assert.equal(list.overdue, 1);
+    assert.equal((await P(`/api/chat/followups/${ok.body.id}`, tok2, { done: true }, "PATCH")).status, 404);
+    const done = await P(`/api/chat/followups/${ok.body.id}`, tok, { done: true }, "PATCH");
+    assert.equal(done.body.done, true);
+    assert.equal(done.body.overdue, false);
+    assert.equal((await P(`/api/chat/followups/${ok.body.id}`, tok, { note: "הוא אמר שהוא רוצה למות" }, "PATCH")).status, 422);
+    assert.equal((await P(`/api/chat/followups/${ok.body.id}`, tok, undefined, "DELETE")).status, 200);
+  });
+
+  it("אסימוני תוסף: נוצרים באתר, מוצגים פעם אחת, מוגבלים לעוזר השיחות, ניתנים לביטול", async () => {
+    const c = await P("/api/chat/tokens", tok, { label: "המחשב בבית" });
+    assert.equal(c.status, 201);
+    assert.match(c.body.token, /^mx_[a-f0-9]{48}$/);
+    const list = (await P("/api/chat/tokens", tok, undefined, "GET")).body;
+    assert.ok(!JSON.stringify(list).includes(c.body.token));
+    assert.ok(!db.prepare("SELECT token_hash FROM ext_tokens WHERE id = ?").get(c.body.id).token_hash.includes(c.body.token));
+    const ping = await X("/api/chat/ping", c.body.token, undefined, "GET");
+    assert.equal(ping.status, 200);
+    assert.deepEqual([ping.body.username, ping.body.ext], ["u57a", true]);
+    const an = await X("/api/chat/analyze", c.body.token, { messages: [{ who: "אני", ts: Date.UTC(2026, 9, 12, 9), text: "היי" }, { who: "חניך א'", ts: Date.UTC(2026, 9, 12, 10), text: "מתי מתחילים?" }], masked: true });
+    assert.equal(an.status, 200);
+    assert.equal(an.body.pending.intent.primary, "question");
+    assert.deepEqual(an.body.aliases, []);
+    for (const [path, m] of [["/api/chat/tokens", "GET"], ["/api/story/dict", "GET"], ["/api/me/style", "GET"], ["/api/chat/saved", "GET"], ["/api/chat/followups", "GET"]]) {
+      assert.equal((await X(path, c.body.token, undefined, m)).status, 401, `${path} לא נגיש לתוסף`);
+    }
+    assert.equal((await P(`/api/chat/tokens/${c.body.id}`, tok2, undefined, "DELETE")).status, 404);
+    assert.equal((await P(`/api/chat/tokens/${c.body.id}`, tok, undefined, "DELETE")).status, 200);
+    assert.equal((await X("/api/chat/ping", c.body.token, undefined, "GET")).status, 401, "אחרי ביטול");
+    const c2 = await P("/api/chat/tokens", tok, {});
+    db.prepare("UPDATE ext_tokens SET expires_at = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), c2.body.id);
+    assert.equal((await X("/api/chat/ping", c2.body.token, undefined, "GET")).status, 401, "אחרי פקיעה");
+    db.prepare("DELETE FROM ext_tokens").run();
+    for (let i = 0; i < 3; i++) assert.equal((await P("/api/chat/tokens", tok, {})).status, 201);
+    assert.equal((await P("/api/chat/tokens", tok, {})).status, 409);
+    const off = await P("/api/chat/tokens", tok2, {});
+    db.prepare("UPDATE users SET disabled = 1 WHERE username = 'u57b'").run();
+    assert.equal((await X("/api/chat/ping", off.body.token, undefined, "GET")).status, 401, "משתמש מושעה");
+    db.prepare("UPDATE users SET disabled = 0 WHERE username = 'u57b'").run();
+  });
+
+  it("AI: אישור מפורש, בלי מפתח מקבלים הנחיה מוסתרת, ותגובות אסורות נפסלות", async () => {
+    const { config } = await import("../src/config.js");
+    const noKey = (await P("/api/chat/ai", tok, { text: CHAT, me: "דביר צופים" })).body;
+    if (noKey.mode === "prompt") {
+      assert.ok(!/דני|דביר|052/.test(noKey.prompt), "ההנחיה מוסתרת");
+      assert.match(noKey.prompt, /חניך א'/);
+    }
+    const mild = "12.10.2026, 18:05 - דביר צופים: היי\n12.10.2026, 18:20 - דני כהן: מתי הפעולה מחר?";
+    const prevKey = config.ai.key, realFetch = globalThis.fetch;
+    config.ai.key = "test-key";
+    try {
+      let sent = null;
+      globalThis.fetch = async (url, opts) => {
+        if (!String(url).startsWith("https://api.anthropic.com")) return realFetch(url, opts);
+        sent = JSON.parse(opts.body);
+        return new Response(JSON.stringify({ content: [{ text: JSON.stringify({ replies: [{ label: "חם", text: "מחר ב-[השעה]. נתראה!" }, { label: "אסור", text: "זה יישאר בינינו, אל תדאג" }], notes: "" }) }] }), { status: 200, headers: { "content-type": "application/json" } });
+      };
+      const need = await P("/api/chat/ai", tok, { text: mild, me: "דביר צופים" });
+      assert.equal(need.status, 428);
+      assert.equal(sent, null, "בלי אישור לא נשלח כלום");
+      const ok = (await P("/api/chat/ai", tok, { text: mild, me: "דביר צופים", confirmExternal: true })).body;
+      assert.equal(ok.mode, "ai");
+      assert.equal(ok.replies.length, 1);
+      assert.equal(ok.droppedCount, 1);
+      assert.ok(!/דני|דביר/.test(JSON.stringify(sent)), "ל-AI לא נשלחו שמות");
+    } finally { globalThis.fetch = realFetch; config.ai.key = prevKey; }
+  });
+});

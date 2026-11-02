@@ -2391,3 +2391,85 @@ html.hc #main.route-in { animation: none; }
   .new-dot { background: Highlight; forced-color-adjust: none; }
   .ruler-dim { background: Canvas; opacity: 0.85; }
 }
+
+/* ───── שלב 56: סטודיו סיפור אישי ───── */
+.st-studio { display: grid; gap: 14px; }
+.st-intro { margin: 0; }
+.st-gate { max-width: 560px; }
+.st-panel { display: grid; gap: 14px; }
+.st-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: start; }
+.st-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; align-items: start; }
+@media (max-width: 720px) { .st-row { grid-template-columns: 1fr; } }
+.st-fields { display: grid; gap: 4px; margin-block: 10px; }
+.st-moments { margin-block: 10px; }
+.st-list, .st-qs, .st-parts, .st-checks { padding-inline-start: 1.2em; }
+.st-list { list-style: none; padding: 0; display: grid; gap: 6px; }
+.st-list li { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.st-idea { margin: 4px 0; padding: 8px 10px; border-inline-start: 4px solid var(--accent-2); background: var(--bg); border-radius: 6px; }
+.st-story { white-space: pre-wrap; line-height: 1.9; font-size: 1.05rem; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.st-checks li { margin-block: 4px; }
+.st-qs { list-style: none; padding: 0; display: grid; gap: 12px; }
+.st-ans { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.st-ans input { flex: 1 1 220px; }
+.st-choices { display: grid; gap: 8px; margin-block: 10px; padding: 12px; }
+.st-choices legend { font-weight: 700; padding-inline: 6px; }
+.st-choice, .st-check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.st-choice input, .st-check input { margin-top: 5px; flex: none; width: 18px; height: 18px; }
+.st-kind { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; border: 0; padding: 0; margin: 8px 0; }
+.st-kind legend { font-weight: 700; padding: 0; margin-bottom: 6px; }
+.st-privacy { border: 2px solid var(--accent-2); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: var(--bg); }
+.st-cards { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.st-cards h4 { margin-top: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.st-status { font-weight: 700; }
+.st-approve { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); display: grid; gap: 8px; }
+.st-result { border-inline-start: 5px solid var(--accent-2); }
+.st-ages h4 { margin-top: 0; }
+.st-score { font-size: 1.1rem; margin: 0 0 6px; }
+.st-score-num { font-size: 2.2rem; font-weight: 800; }
+.st-meter { height: 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); overflow: hidden; margin-bottom: 10px; }
+.st-meter span { display: block; height: 100%; background: var(--btn-bg); }
+.st-diff { line-height: 2; font-size: 1.05rem; }
+ins.st-add { background: #cdeccd; color: #0d3b0d; text-decoration: underline; padding-inline: 2px; border-radius: 3px; }
+del.st-del { background: #f6cfcf; color: #4a0e0e; text-decoration: line-through; padding-inline: 2px; border-radius: 3px; }
+.st-dict summary { cursor: pointer; font-weight: 700; }
+.st-ai { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+.st-ai .field { flex: 1 1 260px; }
+@media (prefers-reduced-motion: no-preference) { .st-meter span { transition: width .5s ease; } }
+html.hc ins.st-add { background: #fff; color: #000; border: 1px solid #000; }
+html.hc del.st-del { background: #fff; color: #000; border: 1px dashed #000; }
+@media print { .st-savebar, .st-studio [role="tablist"] { display: none !important; } }
+
+/* ───────────── שלב 57: עוזר שיחות ───────────── */
+.ch { display: grid; gap: 14px; }
+.ch-privacy { border-inline-start: 5px solid var(--accent-2); }
+.ch-privacy ul { margin: 6px 0 0; padding-inline-start: 1.2em; display: grid; gap: 6px; }
+.ch-results { display: grid; gap: 14px; }
+.ch-tools { display: grid; gap: 14px; }
+.ch-safety { border: 3px solid var(--danger); background: var(--danger-bg); }
+.ch-safety h2, .ch-safety h3 { margin-top: 0; }
+.ch-urgent { border-width: 4px; }
+.ch-attention { border-style: dashed; }
+.ch-hot { padding-inline-start: 1.2em; }
+.ch-plan { padding-inline-start: 1.4em; display: grid; gap: 10px; }
+.ch-step { padding-inline-start: 4px; }
+.ch-badge { display: inline-block; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--accent-2); font-size: 0.85rem; font-weight: 700; }
+.ch-lv-urgent .ch-badge, .ch-lv-red { color: var(--danger); }
+.ch-lv-red, .ch-lv-warn { border-inline-start: 4px solid var(--danger); padding-inline-start: 8px; }
+.ch-lv-tip { border-inline-start: 4px solid var(--accent-2); padding-inline-start: 8px; }
+.ch-lv-ok { border-inline-start: 4px solid var(--ok); padding-inline-start: 8px; }
+.ch-checks { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }
+.ch-var { flex: 1 1 320px; min-width: 0; }
+.ch-var-label { display: inline-block; margin-bottom: 2px; }
+.ch-var-text { margin: 2px 0; white-space: pre-wrap; line-height: 1.7; }
+.ch-vars li { align-items: flex-start; }
+.ch-slots { display: flex; gap: 12px; flex-wrap: wrap; margin-block: 8px; }
+.ch-slots .field { flex: 1 1 200px; }
+.ch-table { width: 100%; border-collapse: collapse; }
+.ch-table th, .ch-table td { text-align: start; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.ch-bar { display: inline-block; width: 90px; height: 10px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; vertical-align: middle; background: var(--bg); }
+.ch-bar > span { display: block; height: 100%; background: var(--accent-2); }
+.ch-steps { padding-inline-start: 1.4em; display: grid; gap: 8px; }
+.ch-code { font-family: ui-monospace, monospace; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); max-width: 100%; word-break: break-all; }
+input.ch-code { width: 100%; }
+.ch-done { text-decoration: line-through; opacity: 0.75; }
+html.hc .ch-bar > span { background: var(--accent); }

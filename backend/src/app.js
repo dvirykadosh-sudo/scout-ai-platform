@@ -32,6 +32,9 @@ import { registerWriteV50Routes } from "./routes-write-v50.js";
 import { registerWriteV51Routes } from "./routes-write-v51.js";
 import { registerWriteV53Routes } from "./routes-write-v53.js";
 import { registerV54Routes } from "./routes-v54.js";
+import { registerV57Routes } from "./routes-v57.js";
+import { registerV56Routes } from "./routes-v56.js";
+import { cleanDict } from "./human-voice.js";
 import compression from "compression";
 import { registerAccountV52Routes, regSettings } from "./routes-accounts-v52.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
@@ -120,6 +123,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
   // CORS: only the configured site origin (same-origin calls need no CORS at all); no wildcard, no credentials
   app.use(cors({ origin: config.webOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"], maxAge: 600 }));
+  app.use("/api/chat", express.json({ limit: "3mb" }));
   app.use(express.json({ limit: "200kb" }));
   app.use(maintenanceGuard(db));
   app.use(pageCountMiddleware(db));
@@ -252,8 +256,12 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
   app.put("/api/me/style", requireUser(), (req, res) => {
     const style = styleSchema.parse(req.body?.style ?? undefined);
-    if (req.body?.style?.card === undefined) {
-      try { style.card = JSON.parse(db.prepare("SELECT style_json FROM users WHERE id = ?").get(req.user.id)?.style_json || "{}").card || ""; } catch { /* ignore */ }
+    if (req.body?.style?.card === undefined || req.body?.style?.voice === undefined) {
+      try {
+        const cur = JSON.parse(db.prepare("SELECT style_json FROM users WHERE id = ?").get(req.user.id)?.style_json || "{}");
+        if (req.body?.style?.card === undefined) style.card = cur.card || "";
+        if (req.body?.style?.voice === undefined && cur.voice) style.voice = cleanDict(cur.voice);
+      } catch { /* ignore */ }
     }
     db.prepare("UPDATE users SET style_json = ? WHERE id = ?").run(JSON.stringify(style), req.user.id);
     res.json({ style });
@@ -633,6 +641,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerWriteV51Routes(app, { limiter, requireUser });
   registerWriteV53Routes(app, { db, limiter, fail, requireUser });
   registerV54Routes(app, { db, dbFile, limiter, fail, requireUser, requireAdmin, audit, mailer, config, bootedAt });
+  registerV56Routes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion, audit, config });
+  registerV57Routes(app, { db, limiter, fail, requireUser, audit, config });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
   registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
   registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });

@@ -8,7 +8,7 @@ const PAGES: [string, number, MetadataRoute.Sitemap[number]["changeFrequency"]][
   ["/", 1, "weekly"], ["/library", 0.9, "daily"], ["/types", 0.7, "monthly"], ["/values", 0.7, "monthly"], ["/methods", 0.7, "monthly"],
   ["/tools", 0.6, "monthly"], ["/ideas", 0.6, "monthly"], ["/warmups", 0.6, "monthly"], ["/icebreakers", 0.6, "monthly"], ["/stories", 0.6, "monthly"],
   ["/challenges", 0.6, "monthly"], ["/quick", 0.6, "monthly"], ["/plan", 0.5, "monthly"], ["/calendar", 0.4, "monthly"], ["/cupboard", 0.5, "monthly"],
-  ["/write", 0.6, "monthly"], ["/assistant", 0.5, "monthly"], ["/coverage", 0.5, "weekly"], ["/hall", 0.5, "weekly"], ["/team", 0.4, "monthly"],
+  ["/write", 0.6, "monthly"], ["/story", 0.5, "monthly"], ["/chat", 0.4, "monthly"], ["/assistant", 0.5, "monthly"], ["/coverage", 0.5, "weekly"], ["/hall", 0.5, "weekly"], ["/team", 0.4, "monthly"],
   ["/new", 0.7, "monthly"], ["/help", 0.6, "monthly"], ["/install", 0.5, "monthly"], ["/whats-new", 0.5, "weekly"], ["/vote", 0.3, "monthly"],
   ["/requests", 0.3, "weekly"], ["/pilot", 0.3, "monthly"], ["/status", 0.2, "daily"], ["/accessibility", 0.5, "yearly"], ["/privacy", 0.5, "yearly"],
   ["/style-guide", 0.4, "monthly"], ["/account", 0.2, "yearly"],

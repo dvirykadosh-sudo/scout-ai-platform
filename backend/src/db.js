@@ -417,6 +417,68 @@ CREATE TABLE IF NOT EXISTS style_profiles (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_style_profiles_user ON style_profiles(user_id);
+CREATE TABLE IF NOT EXISTS story_memories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'memory',
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  value TEXT NOT NULL DEFAULT '',
+  tags TEXT NOT NULL DEFAULT '[]',
+  place TEXT NOT NULL DEFAULT '',
+  year INTEGER,
+  consent TEXT NOT NULL DEFAULT 'self',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_story_memories_user ON story_memories(user_id);
+CREATE TABLE IF NOT EXISTS my_stories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  value TEXT NOT NULL DEFAULT '',
+  age TEXT NOT NULL DEFAULT '',
+  parts_json TEXT NOT NULL DEFAULT '{}',
+  body TEXT NOT NULL DEFAULT '',
+  opening TEXT NOT NULL DEFAULT '',
+  closing TEXT NOT NULL DEFAULT '',
+  approved INTEGER NOT NULL DEFAULT 0,
+  versions_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_my_stories_user ON my_stories(user_id);
+CREATE TABLE IF NOT EXISTS chat_saved (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'one',
+  summary_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_saved_user ON chat_saved(user_id);
+CREATE TABLE IF NOT EXISTS chat_followups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  alias TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  due TEXT,
+  done INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_followups_user ON chat_followups(user_id);
+CREATE TABLE IF NOT EXISTS ext_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label TEXT NOT NULL DEFAULT '',
+  token_hash TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  last_used_at TEXT,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ext_tokens_user ON ext_tokens(user_id);
 CREATE TABLE IF NOT EXISTS client_errors (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sig TEXT NOT NULL,
