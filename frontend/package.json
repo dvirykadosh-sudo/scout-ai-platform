@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "autoprefixer": "^10.6.2",
     "next": "^16.4.2",
     "postcss": "^8.5.32",
     "qrcode": "^1.5.4",
@@ -17,7 +18,6 @@
     "tailwindcss": "^4.3.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.4",
     "@types/node": "^22.20.5",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
