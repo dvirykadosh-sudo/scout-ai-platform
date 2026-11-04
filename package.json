@@ -1,17 +1,28 @@
 {
-  "name": "scout-ai-platform",
+  "name": "scout-frontend",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "description": "מחולל פעולות - שבט מעוז",
-  "engines": { "node": ">=22.13" },
   "scripts": {
-    "setup": "node run.mjs setup",
-    "build:prod": "node run.mjs build-prod",
-    "start:prod": "node backend/src/all.js",
-    "start": "node run.mjs",
-    "dev": "node run.mjs dev",
-    "test": "npm test --prefix backend",
-    "typecheck": "npm run typecheck --prefix frontend"
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "framer-motion": "^14.9.0",
+    "lucide-react": "^1.66.0",
+    "next": "^16.4.2",
+    "qrcode": "^1.5.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^5.9.3"
   }
 }

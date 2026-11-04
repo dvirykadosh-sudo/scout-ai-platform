@@ -1,0 +1,83 @@
+/* שלב 58 – מסך כניסה דרמטי: נשר השבט, חוט משיכה קפיצי, אלומת אור חמה וכרטיס כניסה.
+   המסך תמיד כהה (גם בתצוגה הבהירה), ומגדיר מחדש את משתני הצבע כדי שהטופס הקיים יישאר קריא. */
+
+.lg-root {
+  --text: #efe9ff;
+  --muted: #cfc3ee;
+  --panel: #1e1245;
+  --field: rgba(8, 4, 22, 0.7);
+  --line: rgba(178, 124, 255, 0.45);
+  --link: #e3d3ff;
+  --glow: #b27cff;
+  --btn-bg: linear-gradient(135deg, #5d2fa3, #8a4bf0);
+  --on-accent: #fff;
+  --glass: rgba(30, 18, 69, 0.58);
+  --bg: #130e26;
+  --accent: #5d2fa3;
+  --accent-2: #8a4bf0;
+  --danger: #ffb3c6;
+  --danger-bg: rgba(122, 31, 61, 0.45);
+  --ok: #8be8bb;
+  --focus: #ffd54a;
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px 56px;
+  color: var(--text);
+  background: radial-gradient(900px 600px at 50% -10%, #1b0f3f 0%, transparent 65%), #06030f;
+  overflow: hidden;
+}
+html.hc .lg-root { background: #000; --text: #ffeb00; --muted: #ffeb00; --line: #ffeb00; --link: #ffeb00; --btn-bg: #ffeb00; --on-accent: #000; --field: #000; --panel: #000; --glass: #000; --bg: #000; --accent: #ffeb00; --accent-2: #ffeb00; --danger: #fff; --danger-bg: #000; --ok: #ffeb00; --focus: #fff; }
+
+.lg-back { align-self: flex-start; color: var(--link); text-decoration: underline; z-index: 3; }
+
+.lg-stage { position: relative; width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; margin-top: 12px; }
+.lg-eagle { position: relative; z-index: 2; width: clamp(150px, 34vw, 230px); aspect-ratio: 1; border-radius: 50%; display: block; user-select: none; -webkit-user-drag: none; }
+.lg-halo { position: absolute; z-index: 1; top: 6%; left: 50%; width: 130%; aspect-ratio: 1; translate: -50% 0; border-radius: 50%; background: radial-gradient(circle, rgba(255, 196, 96, 0.55) 0%, rgba(255, 150, 60, 0.18) 38%, transparent 68%); pointer-events: none; }
+.lg-beam {
+  position: absolute;
+  z-index: 1;
+  top: clamp(120px, 28vw, 190px);
+  left: 50%;
+  width: min(560px, 130vw);
+  height: 520px;
+  translate: -50% 0;
+  transform-origin: top center;
+  clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, rgba(255, 205, 120, 0.5), rgba(255, 170, 80, 0.12) 60%, transparent);
+  pointer-events: none;
+  filter: blur(2px);
+}
+html.hc .lg-beam, html.hc .lg-halo { display: none; }
+
+/* חוט המשיכה */
+.lg-pull { position: absolute; z-index: 4; top: 18%; inset-inline-end: -6px; display: flex; flex-direction: column; align-items: center; touch-action: none; }
+.lg-string { width: 2px; height: 90px; background: linear-gradient(#d9c2ff, #8a6bd1); transform-origin: top center; }
+.lg-knob { width: 44px; height: 44px; margin-top: -2px; display: grid; place-items: center; border-radius: 50%; border: 2px solid #ffd9a0; background: radial-gradient(circle at 35% 30%, #fff1d0, #f59e0b 70%); color: #3b2300; cursor: grab; box-shadow: 0 0 18px rgba(255, 190, 90, 0.55); }
+.lg-knob:active { cursor: grabbing; }
+html.hc .lg-knob { background: #ffeb00; border-color: #fff; }
+.lg-hint { margin: 10px 0 0; text-align: center; color: var(--muted); min-height: 1.5em; z-index: 3; }
+
+.lg-card {
+  position: relative;
+  z-index: 3;
+  width: min(460px, 100%);
+  margin-top: 26px;
+  padding: 22px;
+  border-radius: 26px;
+  background: rgba(24, 14, 56, 0.72);
+  border: 1px solid rgba(255, 205, 140, 0.35);
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 0 60px -10px rgba(255, 170, 80, 0.35), 0 30px 80px -30px rgba(0, 0, 0, 0.9);
+}
+html.hc .lg-card { background: #000; border: 2px solid #ffeb00; box-shadow: none; backdrop-filter: none; }
+.lg-card h1 { margin: 0 0 4px; font-size: 1.5rem; }
+.lg-note { margin: 14px 0 0; text-align: center; font-size: 0.9rem; color: var(--muted); }
+.lg-note a { color: var(--link); }
+
+@media (prefers-reduced-motion: reduce) { .lg-beam { filter: none; } }
+@media (max-width: 480px) { .lg-pull { inset-inline-end: -2px; } .lg-string { height: 70px; } }

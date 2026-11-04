@@ -1,9 +1,5 @@
 node_modules/
 .next/
-.next-prod/
-backend/data/
-.env
 .env.local
-*.zip
+*.tsbuildinfo
 next-env.d.ts
-tsconfig.tsbuildinfo

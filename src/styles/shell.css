@@ -1,0 +1,261 @@
+/* שלב 58 – מעטפת: סרגל זכוכית מתקפל בימין, דוק צף, וחלון "הגדרות מראה".
+   הסרגל פעיל רק כש-SiteShell מסמן html[data-shell="on"], כך שעמודי האתר הקיימים לא משתנים בלי בחירה. */
+
+/* ───── פריסה: מקום לסרגל ולדוק ───── */
+html[data-shell="on"][data-sb="closed"] { --sb-now: var(--sb-closed); }
+html[data-shell="on"] .site-header .nav,
+html[data-shell="on"] .bottom-nav { display: none; }
+@media (min-width: 1024px) {
+  html[data-shell="on"] .page { margin-inline-end: calc(var(--sb-now) + 32px); transition: margin 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+}
+html[data-shell="on"][data-dock="on"] .page { padding-bottom: 104px; }
+
+/* ───── סרגל זכוכית ───── */
+.sh-sidebar {
+  position: fixed;
+  inset-block: 12px;
+  inset-inline-start: 12px;
+  z-index: 40;
+  width: var(--sb-open);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: 28px;
+  background: var(--sh-glass);
+  border: 1px solid var(--sh-edge);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  backdrop-filter: blur(40px) saturate(1.5);
+  box-shadow: 0 18px 60px -18px rgba(8, 3, 28, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.sh-sidebar[data-collapsed="true"] { width: var(--sb-closed); }
+html.hc .sh-sidebar { background: #000; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-width: 2px; }
+
+.sh-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; }
+.sh-brand { font-weight: 800; font-size: 1.05rem; color: var(--text); white-space: nowrap; overflow: hidden; transition: opacity 0.2s; }
+.sh-sidebar[data-collapsed="true"] .sh-brand { opacity: 0; width: 0; }
+.sh-collapse {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid var(--sh-edge);
+  background: var(--sh-hover);
+  color: var(--text);
+  cursor: pointer;
+}
+.sh-collapse svg { transition: transform 0.35s; }
+.sh-sidebar[data-collapsed="true"] .sh-collapse svg { transform: rotate(180deg); }
+.sh-collapse:hover { box-shadow: 0 0 18px -2px var(--sh-glow); }
+
+/* כרטיס פרופיל */
+.sh-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 20px;
+  background: var(--sh-hover);
+  border: 1px solid var(--sh-edge);
+  color: var(--text);
+  text-decoration: none;
+}
+.sh-avatar {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--on-accent);
+  background: var(--btn-bg);
+  box-shadow: 0 0 16px -2px var(--sh-glow);
+}
+.sh-who { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; overflow: hidden; transition: opacity 0.2s; }
+.sh-who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-who span { font-size: 0.82rem; color: var(--muted); }
+.sh-sidebar[data-collapsed="true"] .sh-who { opacity: 0; width: 0; }
+
+/* ניווט: קפסולות עם זוהר במעבר עכבר */
+.sh-nav { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+.sh-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sh-group { margin: 10px 8px 4px; font-size: 0.75rem; letter-spacing: 0.04em; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.sh-sidebar[data-collapsed="true"] .sh-group { opacity: 0; height: 0; margin: 0; }
+.sh-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 13px;
+  border-radius: 16px;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s, box-shadow 0.25s, transform 0.2s;
+}
+.sh-item svg { flex: none; }
+.sh-item:hover { background: var(--sh-hover); box-shadow: 0 0 0 1px var(--sh-glow) inset, 0 0 24px -6px var(--sh-glow); }
+.sh-item[aria-current="page"] { background: var(--btn-bg); color: var(--on-accent); box-shadow: 0 0 26px -6px var(--sh-glow); font-weight: 700; }
+.sh-label { overflow: hidden; text-overflow: ellipsis; transition: opacity 0.2s; }
+.sh-sidebar[data-collapsed="true"] .sh-label { opacity: 0; width: 0; }
+.sh-badge {
+  margin-inline-start: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: var(--sh-badge-bg);
+  color: var(--sh-badge-ink);
+}
+.sh-sidebar[data-collapsed="true"] .sh-badge { position: absolute; top: 4px; inset-inline-end: 4px; min-width: 18px; height: 18px; font-size: 0.68rem; margin: 0; }
+html.hc .sh-item[aria-current="page"] { background: #ffeb00; color: #000; }
+html.hc .sh-item:hover { outline: 2px solid #ffeb00; box-shadow: none; }
+
+.sh-foot { display: flex; flex-direction: column; gap: 6px; }
+.sh-foot button.sh-item { width: 100%; background: transparent; border: 0; font: inherit; cursor: pointer; text-align: start; }
+
+/* מגירה במובייל */
+.sh-scrim { display: none; }
+@media (max-width: 1023px) {
+  .sh-sidebar { inset-block: 8px; inset-inline-start: 8px; width: min(320px, calc(100vw - 16px)); transform: translateX(calc(100% + 24px)); }
+  .sh-sidebar[data-collapsed="true"] { width: min(320px, calc(100vw - 16px)); }
+  .sh-sidebar[data-collapsed="true"] .sh-label,
+  .sh-sidebar[data-collapsed="true"] .sh-who,
+  .sh-sidebar[data-collapsed="true"] .sh-brand,
+  .sh-sidebar[data-collapsed="true"] .sh-group { opacity: 1; width: auto; height: auto; }
+  .sh-sidebar[data-collapsed="true"] .sh-badge { position: static; margin-inline-start: auto; min-width: 22px; height: 22px; font-size: 0.75rem; }
+  .sh-sidebar.is-open { transform: translateX(0); }
+  .sh-sidebar:not(.is-open) { visibility: hidden; }
+  .sh-collapse { display: none; }
+  .sh-scrim.is-open { display: block; position: fixed; inset: 0; z-index: 39; background: rgba(5, 2, 16, 0.6); border: 0; }
+}
+
+/* ───── דוק צף ───── */
+.sh-dock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 16px;
+  margin-inline: auto;
+  width: fit-content;
+  max-width: calc(100vw - 24px);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 26px;
+  background: var(--sh-glass);
+  border: 1px solid var(--sh-edge);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  backdrop-filter: blur(28px) saturate(1.5);
+  box-shadow: 0 16px 48px -14px rgba(8, 3, 28, 0.75);
+}
+html.hc .sh-dock { background: #000; backdrop-filter: none; -webkit-backdrop-filter: none; border-width: 2px; box-shadow: none; }
+.sh-dock-btn {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+}
+.sh-dock-btn:hover { background: var(--sh-hover); box-shadow: 0 0 20px -4px var(--sh-glow); }
+.sh-dock-btn[aria-current="page"] { background: var(--btn-bg); color: var(--on-accent); }
+html.hc .sh-dock-btn[aria-current="page"] { background: #ffeb00; color: #000; }
+.sh-dock-btn::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  translate: -50% 0;
+  width: max-content;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.sh-dock-btn:hover::after, .sh-dock-btn:focus-visible::after { opacity: 1; }
+.sh-dock-sep { width: 1px; height: 28px; background: var(--sh-edge); margin-inline: 4px; }
+@media (min-width: 1024px) { .sh-dock-menu { display: none; } }
+
+/* ───── חלון הגדרות מראה ───── */
+.sh-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(5, 2, 16, 0.62); display: grid; place-items: center; padding: 16px; }
+.sh-sheet {
+  width: min(760px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 90px -20px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+}
+html.light .sh-sheet { background: #fff; }
+html.hc .sh-sheet { background: #000; border-width: 2px; box-shadow: none; }
+.sh-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.sh-sheet-head h2 { margin: 0; font-size: 1.3rem; }
+.sh-sheet-body { padding: 8px 22px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.sh-set { border: 0; margin: 0; padding: 14px 0 0; min-width: 0; }
+.sh-set legend { font-weight: 800; padding: 0; margin-bottom: 4px; }
+.sh-set p { margin: 0 0 10px; color: var(--muted); font-size: 0.9rem; }
+.sh-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.sh-choice { position: relative; }
+.sh-choice input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.sh-choice span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--text);
+}
+.sh-choice input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 2px; }
+.sh-choice input:checked + span { background: var(--btn-bg); color: var(--on-accent); border-color: var(--glow); font-weight: 700; }
+html.hc .sh-choice input:checked + span { background: #ffeb00; color: #000; }
+.sh-changed { margin-inline-start: 8px; font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--sh-badge-bg); color: var(--sh-badge-ink); }
+
+/* פס שינויים ממתינים */
+.sh-pending {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--line);
+  background: var(--glass);
+}
+.sh-pending strong { margin-inline-end: auto; }
+.sh-review { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.sh-review li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--field); }
+.sh-review .from { color: var(--muted); text-decoration: line-through; }
+.sh-review .to { font-weight: 800; }
+
+@media print { .sh-sidebar, .sh-dock, .sh-scrim, .sh-backdrop { display: none !important; } html[data-shell="on"] .page { margin-inline-end: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .sh-sidebar, .sh-item, .sh-collapse svg, html[data-shell="on"] .page { transition: none; }
+}
