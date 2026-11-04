@@ -60,22 +60,6 @@
 3. תחת **Environment** הוסיפו `PUBLIC_URL` עם הכתובת המלאה, למשל `https://activities.maoz.co.il`. היא משמשת לקישורים בקובץ היומן (ICS) ובהודעות.
 4. אם האתר והממשק על כתובות שונות, הגדירו גם `WEB_ORIGIN`. בפריסה של שירות יחיד (ברירת המחדל כאן) אין בזה צורך.
 
-### להעלות את האתר לגוגל (Search Console)
-
-האתר כבר פתוח לסריקה כברירת מחדל. כדי שגוגל יגלה אותו מהר, ותראו מה הוא רואה:
-
-1. **ודאו ש-`PUBLIC_URL` מוגדר** לכתובת הסופית (ראו "כתובת משלכם" למעלה). בלי זה מפת האתר תצביע לכתובת הלא נכונה.
-2. היכנסו ל-[Google Search Console](https://search.google.com/search-console) עם חשבון Google, ולחצו Add property ← **URL prefix**, והדביקו את הכתובת המלאה.
-3. בשיטת האימות בחרו **HTML tag**. גוגל ייתן שורה כמו `<meta name="google-site-verification" content="abc123..." />`. העתיקו רק את הערך שאחרי `content=` (בלי המרכאות).
-4. ב-Render, תחת **Environment**, הוסיפו `GOOGLE_SITE_VERIFICATION` עם הערך. שמרו, חכו שהאתר יעלה מחדש, וחזרו ללחוץ Verify.
-5. ב-Search Console, בתפריט **Sitemaps**, כתבו `sitemap.xml` ולחצו Submit.
-6. אפשר להקליד כתובת של פעולה בשורת "URL inspection" ולבקש Request indexing, כדי להאיץ את הדף החשוב הראשון.
-7. אופציונלי, לבינג: Bing Webmaster Tools, אימות עם תגית, ומשתנה `BING_SITE_VERIFICATION`.
-
-מה לצפות: בתוך ימים עד שבועות הדפים יתחילו להופיע בחיפוש `site:כתובת-האתר`. גוגל קובע לבד מה להציג ובאיזה סדר. כדי לסגור הכול למנועי חיפוש: משתנה `ALLOW_INDEXING` עם הערך `0`.
-
-הדפים הבאים אף פעם לא נכנסים לאינדקס, בכוונה: `/admin`, `/join/...`, `/write/view/...`, `/assistant/shared` וה-API.
-
 ### תחזוקה
 
 - **עדכון גרסה:** מחליפים את הקבצים, ואז `git add .`, `git commit -m "update"`, `git push`. Render בונה מחדש לבד.
