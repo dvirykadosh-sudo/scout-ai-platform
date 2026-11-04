@@ -67,7 +67,7 @@ const newestMtime = (dir) => {
 if (buildProd) {
   run(npm, ["install"], frontend, "מתקין תלויות ל-frontend לפריסה ציבורית");
   run(npm, ["run", "build"], frontend, "בונה את האתר לפריסה ציבורית", { NEXT_PUBLIC_API_URL: "same-origin", NEXT_DIST_DIR: ".next-prod" });
-  say("\nהבנייה לפריסה הסתיימה. להפעלה: node backend/src/all.js");
+  say("\nהבנייה לפריסה הסתיימה.");
   process.exit(0);
 }
 
