@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "next": "^16.4.2",
+    "postcss": "^8.5.32",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.4",
