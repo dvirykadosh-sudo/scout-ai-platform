@@ -1,9 +1,9 @@
-// מפעיל את כל המערכת (שרת + אתר) בפקודה אחת.
-//   node run.mjs          התקנה (אם צריך), בנייה (אם צריך) והפעלה
-//   node run.mjs dev      הפעלה במצב פיתוח
-//   node run.mjs setup    התקנה ובנייה בלבד
-//   node run.mjs --open   פותח את הדפדפן כשהאתר מוכן
-//   node run.mjs build-prod   בנייה לפריסה ציבורית (שירות יחיד, כתובת API יחסית)
+﻿// ׳׳₪׳¢׳™׳ ׳׳× ׳›׳ ׳”׳׳¢׳¨׳›׳× (׳©׳¨׳× + ׳׳×׳¨) ׳‘׳₪׳§׳•׳“׳” ׳׳—׳×.
+//   node run.mjs          ׳”׳×׳§׳ ׳” (׳׳ ׳¦׳¨׳™׳), ׳‘׳ ׳™׳™׳” (׳׳ ׳¦׳¨׳™׳) ׳•׳”׳₪׳¢׳׳”
+//   node run.mjs dev      ׳”׳₪׳¢׳׳” ׳‘׳׳¦׳‘ ׳₪׳™׳×׳•׳—
+//   node run.mjs setup    ׳”׳×׳§׳ ׳” ׳•׳‘׳ ׳™׳™׳” ׳‘׳׳‘׳“
+//   node run.mjs --open   ׳₪׳•׳×׳— ׳׳× ׳”׳“׳₪׳“׳₪׳ ׳›׳©׳”׳׳×׳¨ ׳׳•׳›׳
+//   node run.mjs build-prod   ׳‘׳ ׳™׳™׳” ׳׳₪׳¨׳™׳¡׳” ׳¦׳™׳‘׳•׳¨׳™׳× (׳©׳™׳¨׳•׳× ׳™׳—׳™׳“, ׳›׳×׳•׳‘׳× API ׳™׳—׳¡׳™׳×)
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
@@ -24,18 +24,18 @@ const FRONTEND_PORT = 3000;
 
 const say = (m) => console.log(m);
 const die = (m) => {
-  console.error(`\nשגיאה: ${m}\n`);
+  console.error(`\n׳©׳’׳™׳׳”: ${m}\n`);
   process.exit(1);
 };
 
 // Node 22.5+ is needed for the built-in SQLite
 const [major, minor] = process.versions.node.split(".").map(Number);
-if (major < 22 || (major === 22 && minor < 5)) die(`נדרשת גרסת Node 22.5 ומעלה. מותקנת אצלך ${process.versions.node}. אפשר להוריד מ-nodejs.org`);
+if (major < 22 || (major === 22 && minor < 5)) die(`׳ ׳“׳¨׳©׳× ׳’׳¨׳¡׳× Node 22.5 ׳•׳׳¢׳׳”. ׳׳•׳×׳§׳ ׳× ׳׳¦׳׳ ${process.versions.node}. ׳׳₪׳©׳¨ ׳׳”׳•׳¨׳™׳“ ׳-nodejs.org`);
 
 function run(cmd, cmdArgs, cwd, label, env = {}) {
   say(`\n> ${label}`);
   const r = spawnSync(cmd, cmdArgs, { cwd, stdio: "inherit", shell: isWin, env: { ...process.env, ...env } });
-  if (r.status !== 0) die(`הפעולה "${label}" נכשלה. שלחו צילום של הטרמינל.`);
+  if (r.status !== 0) die(`׳”׳₪׳¢׳•׳׳” "${label}" ׳ ׳›׳©׳׳”. ׳©׳׳—׳• ׳¦׳™׳׳•׳ ׳©׳ ׳”׳˜׳¨׳׳™׳ ׳.`);
 }
 const npm = isWin ? "npm.cmd" : "npm";
 
@@ -46,7 +46,7 @@ if (fs.existsSync(path.join(appDir, "(site)"))) {
     const lp = path.join(appDir, legacy);
     if (fs.existsSync(lp)) {
       fs.rmSync(lp, { recursive: true, force: true });
-      say(`הוסר קובץ ישן שהוחלף בגרסה החדשה: src/app/${legacy}`);
+      say(`׳”׳•׳¡׳¨ ׳§׳•׳‘׳¥ ׳™׳©׳ ׳©׳”׳•׳—׳׳£ ׳‘׳’׳¨׳¡׳” ׳”׳—׳“׳©׳”: src/app/${legacy}`);
     }
   }
 }
@@ -64,20 +64,20 @@ const newestMtime = (dir) => {
   return newest;
 };
 
-if (!depsInstalled(backend)) run(npm, ["install"], backend, "מתקין את חבילות השרת (כדקה)");
-if (!depsInstalled(frontend)) run(npm, ["install"], frontend, "מתקין את חבילות האתר (כדקה)");
+if (!depsInstalled(backend)) run(npm, ["install", "--include=dev"], backend, "׳׳×׳§׳™׳ ׳׳× ׳—׳‘׳™׳׳•׳× ׳”׳©׳¨׳× (׳›׳“׳§׳”)");
+if (!depsInstalled(frontend)) run(npm, ["install", "--include=dev"], frontend, "׳׳×׳§׳™׳ ׳׳× ׳—׳‘׳™׳׳•׳× ׳”׳׳×׳¨ (׳›׳“׳§׳”)");
 if (buildProd) {
-  run(npm, ["run", "build"], frontend, "בונה את האתר לפריסה ציבורית", { NEXT_PUBLIC_API_URL: "same-origin", NEXT_DIST_DIR: ".next-prod" });
-  say("\nהבנייה לפריסה הסתיימה. להפעלה: node backend/src/all.js");
+  run(npm, ["run", "build"], frontend, "׳‘׳•׳ ׳” ׳׳× ׳”׳׳×׳¨ ׳׳₪׳¨׳™׳¡׳” ׳¦׳™׳‘׳•׳¨׳™׳×", { NEXT_PUBLIC_API_URL: "same-origin", NEXT_DIST_DIR: ".next-prod" });
+  say("\n׳”׳‘׳ ׳™׳™׳” ׳׳₪׳¨׳™׳¡׳” ׳”׳¡׳×׳™׳™׳׳”. ׳׳”׳₪׳¢׳׳”: node backend/src/all.js");
   process.exit(0);
 }
 if (!dev) {
   const buildId = path.join(frontend, ".next", "BUILD_ID");
   const stale = fs.existsSync(buildId) && Math.max(newestMtime(path.join(frontend, "src")), fs.statSync(path.join(frontend, "package.json")).mtimeMs) > fs.statSync(buildId).mtimeMs;
-  if (!fs.existsSync(buildId) || stale) run(npm, ["run", "build"], frontend, "בונה את האתר (כדקה)");
+  if (!fs.existsSync(buildId) || stale) run(npm, ["run", "build"], frontend, "׳‘׳•׳ ׳” ׳׳× ׳”׳׳×׳¨ (׳›׳“׳§׳”)");
 }
 if (setupOnly) {
-  say("\nההתקנה הסתיימה. להפעלה: npm start");
+  say("\n׳”׳”׳×׳§׳ ׳” ׳”׳¡׳×׳™׳™׳׳”. ׳׳”׳₪׳¢׳׳”: npm start");
   process.exit(0);
 }
 
@@ -88,8 +88,8 @@ const portFree = (port) =>
     s.once("listening", () => s.close(() => resolve(true)));
     s.listen(port);
   });
-if (!(await portFree(BACKEND_PORT))) die(`פורט ${BACKEND_PORT} תפוס. סגרו את הטרמינל שבו השרת כבר רץ, או הגדירו פורט אחר.`);
-if (!(await portFree(FRONTEND_PORT))) die(`פורט ${FRONTEND_PORT} תפוס. סגרו תוכנית אחרת שרצה עליו (למשל תיקיית scout-ai-web).`);
+if (!(await portFree(BACKEND_PORT))) die(`׳₪׳•׳¨׳˜ ${BACKEND_PORT} ׳×׳₪׳•׳¡. ׳¡׳’׳¨׳• ׳׳× ׳”׳˜׳¨׳׳™׳ ׳ ׳©׳‘׳• ׳”׳©׳¨׳× ׳›׳‘׳¨ ׳¨׳¥, ׳׳• ׳”׳’׳“׳™׳¨׳• ׳₪׳•׳¨׳˜ ׳׳—׳¨.`);
+if (!(await portFree(FRONTEND_PORT))) die(`׳₪׳•׳¨׳˜ ${FRONTEND_PORT} ׳×׳₪׳•׳¡. ׳¡׳’׳¨׳• ׳×׳•׳›׳ ׳™׳× ׳׳—׳¨׳× ׳©׳¨׳¦׳” ׳¢׳׳™׳• (׳׳׳©׳ ׳×׳™׳§׳™׳™׳× scout-ai-web).`);
 
 const children = [];
 let stopping = false;
@@ -108,7 +108,7 @@ function start(label, cmdArgs, cwd) {
   pipe(child.stderr, console.error);
   child.on("exit", (code) => {
     if (stopping) return;
-    console.error(`\n[${label}] נעצר (קוד ${code}). עוצר את הכול.`);
+    console.error(`\n[${label}] ׳ ׳¢׳¦׳¨ (׳§׳•׳“ ${code}). ׳¢׳•׳¦׳¨ ׳׳× ׳”׳›׳•׳.`);
     shutdown(code || 1);
   });
   children.push(child);
@@ -127,8 +127,8 @@ function shutdown(code = 0) {
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
-start("שרת", ["src/server.js"], backend);
-start("אתר", [path.join(frontend, "node_modules", "next", "dist", "bin", "next"), dev ? "dev" : "start", "-p", String(FRONTEND_PORT)], frontend);
+start("׳©׳¨׳×", ["src/server.js"], backend);
+start("׳׳×׳¨", [path.join(frontend, "node_modules", "next", "dist", "bin", "next"), dev ? "dev" : "start", "-p", String(FRONTEND_PORT)], frontend);
 
 // wait until the site answers, then announce
 const url = `http://localhost:${FRONTEND_PORT}`;
@@ -136,7 +136,7 @@ for (let i = 0; i < 120 && !stopping; i++) {
   try {
     const r = await fetch(url);
     if (r.ok) {
-      say(`\n========================================\n  האתר מוכן: ${url}\n  לעצירה: Ctrl+C\n========================================\n`);
+      say(`\n========================================\n  ׳”׳׳×׳¨ ׳׳•׳›׳: ${url}\n  ׳׳¢׳¦׳™׳¨׳”: Ctrl+C\n========================================\n`);
       if (openBrowser) {
         if (isWin) spawn("cmd", ["/c", "start", "", url], { stdio: "ignore", detached: true }).unref();
         else if (process.platform === "darwin") spawn("open", [url], { stdio: "ignore", detached: true }).unref();
@@ -148,3 +148,4 @@ for (let i = 0; i < 120 && !stopping; i++) {
   }
   await new Promise((r) => setTimeout(r, 500));
 }
+
