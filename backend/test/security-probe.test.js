@@ -201,6 +201,7 @@ describe("שלב 58: מפת הנתיבים", () => {
   "POST /api/assist/stations",
   "POST /api/assist/swap",
   "POST /api/auth/2fa",
+  "POST /api/auth/2fa/email/request",
   "POST /api/auth/forgot",
   "POST /api/auth/login",
   "POST /api/auth/magic/consume",

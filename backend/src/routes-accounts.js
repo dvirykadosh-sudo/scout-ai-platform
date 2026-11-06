@@ -58,6 +58,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     emailVerified: !!u.email_verified_at,
     phoneVerified: !!u.phone_verified_at,
     totpEnabled: !!u.totp_enabled,
+    emailOtpEnabled: !!u.email_otp_enabled,
     termsAccepted: u.terms_version === TERMS_VERSION,
   });
 
@@ -202,14 +203,17 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
       return res.status(401).json(fail("BAD_CREDENTIALS", "פרטי ההתחברות שגויים", n >= 3 ? capFields() : undefined));
     }
     clearFailures(db, key);
-    if (user.totp_enabled) {
+    if (user.totp_enabled || user.email_otp_enabled) {
       audit(db, user.username, "login.2fa_required", {});
-      return res.json({ needs2fa: true, challenge: signChallenge(user.id) });
+      return res.json({ needs2fa: true, challenge: signChallenge(user.id), twofaMethods: twofaMethodsOf(user) });
     }
     finishLogin(req, res, user, "password");
   });
 
-  // ───── 86. שלב שני: קוד מהאפליקציה או קוד גיבוי ─────
+  /** אילו שיטות אימות דו-שלבי פעילות למשתמש, לידיעת הלקוח (איזה מסך להציג). */
+  const twofaMethodsOf = (user) => ({ totp: !!user.totp_enabled, email: !!user.email_otp_enabled && !!user.email_verified_at });
+
+  // ───── 86. שלב שני: קוד מהאפליקציה, קוד שנשלח למייל, או קוד גיבוי ─────
   const checkSecondFactor = (user, code) => {
     const secret = user.totp_secret ? openSecret(user.totp_secret) : null;
     const c = String(code ?? "").trim();
@@ -219,6 +223,9 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
         db.prepare("UPDATE users SET totp_last_step = ? WHERE id = ?").run(step, user.id);
         return "totp";
       }
+    }
+    if (user.email_otp_enabled && user.email_verified_at && consume(user.id, "2fa_email", c, user.email) === "ok") {
+      return "email";
     }
     const list = user.backup_codes ? JSON.parse(user.backup_codes) : [];
     const h = hashSecret(`backup|${c.toLowerCase()}`);
@@ -230,11 +237,29 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     }
     return null;
   };
+  // שליחת קוד האימות למייל, בשלב השני של הכניסה (האסימון הזמני של האימות הדו-שלבי, לא התחברות מלאה)
+  app.post("/api/auth/2fa/email/request", limiter(15 * 60_000, 10), async (req, res) => {
+    const { challenge } = z.object({ challenge: z.string().min(10).max(2000) }).parse(req.body ?? {});
+    const ch = readChallenge(challenge);
+    const user = ch && db.prepare("SELECT * FROM users WHERE id = ?").get(ch.sub);
+    if (!user || user.disabled || !user.email_otp_enabled || !user.email_verified_at) return res.status(401).json(fail("BAD_CHALLENGE", "פג תוקף ההתחברות. התחברו מחדש"));
+    if (tooMany(user.id, "2fa_email")) return res.status(429).json(fail("RATE_LIMIT", "נשלחו כבר כמה קודים. נסו שוב בעוד שעה, או השתמשו בקוד גיבוי"));
+    const code = newCode();
+    issue(user.id, "2fa_email", user.email, code, 10);
+    try {
+      const r = await deliver("email", user.email, "קוד כניסה למחולל", `קוד הכניסה שלכם: ${code}. תקף ל-10 דקות.`, `<p>קוד האימות להתחברות:</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold;direction:ltr">${code}</p><p>תקף ל-10 דקות. אם לא ניסיתם להתחבר, אפשר להתעלם מההודעה.</p>`);
+      if (r === "none") return noProvider(res);
+      audit(db, user.username, "login.2fa_email_sent", {});
+      res.json({ ok: true, sentTo: maskEmail(user.email), ...(r === "dev" ? { devCode: code } : {}) });
+    } catch {
+      res.status(502).json(fail("SEND_FAILED", "שליחת הקוד נכשלה. נסו שוב מאוחר יותר, או השתמשו בקוד גיבוי"));
+    }
+  });
   app.post("/api/auth/2fa", limiter(15 * 60_000, 30), (req, res) => {
     const { challenge, code } = z.object({ challenge: z.string().min(10).max(2000), code: text(20).min(4) }).parse(req.body ?? {});
     const ch = readChallenge(challenge);
     const user = ch && db.prepare("SELECT * FROM users WHERE id = ?").get(ch.sub);
-    if (!user || user.disabled || !user.totp_enabled) return res.status(401).json(fail("BAD_CHALLENGE", "פג תוקף ההתחברות. התחברו מחדש"));
+    if (!user || user.disabled || !(user.totp_enabled || user.email_otp_enabled)) return res.status(401).json(fail("BAD_CHALLENGE", "פג תוקף ההתחברות. התחברו מחדש"));
     const key = `2fa|${user.id}`;
     const locked = checkLock(db, key);
     if (locked) return res.status(429).json(fail("LOCKED", `יותר מדי ניסיונות. נסו שוב בעוד ${locked} דקות`));
@@ -384,7 +409,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     const user = row && db.prepare("SELECT * FROM users WHERE id = ?").get(row.user_id);
     if (!user || user.disabled || !user.email_verified_at) return res.status(400).json(fail("BAD_LINK", "הקישור לא תקף או שכבר נוצל. בקשו קישור חדש"));
     db.prepare("UPDATE verify_codes SET used_at = ? WHERE id = ?").run(nowIso(), row.id);
-    if (user.totp_enabled) return res.json({ needs2fa: true, challenge: signChallenge(user.id) });
+    if (user.totp_enabled || user.email_otp_enabled) return res.json({ needs2fa: true, challenge: signChallenge(user.id), twofaMethods: twofaMethodsOf(user) });
     finishLogin(req, res, user, "magic-link");
   });
 
@@ -493,6 +518,60 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     db.prepare("UPDATE users SET backup_codes = ? WHERE id = ?").run(JSON.stringify(backups.map((b) => hashSecret(`backup|${b}`))), u.id);
     audit(db, u.username, "2fa.backup_regenerated", {});
     res.json({ backupCodes: backups });
+  });
+
+  // ───── אימות דו-שלבי בקוד שנשלח למייל ─────
+  app.post("/api/me/2fa/email/enable", requireUser(), limiter(15 * 60_000, 20), async (req, res) => {
+    const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+    if (u.email_otp_enabled) return res.status(400).json(fail("ALREADY", "האימות הדו-שלבי במייל כבר פעיל"));
+    if (!u.email || !u.email_verified_at) return res.status(400).json(fail("NO_EMAIL", "קודם הוסיפו ואמתו כתובת מייל"));
+    if (tooMany(u.id, "2fa_email_setup")) return res.status(429).json(fail("RATE_LIMIT", "נשלחו כבר כמה קודים. נסו שוב בעוד שעה"));
+    const code = newCode();
+    issue(u.id, "2fa_email_setup", u.email, code, 10);
+    try {
+      const r = await deliver("email", u.email, "קוד להפעלת אימות דו-שלבי", `קוד האימות: ${code}. תקף ל-10 דקות.`, `<p>קוד להפעלת אימות דו-שלבי במייל:</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold;direction:ltr">${code}</p><p>תקף ל-10 דקות.</p>`);
+      if (r === "none") return noProvider(res);
+      res.json({ ok: true, sentTo: maskEmail(u.email), ...(r === "dev" ? { devCode: code } : {}) });
+    } catch {
+      res.status(502).json(fail("SEND_FAILED", "שליחת הקוד נכשלה. נסו שוב מאוחר יותר"));
+    }
+  });
+  app.post("/api/me/2fa/email/confirm", requireUser(), limiter(15 * 60_000, 20), (req, res) => {
+    const { code } = z.object({ code: text(10).min(6) }).parse(req.body ?? {});
+    const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+    if (u.email_otp_enabled) return res.status(400).json(fail("ALREADY", "האימות הדו-שלבי במייל כבר פעיל"));
+    if (!u.email || !u.email_verified_at) return res.status(400).json(fail("NO_EMAIL", "קודם הוסיפו ואמתו כתובת מייל"));
+    if (consume(u.id, "2fa_email_setup", code.trim(), u.email) !== "ok") return res.status(400).json(fail("BAD_CODE", "הקוד שגוי או שפג תוקפו"));
+    const hadBackups = u.backup_codes && JSON.parse(u.backup_codes).length > 0;
+    const backups = hadBackups ? null : newBackupCodes();
+    db.prepare("UPDATE users SET email_otp_enabled = 1, backup_codes = COALESCE(backup_codes, ?) WHERE id = ?").run(backups ? JSON.stringify(backups.map((b) => hashSecret(`backup|${b}`))) : null, u.id);
+    audit(db, u.username, "2fa.email_enabled", {});
+    res.json({ ok: true, ...(backups ? { backupCodes: backups } : {}) });
+  });
+  app.post("/api/me/2fa/email/disable-code", requireUser(), limiter(15 * 60_000, 10), async (req, res) => {
+    const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+    if (!u.email_otp_enabled) return res.status(400).json(fail("NOT_ENABLED", "האימות הדו-שלבי במייל לא פעיל"));
+    if (tooMany(u.id, "2fa_email")) return res.status(429).json(fail("RATE_LIMIT", "נשלחו כבר כמה קודים. נסו שוב בעוד שעה, או השתמשו בקוד גיבוי"));
+    const code = newCode();
+    issue(u.id, "2fa_email", u.email, code, 10);
+    try {
+      const r = await deliver("email", u.email, "קוד לכיבוי אימות דו-שלבי", `קוד האימות: ${code}. תקף ל-10 דקות.`, `<p>קוד לכיבוי האימות הדו-שלבי במייל:</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold;direction:ltr">${code}</p><p>תקף ל-10 דקות. אם לא ביקשתם זאת, אפשר להתעלם.</p>`);
+      if (r === "none") return noProvider(res);
+      res.json({ ok: true, sentTo: maskEmail(u.email), ...(r === "dev" ? { devCode: code } : {}) });
+    } catch {
+      res.status(502).json(fail("SEND_FAILED", "שליחת הקוד נכשלה. נסו שוב מאוחר יותר"));
+    }
+  });
+  app.post("/api/me/2fa/email/disable", requireUser(), limiter(15 * 60_000, 20), async (req, res) => {
+    const { password, code } = z.object({ password: z.string().min(1).max(200), code: text(20).min(4) }).parse(req.body ?? {});
+    const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
+    if (!u.email_otp_enabled) return res.status(400).json(fail("NOT_ENABLED", "האימות הדו-שלבי במייל לא פעיל"));
+    if (!(await verifyPassword(password, u.password_hash))) return res.status(400).json(fail("BAD_PASSWORD", "הסיסמה שגויה"));
+    if (!checkSecondFactor(u, code)) return res.status(400).json(fail("BAD_CODE", "הקוד שגוי"));
+    const stillTotp = !!u.totp_enabled;
+    db.prepare("UPDATE users SET email_otp_enabled = 0, backup_codes = CASE WHEN ? THEN backup_codes ELSE NULL END WHERE id = ?").run(stillTotp ? 1 : 0, u.id);
+    audit(db, u.username, "2fa.email_disabled", {});
+    res.json({ ok: true });
   });
 
   // ───── 87. מכשירים מחוברים ─────
@@ -634,7 +713,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     } catch {
       return res.status(409).json(fail("TAKEN", "המייל או הטלפון כבר מאומתים בחשבון אחר"));
     }
-    if (p.reset2fa) db.prepare("UPDATE users SET totp_enabled = 0, totp_secret = NULL, backup_codes = NULL, totp_last_step = NULL WHERE id = ?").run(id);
+    if (p.reset2fa) db.prepare("UPDATE users SET totp_enabled = 0, totp_secret = NULL, email_otp_enabled = 0, backup_codes = NULL, totp_last_step = NULL WHERE id = ?").run(id);
     if (p.resetPassword) {
       tempPassword = crypto.randomBytes(6).toString("base64url");
       db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 1, password_changed_at = ? WHERE id = ?").run(await hashPassword(tempPassword), nowIso(), id);
@@ -673,8 +752,8 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   });
 
   app.get("/api/admin/security", requireAdmin(), (req, res) => {
-    const admins = db.prepare("SELECT * FROM users WHERE role = 'ADMIN' ORDER BY id").all().map((u) => ({ id: u.id, username: u.username, displayName: u.display_name || u.username, staffRole: effectiveStaff(u), disabled: !!u.disabled, totpEnabled: !!u.totp_enabled, emailVerified: !!u.email_verified_at, lastLoginAt: u.last_login_at }));
-    res.json({ providers: providers(), admins, adminsWithout2fa: admins.filter((a) => !a.disabled && !a.totpEnabled).length });
+    const admins = db.prepare("SELECT * FROM users WHERE role = 'ADMIN' ORDER BY id").all().map((u) => ({ id: u.id, username: u.username, displayName: u.display_name || u.username, staffRole: effectiveStaff(u), disabled: !!u.disabled, totpEnabled: !!u.totp_enabled, emailOtpEnabled: !!u.email_otp_enabled, emailVerified: !!u.email_verified_at, lastLoginAt: u.last_login_at }));
+    res.json({ providers: providers(), admins, adminsWithout2fa: admins.filter((a) => !a.disabled && !a.totpEnabled && !a.emailOtpEnabled).length });
   });
 
   // ───── 90. יומן פעולות מלא ─────

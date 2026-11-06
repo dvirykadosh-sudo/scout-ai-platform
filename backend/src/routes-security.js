@@ -213,7 +213,7 @@ export function registerSecurityRoutes(app, { db, limiter, fail, requireUser, re
         activeDevices: one("SELECT COUNT(*) AS c FROM auth_sessions WHERE revoked_at IS NULL AND last_seen_at > ?", new Date(Date.now() - 30 * 86400_000).toISOString()),
         flagged: one("SELECT COUNT(*) AS c FROM access_log WHERE flag IS NOT NULL AND flag != '' AND at >= ?", from),
         blocks: one("SELECT COUNT(*) AS c FROM ip_blocks WHERE expires_at IS NULL OR expires_at > ?", nowIso()),
-        adminsWithout2fa: one("SELECT COUNT(*) AS c FROM users WHERE role = 'ADMIN' AND disabled = 0 AND totp_enabled = 0"),
+        adminsWithout2fa: one("SELECT COUNT(*) AS c FROM users WHERE role = 'ADMIN' AND disabled = 0 AND totp_enabled = 0 AND email_otp_enabled = 0"),
         withoutTerms: one("SELECT COUNT(*) AS c FROM users WHERE terms_version IS NULL OR terms_version != ?", TERMS_VERSION),
       },
       countries: db.prepare("SELECT country, COUNT(*) AS c FROM access_log WHERE kind = 'login' AND at >= ? GROUP BY country ORDER BY c DESC LIMIT 8").all(from).map((r) => ({ country: r.country || "", name: countryName(r.country), count: r.c })),
@@ -230,7 +230,7 @@ export function registerSecurityRoutes(app, { db, limiter, fail, requireUser, re
       .send(
         csv(
           ["id", "username", "displayName", "role", "staffRole", "status", "email", "emailVerified", "phone", "phoneVerified", "twoFactor", "termsAccepted", "createdAt", "lastLoginAt"],
-          rows.map((u) => [u.id, u.username, u.display_name || "", u.role, u.role === "ADMIN" ? u.staff_role || "SUPER" : "", u.disabled ? "מושבת" : "פעיל", u.email || "", u.email_verified_at ? "כן" : "לא", u.phone || "", u.phone_verified_at ? "כן" : "לא", u.totp_enabled ? "כן" : "לא", u.terms_version === TERMS_VERSION ? "כן" : "לא", u.created_at, u.last_login_at || ""]),
+          rows.map((u) => [u.id, u.username, u.display_name || "", u.role, u.role === "ADMIN" ? u.staff_role || "SUPER" : "", u.disabled ? "מושבת" : "פעיל", u.email || "", u.email_verified_at ? "כן" : "לא", u.phone || "", u.phone_verified_at ? "כן" : "לא", u.totp_enabled && u.email_otp_enabled ? "אפליקציה+מייל" : u.totp_enabled ? "אפליקציה" : u.email_otp_enabled ? "מייל" : "לא", u.terms_version === TERMS_VERSION ? "כן" : "לא", u.created_at, u.last_login_at || ""]),
         ),
       );
   });

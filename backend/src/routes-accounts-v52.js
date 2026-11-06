@@ -64,11 +64,11 @@ export function securityScore(db, u) {
   const codes = u.backup_codes ? JSON.parse(u.backup_codes).length : 0;
   const pwAgeDays = Math.floor((Date.now() - Date.parse(u.password_changed_at || u.created_at)) / 86400_000);
   const items = [
-    { key: "2fa", label: "אימות דו-שלבי פעיל", points: 30, ok: !!u.totp_enabled, action: "הפעילו אימות דו-שלבי באזור האבטחה" },
+    { key: "2fa", label: "אימות דו-שלבי פעיל", points: 30, ok: !!(u.totp_enabled || u.email_otp_enabled), action: "הפעילו אימות דו-שלבי באזור האבטחה" },
     { key: "contact", label: "מייל או טלפון מאומתים (לשחזור חשבון)", points: 20, ok: !!(u.email_verified_at || u.phone_verified_at), action: "הוסיפו מייל או טלפון ואמתו אותם" },
     { key: "password", label: "הסיסמה הוחלפה בחצי השנה האחרונה", points: 20, ok: pwAgeDays <= 180, action: "החליפו סיסמה" },
     { key: "sessions", label: "עד 3 מכשירים מחוברים", points: 10, ok: sessions <= 3, action: "נתקו מכשירים שאתם לא משתמשים בהם" },
-    { key: "backup", label: "יש קודי גיבוי לאימות דו-שלבי", points: 10, ok: !!u.totp_enabled && codes >= 3, action: u.totp_enabled ? "צרו קודי גיבוי חדשים" : "קודם הפעילו אימות דו-שלבי" },
+    { key: "backup", label: "יש קודי גיבוי לאימות דו-שלבי", points: 10, ok: !!(u.totp_enabled || u.email_otp_enabled) && codes >= 3, action: u.totp_enabled || u.email_otp_enabled ? "צרו קודי גיבוי חדשים" : "קודם הפעילו אימות דו-שלבי" },
     { key: "recovery", label: "יש מייל לשחזור סיסמה", points: 10, ok: !!u.email, action: "הוסיפו כתובת מייל" },
   ];
   const score = items.reduce((s, i) => s + (i.ok ? i.points : 0), 0);

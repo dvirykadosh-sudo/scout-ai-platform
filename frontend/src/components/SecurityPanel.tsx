@@ -14,6 +14,7 @@ interface Sec {
   emailVerified: boolean;
   phoneVerified: boolean;
   totpEnabled: boolean;
+  emailOtpEnabled: boolean;
   backupCodesLeft: number;
   providers: { email: boolean; phone: boolean };
   lastLoginAt: string | null;
@@ -269,6 +270,170 @@ function TwoFactor({ sec, reload }: { sec: Sec; reload: () => void }) {
   );
 }
 
+function EmailTwoFactor({ sec, reload }: { sec: Sec; reload: () => void }) {
+  const { token } = useAuth();
+  const toast = useToast();
+  const [sent, setSent] = useState<{ sentTo: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [backups, setBackups] = useState<string[] | null>(null);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [off, setOff] = useState(false);
+  const [offSent, setOffSent] = useState(false);
+  const [pw, setPw] = useState("");
+  const [dev, setDev] = useState("");
+
+  const start = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      const r = await api<{ sentTo: string; devCode?: string }>("/api/me/2fa/email/enable", { method: "POST", token, body: {} });
+      setSent({ sentTo: r.sentTo });
+      if (r.devCode) setDev(`מצב פיתוח: הקוד הוא ${r.devCode}`);
+    } catch (x) {
+      setErr(errorMessage(x));
+    }
+    setBusy(false);
+  };
+  const confirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const r = await api<{ backupCodes?: string[] }>("/api/me/2fa/email/confirm", { method: "POST", token, body: { code } });
+      if (r.backupCodes) setBackups(r.backupCodes);
+      setSent(null);
+      setCode("");
+      setErr("");
+      setDev("");
+      toast("האימות הדו-שלבי במייל הופעל", { kind: "success" });
+      reload();
+    } catch (x) {
+      setErr(errorMessage(x));
+    }
+  };
+  const requestOffCode = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      const r = await api<{ sentTo: string; devCode?: string }>("/api/me/2fa/email/disable-code", { method: "POST", token, body: {} });
+      setOffSent(true);
+      if (r.devCode) setDev(`מצב פיתוח: הקוד הוא ${r.devCode}`);
+    } catch (x) {
+      setErr(errorMessage(x));
+    }
+    setBusy(false);
+  };
+  const disable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api("/api/me/2fa/email/disable", { method: "POST", token, body: { password: pw, code } });
+      toast("האימות הדו-שלבי במייל כובה", { kind: "info" });
+      setOff(false);
+      setOffSent(false);
+      setPw("");
+      setCode("");
+      setErr("");
+      setDev("");
+      reload();
+    } catch (x) {
+      setErr(errorMessage(x));
+    }
+  };
+
+  return (
+    <section aria-labelledby="sec-2fa-email" className="card glass">
+      <h2 id="sec-2fa-email" className="section-title">
+        אימות דו-שלבי במייל
+      </h2>
+      <p className="hint">בנוסף לסיסמה, כניסה תשלח קוד בן 6 ספרות למייל המאומת שלכם. אפשרות נוחה אם אין לכם אפליקציית אימות.</p>
+      {err && (
+        <p className="error-box" role="alert">
+          {err}
+        </p>
+      )}
+      {dev && <p className="hint">{dev}</p>}
+      {backups && (
+        <div className="ok-box" role="status">
+          <p>
+            <strong>קודי גיבוי.</strong> שמרו אותם במקום בטוח. כל קוד עובד פעם אחת, למקרה שאין גישה למייל. הם לא יוצגו שוב.
+          </p>
+          <ul className="tag-list" dir="ltr">
+            {backups.map((b) => (
+              <li key={b}>
+                <code>{b}</code>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="btn btn-small" onClick={() => setBackups(null)}>
+            שמרתי, אפשר להסתיר
+          </button>
+        </div>
+      )}
+      {!sec.emailOtpEnabled && !sent && (
+        <>
+          {!sec.emailVerified && <p className="warn-box">קודם הוסיפו ואמתו כתובת מייל למעלה.</p>}
+          <button type="button" className="btn btn-primary" disabled={!sec.emailVerified || busy} onClick={start}>
+            {busy ? "שולח..." : "הפעלת אימות דו-שלבי במייל"}
+          </button>
+        </>
+      )}
+      {sent && (
+        <form onSubmit={confirm} noValidate aria-label="הפעלת אימות דו-שלבי במייל">
+          <p role="status">נשלח קוד אל {sent.sentTo}. תקף ל-10 דקות.</p>
+          <Field label="קוד מהמייל" htmlFor="sec-2fa-email-code">
+            <input id="sec-2fa-email-code" inputMode="numeric" dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" />
+          </Field>
+          <button className="btn btn-primary" disabled={code.trim().length < 6}>
+            אישור והפעלה
+          </button>
+        </form>
+      )}
+      {sec.emailOtpEnabled && (
+        <>
+          <p>
+            <span className="pill pill-ok">פעיל</span> · נשארו {sec.backupCodesLeft} קודי גיבוי
+          </p>
+          {!off ? (
+            <button type="button" className="btn" onClick={() => setOff(true)}>
+              כיבוי האימות הדו-שלבי במייל
+            </button>
+          ) : (
+            <form onSubmit={disable} noValidate aria-label="כיבוי אימות דו-שלבי במייל">
+              <Field label="הסיסמה" htmlFor="sec-off-email-pw">
+                <input id="sec-off-email-pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="current-password" />
+              </Field>
+              {!offSent ? (
+                <button type="button" className="btn btn-small" disabled={busy} onClick={requestOffCode}>
+                  {busy ? "שולח..." : "שליחת קוד אימות למייל"}
+                </button>
+              ) : (
+                <Field label="הקוד שהתקבל, או קוד גיבוי" htmlFor="sec-off-email-code">
+                  <input id="sec-off-email-code" dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" />
+                </Field>
+              )}
+              <div className="actions">
+                <button className="btn btn-primary" disabled={!pw || !offSent || code.trim().length < 4}>
+                  כיבוי
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setOff(false);
+                    setOffSent(false);
+                    setCode("");
+                  }}
+                >
+                  ביטול
+                </button>
+              </div>
+            </form>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function Devices() {
   const { token } = useAuth();
   const toast = useToast();
@@ -392,6 +557,7 @@ export function SecurityPanel() {
     <>
       <Contact key={`${sec.email}|${sec.phone}`} sec={sec} reload={load} />
       <TwoFactor sec={sec} reload={load} />
+      <EmailTwoFactor sec={sec} reload={load} />
       <Devices />
       <Privacy />
     </>

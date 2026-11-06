@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { useAuth, useToast, type SessionUser } from "./Providers";
 import Link from "next/link";
@@ -14,7 +14,7 @@ interface AuthResponse {
 interface Options {
   providers: { email: boolean; phone: boolean };
 }
-type LoginReply = Partial<AuthResponse> & { needs2fa?: boolean; challenge?: string };
+type LoginReply = Partial<AuthResponse> & { needs2fa?: boolean; challenge?: string; twofaMethods?: { totp: boolean; email: boolean } };
 type Mode = "password" | "twofa" | "forgot" | "magic";
 
 export function LoginForm({ title = "התחברות", hint, onDone }: { title?: string; hint?: string; onDone?: (u: SessionUser) => void }) {
@@ -33,6 +33,9 @@ export function LoginForm({ title = "התחברות", hint, onDone }: { title?: 
   const [devHint, setDevHint] = useState("");
   const [captcha, setCaptcha] = useState<{ token: string; question: string } | null>(null);
   const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [twofaMethods, setTwofaMethods] = useState<{ totp: boolean; email: boolean } | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
 
   useEffect(() => {
     api<Options>("/api/auth/options")
@@ -40,11 +43,31 @@ export function LoginForm({ title = "התחברות", hint, onDone }: { title?: 
       .catch(() => setOpts({ providers: { email: false, phone: false } }));
   }, []);
 
+  const requestEmailCode = useCallback(
+    (ch: string) => {
+      setEmailBusy(true);
+      setError("");
+      api<{ sentTo: string; devCode?: string }>("/api/auth/2fa/email/request", { method: "POST", body: { challenge: ch } })
+        .then((r) => {
+          setEmailSent(true);
+          setInfo(`נשלח קוד אל ${r.sentTo}`);
+          if (r.devCode) setDevHint(`מצב פיתוח: הקוד הוא ${r.devCode}`);
+        })
+        .catch((e) => setError(errorMessage(e)))
+        .finally(() => setEmailBusy(false));
+    },
+    [],
+  );
+
   const accept = (r: LoginReply) => {
     if (r.needs2fa && r.challenge) {
+      const methods = r.twofaMethods ?? { totp: true, email: false };
       setChallenge(r.challenge);
       setCode("");
+      setTwofaMethods(methods);
+      setEmailSent(false);
       setMode("twofa");
+      if (methods.email && !methods.totp) requestEmailCode(r.challenge);
       return;
     }
     if (r.token && r.user) {
@@ -52,6 +75,7 @@ export function LoginForm({ title = "התחברות", hint, onDone }: { title?: 
       onDone?.(r.user);
     }
   };
+
 
   // כניסה מקישור קסם שנשלח למייל: /account?magic=...
   useEffect(() => {
@@ -186,12 +210,37 @@ export function LoginForm({ title = "התחברות", hint, onDone }: { title?: 
       )}
       {mode === "twofa" && (
         <>
-          <p>פתחו את אפליקציית האימות והזינו את הקוד בן 6 הספרות. אם אין לכם גישה לאפליקציה, אפשר להזין קוד גיבוי.</p>
-          <Field label="קוד אימות" htmlFor="login-2fa">
-            <input id="login-2fa" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" inputMode="text" dir="ltr" autoFocus />
-          </Field>
+          {twofaMethods?.email && !twofaMethods?.totp ? (
+            <>
+              <p role="status">{emailSent ? "שלחנו קוד בן 6 ספרות למייל שלכם. הוא תקף ל-10 דקות." : "שולחים קוד למייל..."}</p>
+              <Field label="קוד מהמייל" htmlFor="login-2fa" hint="אם אין לכם גישה למייל, אפשר להזין קוד גיבוי">
+                <input id="login-2fa" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" inputMode="numeric" dir="ltr" autoFocus />
+              </Field>
+              <button type="button" className="btn btn-small" disabled={emailBusy} onClick={() => requestEmailCode(challenge)}>
+                {emailBusy ? "שולח..." : "שליחת קוד חדש"}
+              </button>
+            </>
+          ) : twofaMethods?.email && twofaMethods?.totp ? (
+            <>
+              <p>פתחו את אפליקציית האימות והזינו את הקוד בן 6 הספרות, או בקשו קוד למייל. אפשר גם להזין קוד גיבוי.</p>
+              <Field label="קוד אימות" htmlFor="login-2fa">
+                <input id="login-2fa" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" inputMode="text" dir="ltr" autoFocus />
+              </Field>
+              <button type="button" className="btn btn-small" disabled={emailBusy} onClick={() => requestEmailCode(challenge)}>
+                {emailBusy ? "שולח..." : emailSent ? "שליחת קוד חדש למייל" : "שליחת קוד למייל במקום"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p>פתחו את אפליקציית האימות והזינו את הקוד בן 6 הספרות. אם אין לכם גישה לאפליקציה, אפשר להזין קוד גיבוי.</p>
+              <Field label="קוד אימות" htmlFor="login-2fa">
+                <input id="login-2fa" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" inputMode="text" dir="ltr" autoFocus />
+              </Field>
+            </>
+          )}
         </>
       )}
+
       {mode === "magic" && (
         <Field label="כתובת המייל" htmlFor="login-magic" hint="נשלח אליה קישור כניסה אם המייל מאומת בחשבון">
           <input id="login-magic" type="email" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="email" dir="ltr" />

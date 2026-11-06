@@ -640,6 +640,7 @@ function migrate(db) {
   add("users", "totp_enabled", "INTEGER NOT NULL DEFAULT 0");
   add("users", "totp_last_step", "INTEGER");
   add("users", "backup_codes", "TEXT");
+  add("users", "email_otp_enabled", "INTEGER NOT NULL DEFAULT 0");
   add("users", "staff_role", "TEXT");
   add("users", "last_login_at", "TEXT");
   add("users", "terms_accepted_at", "TEXT");

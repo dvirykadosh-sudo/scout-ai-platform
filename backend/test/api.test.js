@@ -2246,6 +2246,45 @@ describe("חשבונות ואבטחה: סבב 81–90", () => {
     assert.equal((await post("/api/auth/login", { username: "ana81", password: "brand-new-pass1" })).body.needs2fa, undefined);
   });
 
+  it("86ב. אימות דו-שלבי במייל: הפעלה, כניסה עם קוד שנשלח, כיבוי עם קוד חדש, וקוד חד-פעמי", async () => {
+    assert.equal((await post("/api/me/2fa/email/enable", {}, admin.token)).status, 400, "נדרש מייל מאומת");
+    const start = await post("/api/me/2fa/email/enable", {}, ana.token);
+    assert.equal(start.status, 200);
+    assert.match(start.body.sentTo, /^a\*\*\*@/);
+    assert.ok(/^\d{6}$/.test(start.body.devCode));
+    assert.equal((await post("/api/me/2fa/email/confirm", { code: "000000" }, ana.token)).status, 400);
+    const en = await post("/api/me/2fa/email/confirm", { code: start.body.devCode }, ana.token);
+    assert.equal(en.status, 200);
+    assert.equal(en.body.backupCodes.length, 10, "אין עדיין קודי גיבוי, אז נוצרים חדשים");
+    assert.equal((await post("/api/me/2fa/email/enable", {}, ana.token)).status, 400, "כבר פעיל");
+
+    const l1 = await post("/api/auth/login", { username: "ana81", password: "brand-new-pass1" });
+    assert.equal(l1.body.needs2fa, true);
+    assert.deepEqual(l1.body.twofaMethods, { totp: false, email: true });
+    assert.equal((await post("/api/auth/2fa", { challenge: l1.body.challenge, code: "000000" })).status, 401);
+    const sent = await post("/api/auth/2fa/email/request", { challenge: l1.body.challenge });
+    assert.equal(sent.status, 200);
+    assert.ok(/^\d{6}$/.test(sent.body.devCode));
+    const ok = await post("/api/auth/2fa", { challenge: l1.body.challenge, code: sent.body.devCode });
+    assert.equal(ok.status, 200);
+    assert.equal((await post("/api/auth/2fa", { challenge: l1.body.challenge, code: sent.body.devCode })).status, 401, "אותו קוד לא עובד פעמיים");
+
+    // קוד גיבוי עובד גם כאן, וגם הוא חד-פעמי
+    const l2 = await post("/api/auth/login", { username: "ana81", password: "brand-new-pass1" });
+    const viaBackup = await post("/api/auth/2fa", { challenge: l2.body.challenge, code: en.body.backupCodes[0] });
+    assert.equal(viaBackup.status, 200);
+    const l3 = await post("/api/auth/login", { username: "ana81", password: "brand-new-pass1" });
+    assert.equal((await post("/api/auth/2fa", { challenge: l3.body.challenge, code: en.body.backupCodes[0] })).status, 401);
+
+    ana = ok.body;
+    assert.equal((await post("/api/me/2fa/email/disable", { password: "brand-new-pass1", code: "000000" }, ana.token)).status, 400);
+    const offCode = await post("/api/me/2fa/email/disable-code", {}, ana.token);
+    assert.equal(offCode.status, 200);
+    const off = await post("/api/me/2fa/email/disable", { password: "brand-new-pass1", code: offCode.body.devCode }, ana.token);
+    assert.equal(off.status, 200);
+    assert.equal((await post("/api/auth/login", { username: "ana81", password: "brand-new-pass1" })).body.needs2fa, undefined);
+  });
+
   it("87. מכשירים: רשימה, ניתוק אחר, וניתוק חיבור מבטל את האסימון מיד", async () => {
     const a = (await post("/api/auth/login", { username: "ana81", password: "brand-new-pass1" }, null)).body;
     const b = (await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "ana81", password: "brand-new-pass1" }), headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36" } })).body;
