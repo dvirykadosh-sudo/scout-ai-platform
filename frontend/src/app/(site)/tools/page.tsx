@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "כלים ורעיונות" };
+export const metadata = { title: "כלים ורעיונות", description: "כלי עזר למדריכים: טיימרים, חלוקה לקבוצות, רעיונות לפעולות ועוד." };
 
 const TOOLS = [
   { href: "/assistant", title: "עוזר כתיבה אישי", text: "כותבים חופשי, והעוזר מסדר לכותרת, שלבים ושיטות, מראה מה חסר, ועוזר כשנתקעים. אפשר לייצא ל-PDF." },

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageTitle } from "@/components/ui";
 import { A11Y_CONTACT, STATEMENT_DATE } from "@/lib/siteConfig";
 
-export const metadata: Metadata = { title: "הצהרת נגישות" };
+export const metadata: Metadata = { title: "הצהרת נגישות", description: "הצהרת הנגישות של מחולל הפעולות: מה נגיש, איך בדקנו ואיך לפנות אם נתקלתם בקושי." };
 
 export default function AccessibilityPage() {
   const hasContact = !!(A11Y_CONTACT.name || A11Y_CONTACT.phone || A11Y_CONTACT.email);

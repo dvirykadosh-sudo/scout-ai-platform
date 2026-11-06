@@ -1,6 +1,7 @@
 // בדיקות דפדפן לסבב ה': ערכים, אתגרים, סיפורים, חימום, שאלות, סיכום, בדיקת מבנה, הצעות אחרי הפעלה ותכנון לכמה שכבות.
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -33,7 +34,10 @@ const quickKind = async (label, minutes) => {
 };
 
 await page.goto(B + "/account", { waitUntil: "networkidle" });
+
+await lampOn(page);
 await page.getByRole("button", { name: /הרשמה/ }).first().click();
+await page.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
 await page.getByLabel("שם להצגה").fill("רונית");
 await page.getByLabel("שם משתמש").fill("ronit" + Date.now().toString().slice(-6));
 await page.getByLabel("סיסמה", { exact: true }).fill("password99");

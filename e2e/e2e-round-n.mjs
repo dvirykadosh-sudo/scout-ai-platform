@@ -2,6 +2,7 @@
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 import crypto from "node:crypto";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -38,7 +39,9 @@ await step("100. privacy page, footer link, axe", async () => {
 
 await step("100+97. register needs the terms box, weak password hint shows", async () => {
   await A.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(A);
   await A.getByRole("button", { name: "הרשמה", exact: true }).first().click();
+  await A.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await A.getByLabel("שם להצגה").fill("אבא בדיקה");
   await A.getByLabel("שם משתמש").fill(USER);
   await A.getByLabel("סיסמה", { exact: true }).fill("password");
@@ -136,6 +139,7 @@ await step("93+97. settings save", async () => {
 await step("96. captcha appears after failures and login works after solving it", async () => {
   const C = await (await mk()).newPage();
   await C.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(C);
   const tryLogin = async (pw) => {
     await C.getByLabel("שם משתמש, מייל או טלפון").fill(USER);
     await C.getByLabel("סיסמה", { exact: true }).fill(pw);

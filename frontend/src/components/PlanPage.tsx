@@ -86,7 +86,7 @@ export function PlanPage() {
               </Link>
             </div>
           )}
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="תכנון שבועי">
             <table className="plan-table">
               <caption className="sr-only">תכנון שבועי</caption>
               <thead>

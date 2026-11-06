@@ -1,6 +1,6 @@
 import { ImportFiles } from "@/components/ImportFiles";
 
-export const metadata = { title: "ייבוא פעולות מקבצים" };
+export const metadata = { title: "ייבוא פעולות מקבצים", description: "ייבוא פעולות מקובצי Word וטקסט אל מאגר הפעולות." };
 
 export default function Page() {
   return (

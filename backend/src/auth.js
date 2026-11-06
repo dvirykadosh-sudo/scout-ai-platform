@@ -21,7 +21,7 @@ export function signToken(user, sid) {
 export const signChallenge = (userId, purpose = "2fa") => jwt.sign({ sub: userId, purpose }, config.jwtSecret, { expiresIn: "5m" });
 export function readChallenge(token, purpose = "2fa") {
   try {
-    const p = jwt.verify(String(token), config.jwtSecret);
+    const p = jwt.verify(String(token), config.jwtSecret, { algorithms: ["HS256"] });
     return p.purpose === purpose ? p : null;
   } catch {
     return null;
@@ -53,13 +53,13 @@ function readToken(req) {
   let out = null;
   if (header.startsWith("Bearer ")) {
     try {
-      const p = jwt.verify(header.slice(7), config.jwtSecret);
+      const p = jwt.verify(header.slice(7), config.jwtSecret, { algorithms: ["HS256"] });
       if (p.purpose) throw new Error("not a session token");
       const db = req.db;
       if (!db) out = p;
       else {
-        const u = db.prepare("SELECT id, username, role, staff_role, disabled, must_change_pw FROM users WHERE id = ?").get(p.sub);
-        let live = !!u && !u.disabled;
+        const u = db.prepare("SELECT id, username, role, staff_role, disabled, must_change_pw, expires_at FROM users WHERE id = ?").get(p.sub);
+        let live = !!u && !u.disabled && !(u.expires_at && Date.parse(u.expires_at) < Date.now());
         if (live && p.sid) {
           const s = db.prepare("SELECT revoked_at, last_seen_at FROM auth_sessions WHERE id = ? AND user_id = ?").get(p.sid, p.sub);
           live = !!s && !s.revoked_at;

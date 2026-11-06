@@ -30,6 +30,7 @@ export function rowToActivity(r) {
     stages: JSON.parse(r.stages_json),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    verified: r.verified_at ? { at: r.verified_at, note: r.verified_note || "" } : null,
   };
 }
 

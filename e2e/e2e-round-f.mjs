@@ -1,6 +1,7 @@
 // בדיקות דפדפן לסבב ו': חיפוש מתקדם, ארון, מצב מהיר, יומן ותזכורות, שיתוף עריכה, ווטסאפ, מצגת, מדריך חדש.
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
@@ -20,7 +21,9 @@ const bodyText = (p = page) => p.locator("body").innerText();
 const stamp = Date.now().toString().slice(-6);
 const register = async (p, user, display) => {
   await p.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(p);
   await p.getByRole("button", { name: /הרשמה/ }).first().click();
+  await p.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await p.getByLabel("שם להצגה").fill(display);
   await p.getByLabel("שם משתמש").fill(user);
   await p.getByLabel("סיסמה", { exact: true }).fill("password99");
@@ -109,6 +112,7 @@ await step("28-29. schedule from activity, calendar, reminder", async () => {
   await page.getByRole("button", { name: "שמירה", exact: true }).click();
   await page.getByText("הפעולה נוספה ליומן").waitFor();
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "תזכורות" }).waitFor();
   ok((await bodyText()).includes("מחר פעולה:"), "home reminder says tomorrow");
   await page.goto(B + "/calendar", { waitUntil: "networkidle" });
@@ -174,7 +178,7 @@ await step("33. newbie mode", async () => {
   ok((await page.locator("#glossary dt").count()) >= 8, "glossary");
   await page.goto(B + "/library/" + actId, { waitUntil: "networkidle" });
   await page.locator("#newbie[open]").waitFor();
-  await page.getByText("אם משהו משתבש").waitFor();
+  await page.getByRole("heading", { name: "אם משהו משתבש" }).waitFor();
   ok((await page.locator(".newbie-steps li").count()) === 5, "five stage tips");
   const r = await axe(page);
   ok(r.violations.length === 0, "axe activity page " + r.violations.map((v) => v.id).join(","));

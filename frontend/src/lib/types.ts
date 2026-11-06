@@ -35,6 +35,7 @@ export interface Activity {
   updatedAt: string;
   source?: "ai" | "fallback" | "external";
   rating?: RatingSummary;
+  verified?: { at: string; note: string } | null;
 }
 
 export interface RatingSummary {

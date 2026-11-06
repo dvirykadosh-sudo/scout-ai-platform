@@ -3,6 +3,7 @@ import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
@@ -124,7 +125,9 @@ await step("70. group profile check", async () => {
 
 // ───── מכאן נדרשת התחברות ─────
 await page.goto(B + "/account", { waitUntil: "networkidle" });
+await lampOn(page);
 await page.getByRole("button", { name: /הרשמה/ }).first().click();
+await page.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
 await page.getByLabel("שם להצגה").fill("כותבת ק");
 await page.getByLabel("שם משתמש").fill("kown" + stamp);
 await page.getByLabel("סיסמה", { exact: true }).fill("password99");

@@ -188,7 +188,7 @@ export function makeCaptcha() {
 }
 export function checkCaptcha(token, answer) {
   try {
-    const p = jwt.verify(String(token), config.jwtSecret);
+    const p = jwt.verify(String(token), config.jwtSecret, { algorithms: ["HS256"] });
     return p.purpose === "captcha" && safeEqual(p.h, hashSecret(`captcha|${String(answer).trim()}`));
   } catch {
     return false;

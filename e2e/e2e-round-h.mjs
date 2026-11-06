@@ -1,6 +1,7 @@
 // בדיקות דפדפן לסבב ח': תגיות, בקשות, היכל תהילה, שבוע להדפסה, עזרה, איחוד, ששכחתי, הודעות שבט.
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -14,11 +15,14 @@ const mk = async () => {
 let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
 const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n")[0]); } };
-const axe = (p) => new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+const settle = async (p) => { await p.evaluate(async () => { await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))); }).catch(() => {}); await p.waitForTimeout(150); };
+const axe = async (p) => { await settle(p); return new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze(); };
 const stamp = Date.now().toString().slice(-6);
 const register = async (p, user, display) => {
   await p.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(p);
   await p.getByRole("button", { name: /הרשמה/ }).first().click();
+  await p.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await p.getByLabel("שם להצגה").fill(display);
   await p.getByLabel("שם משתמש").fill(user);
   await p.getByLabel("סיסמה", { exact: true }).fill("password99");
@@ -67,6 +71,7 @@ await step("43. tags on activity + in account", async () => {
   await page.locator(".tag-list li", { hasText: "לחורף" }).waitFor();
   ok(true, "tag added");
   await page.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(page);
   await page.getByRole("button", { name: /לחורף \(1\)/ }).click();
   await page.locator("#mytags-title ~ ul a").first().waitFor();
   ok(true, "tagged list shows activity");
@@ -78,6 +83,7 @@ await step("43. tags on activity + in account", async () => {
 
 await step("49. forgotten activities", async () => {
   await page.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(page);
   await page.getByRole("heading", { name: "פעולות שלכם שלא הופעלו זמן רב" }).waitFor();
   ok(true, "forgotten panel shown");
 });
@@ -89,7 +95,7 @@ await step("44. requests board", async () => {
   await page.getByText("פעולה על שמירת הטבע לשכבה ה'").first().waitFor();
   ok(true, "request listed");
   const r = await axe(page);
-  ok(r.violations.length === 0, "axe requests " + r.violations.map((v) => v.id).join(","));
+  ok(r.violations.length === 0, "axe requests " + r.violations.map((v) => v.id + " " + v.nodes.map((n) => n.target.join(" ") + " " + JSON.stringify({ fg: n.any[0]?.data?.fgColor, bg: n.any[0]?.data?.bgColor, r: n.any[0]?.data?.contrastRatio })).join("; ")).join(" || "));
 });
 
 await step("45. hall page", async () => {

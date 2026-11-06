@@ -128,7 +128,7 @@ export function CalendarPage() {
           </p>
         )}
         {!items && !error && <Skeleton lines={3} />}
-        <div className="table-wrap">
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="לוח השנה החודשי">
           <table className="cal-grid">
             <caption className="sr-only">
               {MONTH_NAMES[month]} {year}. בכל יום מופיעות הפעולות שנקבעו

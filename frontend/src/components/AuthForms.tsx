@@ -242,7 +242,15 @@ export function LoginForm({ title = "התחברות", hint, onDone }: { title?: 
   );
 }
 
-export function RegisterForm({ needsCode }: { needsCode: boolean }) {
+/** 377: משפט-סיסמה אקראי שקל לזכור וקשה לנחש. */
+const PW_WORDS = "river amber plum tiger cedar maple falcon lemon orbit pepper canyon meadow ember harbor island jungle kettle lantern marble nectar olive panda quartz raven saddle thunder velvet willow yellow zephyr acorn breeze copper dolphin eagle forest ginger hazel iris jasmine koala lotus mango nutmeg ocean pearl quince robin sage tulip umber violet walnut".split(" ");
+export function makePassphrase() {
+  const r = new Uint32Array(6);
+  crypto.getRandomValues(r);
+  return `${[0, 1, 2, 3].map((i) => PW_WORDS[r[i] % PW_WORDS.length]).join("-")}-${10 + (r[4] % 90)}`;
+}
+
+export function RegisterForm({ needsCode, inviteCode = "" }: { needsCode: boolean; inviteCode?: string }) {
   const { setSession } = useAuth();
   const toast = useToast();
   const [f, setF] = useState({ displayName: "", username: "", password: "", signupCode: "", email: "", phone: "" });
@@ -251,6 +259,10 @@ export function RegisterForm({ needsCode }: { needsCode: boolean }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState("");
+  const [opened] = useState(() => Date.now());
+  const [trap, setTrap] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
 
   // בדיקת חוזק סיסמה מול השרת (רשימת סיסמאות נפוצות ועוד), אחרי שהמשתמש מפסיק להקליד
@@ -273,16 +285,20 @@ export function RegisterForm({ needsCode }: { needsCode: boolean }) {
     if (f.displayName.trim().length < 2) er.displayName = "יש להזין שם להצגה";
     if (f.username.trim().length < 3) er.username = "שם משתמש: לפחות 3 תווים";
     if (f.password.length < 8) er.password = "הסיסמה חייבת להכיל לפחות 8 תווים";
-    if (needsCode && !f.signupCode.trim()) er.signupCode = "יש להזין את קוד ההרשמה של השבט";
+    if (needsCode && !inviteCode && !f.signupCode.trim()) er.signupCode = "יש להזין את קוד ההרשמה של השבט";
     if (!terms) er.terms = "כדי להירשם יש לאשר את תנאי השימוש ומדיניות הפרטיות";
     setErrors(er);
     setError("");
     if (Object.keys(er).length) return;
     setBusy(true);
     try {
-      const r = await api<AuthResponse>("/api/auth/register", { method: "POST", body: { ...f, acceptTerms: true, displayName: f.displayName.trim(), username: f.username.trim(), signupCode: f.signupCode.trim() } });
-      setSession(r.token, r.user);
-      toast(`ברוכים הבאים, ${r.user.displayName}`, { kind: "success" });
+      const r = await api<AuthResponse & { pending?: boolean; message?: string }>("/api/auth/register", { method: "POST", body: { ...f, acceptTerms: true, displayName: f.displayName.trim(), username: f.username.trim(), signupCode: f.signupCode.trim(), ...(inviteCode ? { inviteCode } : {}), website: trap, formAge: Date.now() - opened } });
+      if (r.pending) {
+        setPending(r.message ?? "ההרשמה התקבלה וממתינה לאישור.");
+      } else {
+        setSession(r.token, r.user);
+        toast(`ברוכים הבאים, ${r.user.displayName}`, { kind: "success" });
+      }
     } catch (err) {
       if (err instanceof ApiError && err.fields) {
         const next: Record<string, string> = {};
@@ -293,6 +309,15 @@ export function RegisterForm({ needsCode }: { needsCode: boolean }) {
     }
     setBusy(false);
   };
+
+  if (pending)
+    return (
+      <section className="card glass narrow" role="status">
+        <h2 className="section-title">ההרשמה התקבלה</h2>
+        <p>{pending}</p>
+        <p className="hint">כשהחשבון יאושר אפשר להתחבר עם שם המשתמש והסיסמה שבחרתם.</p>
+      </section>
+    );
 
   return (
     <form className="card glass narrow" onSubmit={submit} noValidate aria-labelledby="reg-title">
@@ -311,15 +336,25 @@ export function RegisterForm({ needsCode }: { needsCode: boolean }) {
         <input id="reg-user" value={f.username} onChange={(e) => set("username", e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" aria-invalid={!!errors.username} aria-describedby={errors.username ? "reg-user-err" : undefined} />
       </Field>
       <Field label="סיסמה" htmlFor="reg-pass" error={errors.password} hint={pwHint.length ? `כדאי לשפר: ${pwHint.join(", ")}` : "לפחות 8 תווים"}>
-        <input id="reg-pass" type="password" value={f.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby={errors.password ? "reg-pass-err" : undefined} />
+        <input id="reg-pass" type={showPw ? "text" : "password"} value={f.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby={errors.password ? "reg-pass-err" : undefined} />
       </Field>
+      <div className="actions">
+        <button type="button" className="btn btn-small" onClick={() => { set("password", makePassphrase()); setShowPw(true); }}>הצעת סיסמה חזקה</button>
+        {showPw && <button type="button" className="btn btn-small" onClick={() => setShowPw(false)}>הסתרת הסיסמה</button>}
+      </div>
+      {showPw && <p className="hint">שמרו את הסיסמה במקום בטוח. אפשר לערוך אותה בשדה.</p>}
+      <div className="hp-field" aria-hidden="true">
+        <label htmlFor="reg-website">אל תמלאו שדה זה</label>
+        <input id="reg-website" tabIndex={-1} autoComplete="off" value={trap} onChange={(e) => setTrap(e.target.value)} />
+      </div>
       <Field label="מייל (לא חובה)" htmlFor="reg-email" error={errors.email} hint="מאפשר כניסה עם המייל ואיפוס סיסמה. אימות המייל נעשה אחרי ההרשמה, במסך החשבון">
         <input id="reg-email" type="email" dir="ltr" value={f.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" />
       </Field>
       <Field label="טלפון (לא חובה)" htmlFor="reg-phone" error={errors.phone} hint="למשל 050-1234567">
         <input id="reg-phone" type="tel" dir="ltr" value={f.phone} onChange={(e) => set("phone", e.target.value)} autoComplete="tel" />
       </Field>
-      {needsCode && (
+      {inviteCode && <p className="hint" role="status">נרשמים עם קוד הזמנה. אין צורך בקוד השבט.</p>}
+      {needsCode && !inviteCode && (
         <Field label="קוד הרשמה של השבט" htmlFor="reg-code" error={errors.signupCode} hint="את הקוד מקבלים ממנהל השבט">
           <input id="reg-code" value={f.signupCode} onChange={(e) => set("signupCode", e.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" aria-invalid={!!errors.signupCode} aria-describedby={errors.signupCode ? "reg-code-err" : undefined} />
         </Field>

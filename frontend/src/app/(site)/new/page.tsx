@@ -1,6 +1,6 @@
 import { NewbieGuide } from "@/components/NewbieGuide";
 
-export const metadata = { title: "מדריך חדש? מתחילים כאן" };
+export const metadata = { title: "מדריך חדש? מתחילים כאן", description: "מדריך חדש בצופים? מדריך קצר שמסביר איך מעבירים פעולה צעד אחר צעד." };
 
 export default function Page() {
   return (

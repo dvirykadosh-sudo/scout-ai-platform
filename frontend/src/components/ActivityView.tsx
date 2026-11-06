@@ -1,9 +1,11 @@
+import { FlipStages } from "./Depth3D";
+import { AgeBadge, ageLevel } from "./Polish";
 import { KIND_LABELS } from "@/lib/kind-labels";
 import type { Activity } from "@/lib/types";
 
 export function StageTable({ stages }: { stages: Activity["stages"] }) {
   return (
-    <div className="table-wrap">
+    <div className="table-wrap" tabIndex={0} role="region" aria-label="שלבי הפעולה">
       <table className="stage-table">
         <caption className="sr-only">שלבי הפעולה</caption>
         <thead>
@@ -38,7 +40,7 @@ export function ActivityMeta({ a }: { a: Activity }) {
     <ul className="chips" aria-label="פרטי הפעולה">
       {a.kind && KIND_LABELS[a.kind] && <li className="chip chip-accent">{KIND_LABELS[a.kind]}</li>}
       <li className="chip">{a.durationMin} דקות</li>
-      <li className="chip">{a.ageGroup}</li>
+      <AgeBadge grade={a.ageGroup} />
       <li className="chip">{a.groupSize} משתתפים</li>
       <li className="chip">ערך: {a.leadingValue}</li>
       {who && <li className="chip">מאת {who}</li>}
@@ -62,6 +64,7 @@ export function ActivityBody({ a }: { a: Activity }) {
         </div>
       </dl>
       <StageTable stages={a.stages} />
+      <FlipStages stages={a.stages} />
       {a.conclusionNote && <p className="conclusion">{a.conclusionNote}</p>}
     </>
   );
@@ -85,7 +88,7 @@ export function ActivityGlance({ a }: { a: Activity }) {
   return (
     <dl className="glance" aria-label="פרטי הפעולה במבט מהיר">
       {cells.map((c) => (
-        <div key={c.label} className="glance-cell">
+        <div key={c.label} className={`glance-cell${c.label === "גיל" && ageLevel(a.ageGroup) ? " age-" + ageLevel(a.ageGroup) : ""}`}>
           <dt>
             <Icon d={c.d} />
             <span>{c.label}</span>

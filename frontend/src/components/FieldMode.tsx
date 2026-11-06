@@ -252,7 +252,7 @@ export function FieldMode() {
   const pct = Math.min(100, Math.max(0, (1 - Math.max(0, remaining) / (stage.minutes * 60)) * 100));
 
   return (
-    <div className={`field ${timeUp ? "time-up" : ""} ${big ? "field-big" : ""}`}>
+    <div className={`field-mode ${timeUp ? "time-up" : ""} ${big ? "field-big" : ""}`}>
       <header className="field-top">
         <Link className="btn btn-small" href={`/library/${a.id}`}>
           יציאה ממצב שטח

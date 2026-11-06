@@ -48,6 +48,7 @@ export function assertProductionSafe() {
   if (!config.isProd) return;
   const problems = [];
   if (!env.JWT_SECRET) problems.push("חסר JWT_SECRET");
+  else if (env.JWT_SECRET.length < 24) console.warn("אזהרת אבטחה: JWT_SECRET קצר מ-24 תווים. מומלץ להחליף במחרוזת אקראית ארוכה");
   if (config.admin.password === DEFAULT_ADMIN_PASSWORD) problems.push("סיסמת האדמין היא ברירת המחדל");
   if (problems.length) {
     console.error("לא ניתן להפעיל במצב production: " + problems.join(", "));

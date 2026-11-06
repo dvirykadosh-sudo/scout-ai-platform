@@ -2,6 +2,7 @@
 
 // עוזר הכתיבה, כלים 71–80: למידת סגנון, הכלה, חבילת הורים, היסטוריה, לוח תכנון,
 // כרטיסי תחנות, חוברת ומסלול צמיחה.
+import { Badge } from "./Depth3D2";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
@@ -653,6 +654,9 @@ export function GrowthTool({ onClose }: ToolsProps) {
               הצעד הבא: <strong>{data.next.label}</strong>. {data.next.hint}
             </p>
           )}
+          <ul className="badges3d" aria-label="אותות">
+            {data.milestones.map((m) => (<Badge key={m.id} label={m.label} done={m.done} />))}
+          </ul>
           <div tabIndex={0} role="region" aria-label="אבני דרך" className="assist-scroll">
           <ul className="plain-list">
             {data.milestones.map((m) => (

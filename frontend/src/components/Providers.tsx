@@ -165,10 +165,20 @@ export function Providers({ children }: { children: ReactNode }) {
 
   const toast = useCallback<ToastFn>((message, options = {}) => {
     const id = nextId.current++;
-    setToasts((t) => [...t, { id, message, ...options }]);
+    // אותה הודעה לא מוצגת פעמיים במקביל (למשל כמה רכיבים שמגלים יחד שההתחברות פגה)
+    setToasts((t) => (t.some((x) => x.message === message) ? t : [...t, { id, message, ...options }]));
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), options.action ? 10000 : 6000);
   }, []);
   const dismiss = (id: number) => setToasts((t) => t.filter((x) => x.id !== id));
+
+  useEffect(() => {
+    const h = () => {
+      clear();
+      toast("ההתחברות פגה. התחברו שוב.", { kind: "error" });
+    };
+    window.addEventListener("scout:session-expired", h);
+    return () => window.removeEventListener("scout:session-expired", h);
+  }, [clear, toast]);
 
   const a11y = useMemo(() => ({ highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme }), [highContrast, largeText, toggleContrast, toggleLarge, theme, cycleTheme]);
   const auth = useMemo(() => ({ token, user, ready, setSession, clear }), [token, user, ready, setSession, clear]);

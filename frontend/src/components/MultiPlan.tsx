@@ -96,7 +96,7 @@ export function MultiPlan() {
               <strong>ערכים בלי פעולה במאגר:</strong> {res.missing.join(", ")}
             </p>
           )}
-          <div className="table-wrap">
+          <div className="table-wrap" tabIndex={0} role="region" aria-label="תכנון שבועי לכל השכבות">
             <table className="plan-table">
               <caption className="sr-only">תכנון שבועי לכל השכבות</caption>
               <thead>

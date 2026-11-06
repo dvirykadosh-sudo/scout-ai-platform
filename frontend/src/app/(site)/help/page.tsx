@@ -1,6 +1,6 @@
 import { HelpCenter } from "@/components/HelpCenter";
 
-export const metadata = { title: "עזרה ושאלות נפוצות" };
+export const metadata = { title: "עזרה ושאלות נפוצות", description: "מרכז עזרה לשאלות נפוצות על מחולל הפעולות: יצירה, עריכה, ייצוא ושיתוף." };
 
 export default function Page() {
   return (

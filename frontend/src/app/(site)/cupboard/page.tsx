@@ -1,6 +1,6 @@
 import { CupboardPage } from "@/components/CupboardPage";
 
-export const metadata = { title: "מה יש בארון" };
+export const metadata = { title: "מה יש בארון", description: "סמנו מה יש לכם בארון הציוד וקבלו פעולות שאפשר להעביר איתו." };
 
 export default function Page() {
   return (

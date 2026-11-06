@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageTitle } from "@/components/ui";
+import { MethodWheel } from "@/components/Depth3D2";
 import { METHODS } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "ספריית המתודות" };
+export const metadata: Metadata = { title: "ספריית המתודות", description: "ספריית המתודות החינוכיות בצופים: משחק תחרות, דיון, ייצוג, השראה ועוד, עם דוגמאות ומתי להשתמש." };
 
 export default function MethodsPage() {
   return (
     <>
       <PageTitle lead="12 שיטות ההדרכה: מה כל אחת עושה ומתי כדאי להשתמש בה.">ספריית המתודות</PageTitle>
+      <MethodWheel methods={METHODS} />
       <ul className="grid-list">
         {METHODS.map((m) => (
           <li key={m.name} className="card glass method-info">

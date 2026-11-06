@@ -1,6 +1,7 @@
 // בדיקות דפדפן לסבב ד': פעולה בלי נושא, סוגי פעולה, השבוע, מה חסר, שיא, כמו זו, קיצור והצעות מנהל.
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -33,7 +34,10 @@ const quickKind = async (label, minutes) => {
 };
 
 await page.goto(B + "/account", { waitUntil: "networkidle" });
+
+await lampOn(page);
 await page.getByRole("button", { name: /הרשמה/ }).first().click();
+await page.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
 await page.getByLabel("שם להצגה").fill("רונית");
 await page.getByLabel("שם משתמש").fill("ronit" + Date.now().toString().slice(-6));
 await page.getByLabel("סיסמה", { exact: true }).fill("password99");
@@ -44,6 +48,7 @@ await page.getByText("הפעולות שלי").first().waitFor({ timeout: 8000 })
 
 await step("home: what is missing and this week", async () => {
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "מה חסר לך" }).waitFor();
   const gap = await page.locator(".gap-box").innerText();
   ok(gap.includes("עוד לא") && gap.includes("פעולת שיא"), "new instructor is told a peak activity is missing");
@@ -59,11 +64,13 @@ await step("home: what is missing and this week", async () => {
 
 await step("home: gap button creates the missing kind", async () => {
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "מה חסר לך" }).waitFor();
   await page.locator(".gap-box").getByRole("button", { name: /צרו .* עכשיו/ }).click();
   await arriveAtActivity();
   ok(true, "created from the gap box");
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "מה חסר לך" }).waitFor();
   const top = await page.locator(".gap-top").innerText();
   ok(top.length > 0, "the highlighted kind moves on: " + top.replace(/\n/g, " "));
@@ -213,6 +220,7 @@ await step("admin featured picks", async () => {
   await actx.close();
 
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השבוע שלי והודעות" }).click();
   await page.getByRole("heading", { name: "הצעות ממנהל השבט" }).waitFor();
   const t = await page.locator(".featured").innerText();
   ok(t.includes("ט\"ו בשבט בשטח") && t.includes("לשבוע הבא"), "pick shown on the home page with its note");

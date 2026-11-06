@@ -1,6 +1,7 @@
 // בדיקות דפדפן לסבב ז': בטיחות, דיווח, התראות, אחסון, דוח, ייצוא, פעולות דומות, התאמות נגישות.
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -17,7 +18,9 @@ const axe = (p) => new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "w
 const stamp = Date.now().toString().slice(-6);
 const register = async (p, user, display) => {
   await p.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(p);
   await p.getByRole("button", { name: /הרשמה/ }).first().click();
+  await p.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await p.getByLabel("שם להצגה").fill(display);
   await p.getByLabel("שם משתמש").fill(user);
   await p.getByLabel("סיסמה", { exact: true }).fill("password99");
@@ -82,6 +85,7 @@ await step("36. flag as guest", async () => {
 
 await step("37. notification badge + panel", async () => {
   await page.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(page);
   await page.getByRole("heading", { name: /^התראות/ }).waitFor();
   ok((await page.locator(".nav-badge").count()) === 1, "nav badge visible");
   ok(await page.getByText(/דיווח על בעיה בפעולה שלך|מישהו דיווח/).first().isVisible(), "flag notification listed");
@@ -127,6 +131,7 @@ await step("admin: flags, storage, report", async () => {
     if (!(await head.count())) await login(NEW_PW);
   }
   await head.waitFor({ timeout: 10000 });
+  await p.getByText("בדיקת דיווח").first().waitFor({ timeout: 8000 }); // הרשימה נטענת אחרי הכותרת
   ok(await p.getByText("בדיקת דיווח").first().isVisible(), "admin sees the guest flag");
   await p.getByRole("button", { name: /טופל/ }).first().click();
   await p.getByText("הדיווח נסגר").first().waitFor();

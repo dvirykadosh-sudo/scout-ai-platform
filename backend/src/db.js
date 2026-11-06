@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
+import { WA_SCHEMA } from "./wa/schema.js";
 import { config } from "./config.js";
 
 const SCHEMA = `
@@ -176,6 +177,13 @@ CREATE TABLE IF NOT EXISTS write_tribe_templates (
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS write_attendance (
+  doc_id INTEGER PRIMARY KEY REFERENCES write_docs(id) ON DELETE CASCADE,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  names_json TEXT NOT NULL,
+  present_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS write_trash (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -185,6 +193,24 @@ CREATE TABLE IF NOT EXISTS write_trash (
   words INTEGER NOT NULL DEFAULT 0,
   deleted_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS write_tribe_methods (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  line TEXT NOT NULL,
+  steps_json TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS feature_feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  feature TEXT NOT NULL,
+  vote INTEGER NOT NULL,
+  comment TEXT NOT NULL DEFAULT '',
+  username TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feature_feedback ON feature_feedback(feature);
 CREATE TABLE IF NOT EXISTS ip_blocks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   target TEXT NOT NULL UNIQUE,
@@ -246,6 +272,68 @@ CREATE TABLE IF NOT EXISTS feedback (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_activity ON feedback(activity_id);
+CREATE TABLE IF NOT EXISTS system_samples (
+  day TEXT PRIMARY KEY,
+  db_bytes INTEGER,
+  users INTEGER,
+  activities INTEGER,
+  write_docs INTEGER
+);
+CREATE TABLE IF NOT EXISTS team_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  leader TEXT NOT NULL,
+  title TEXT NOT NULL,
+  date TEXT NOT NULL,
+  age_group TEXT NOT NULL DEFAULT '',
+  doc_id INTEGER,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_team_date ON team_events(date);
+CREATE TABLE IF NOT EXISTS page_counts (
+  day TEXT NOT NULL,
+  page TEXT NOT NULL,
+  n INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, page)
+);
+CREATE TABLE IF NOT EXISTS bug_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  username TEXT,
+  page TEXT NOT NULL DEFAULT '',
+  text TEXT NOT NULL,
+  device TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pilot_surveys (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  ease INTEGER NOT NULL,
+  missing TEXT NOT NULL DEFAULT '',
+  would_use INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS feature_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS feature_votes (
+  request_id INTEGER NOT NULL REFERENCES feature_requests(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (request_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS write_question_bank (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  uses INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  UNIQUE (user_id, text)
+);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -320,6 +408,136 @@ CREATE TABLE IF NOT EXISTS announcements (
   author TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS style_profiles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  fp_json TEXT NOT NULL,
+  card TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_style_profiles_user ON style_profiles(user_id);
+CREATE TABLE IF NOT EXISTS story_memories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'memory',
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  value TEXT NOT NULL DEFAULT '',
+  tags TEXT NOT NULL DEFAULT '[]',
+  place TEXT NOT NULL DEFAULT '',
+  year INTEGER,
+  consent TEXT NOT NULL DEFAULT 'self',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_story_memories_user ON story_memories(user_id);
+CREATE TABLE IF NOT EXISTS my_stories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  value TEXT NOT NULL DEFAULT '',
+  age TEXT NOT NULL DEFAULT '',
+  parts_json TEXT NOT NULL DEFAULT '{}',
+  body TEXT NOT NULL DEFAULT '',
+  opening TEXT NOT NULL DEFAULT '',
+  closing TEXT NOT NULL DEFAULT '',
+  approved INTEGER NOT NULL DEFAULT 0,
+  versions_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_my_stories_user ON my_stories(user_id);
+CREATE TABLE IF NOT EXISTS chat_saved (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'one',
+  summary_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_saved_user ON chat_saved(user_id);
+CREATE TABLE IF NOT EXISTS chat_followups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  alias TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  due TEXT,
+  done INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_followups_user ON chat_followups(user_id);
+CREATE TABLE IF NOT EXISTS ext_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label TEXT NOT NULL DEFAULT '',
+  token_hash TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  last_used_at TEXT,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ext_tokens_user ON ext_tokens(user_id);
+CREATE TABLE IF NOT EXISTS client_errors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sig TEXT NOT NULL,
+  message TEXT NOT NULL,
+  stack TEXT,
+  page TEXT,
+  ua TEXT,
+  user_id INTEGER,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_client_errors_sig ON client_errors(sig, created_at);
+CREATE TABLE IF NOT EXISTS web_vitals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  metric TEXT NOT NULL,
+  value REAL NOT NULL,
+  page TEXT,
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_web_vitals_metric ON web_vitals(metric, at);
+CREATE TABLE IF NOT EXISTS feature_flags (
+  key TEXT PRIMARY KEY,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  percent INTEGER NOT NULL DEFAULT 100,
+  note TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reactions (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+  emoji TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, activity_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_reactions_activity ON reactions(activity_id);
+CREATE TABLE IF NOT EXISTS nps_responses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  score INTEGER,
+  comment TEXT NOT NULL DEFAULT '',
+  dismissed INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_nps_user ON nps_responses(user_id, created_at);
+CREATE TABLE IF NOT EXISTS user_prices (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  prices_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE TABLE IF NOT EXISTS invites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  label TEXT NOT NULL,
+  code_hash TEXT NOT NULL UNIQUE,
+  hint TEXT NOT NULL,
+  max_uses INTEGER NOT NULL DEFAULT 1,
+  uses INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  revoked_at TEXT
 );
 CREATE TABLE IF NOT EXISTS login_attempts (
   key TEXT PRIMARY KEY,
@@ -399,6 +617,7 @@ export function openDb(file = config.dbPath) {
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec(SCHEMA);
+  db.exec(WA_SCHEMA); // שלב 58: מנוע הוואטסאפ
   migrate(db);
   return db;
 }
@@ -426,6 +645,13 @@ function migrate(db) {
   add("users", "terms_accepted_at", "TEXT");
   add("users", "terms_version", "TEXT");
   add("users", "password_changed_at", "TEXT");
+  add("users", "pending_approval", "INTEGER NOT NULL DEFAULT 0");
+  add("users", "invite_id", "INTEGER");
+  add("users", "expires_at", "TEXT");
+  add("activities", "verified_by", "TEXT");
+  add("activities", "verified_at", "TEXT");
+  add("activities", "verified_note", "TEXT");
+  add("auth_sessions", "new_device", "INTEGER NOT NULL DEFAULT 0");
   add("audit_log", "prev_hash", "TEXT");
   add("audit_log", "hash", "TEXT");
   // כתובת מייל או טלפון מזוהים רק כשהם מאומתים, ולכן הייחודיות נבדקת רק עליהם

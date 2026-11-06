@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "all": "node e2e-improvements.mjs && node e2e-round-a.mjs && node e2e-round-b.mjs && node e2e-round-c.mjs && node e2e-round-d.mjs && node e2e-round-e.mjs && node e2e-round-f.mjs && node e2e-round-g.mjs && node e2e-round-h.mjs && node e2e-round-i.mjs && node e2e-round-j.mjs && node e2e-round-k.mjs && node e2e-round-l.mjs && node e2e-round-m.mjs && node e2e-round-n.mjs && node e2e-round-o.mjs && node e2e-round-p.mjs && node e2e-round-q.mjs && node e2e-round-r.mjs && node e2e-round-s.mjs && node e2e-round-t.mjs && node e2e-round-u.mjs"
+    "all": "node e2e-improvements.mjs && node e2e-round-a.mjs && node e2e-round-b.mjs && node e2e-round-c.mjs && node e2e-round-d.mjs && node e2e-round-e.mjs && node e2e-round-f.mjs && node e2e-round-g.mjs && node e2e-round-h.mjs && node e2e-round-i.mjs && node e2e-round-j.mjs && node e2e-round-k.mjs && node e2e-round-l.mjs && node e2e-round-m.mjs && node e2e-round-n.mjs && node e2e-round-o.mjs && node e2e-round-p.mjs && node e2e-round-q.mjs && node e2e-round-r.mjs && node e2e-round-s.mjs && node e2e-round-t.mjs && node e2e-round-u.mjs && node e2e-round-v.mjs && node e2e-round-w.mjs && node e2e-round-x.mjs && node e2e-round-y.mjs && node e2e-round-z.mjs && node e2e-round-aa.mjs && node e2e-round-ab.mjs && node e2e-round-ac.mjs && node e2e-round-ad.mjs && node e2e-round-ae.mjs && node e2e-round-af.mjs && node e2e-round-ag.mjs && node e2e-round-ah.mjs && node e2e-round-ai.mjs && node e2e-round-aj.mjs && node e2e-round-ak.mjs && node e2e-round-al.mjs && node e2e-round-am.mjs && node e2e-round-an.mjs && node e2e-round-ao.mjs && node e2e-round-ap.mjs && node e2e-round-aq.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.0",

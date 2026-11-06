@@ -64,14 +64,14 @@ const newestMtime = (dir) => {
   return newest;
 };
 
+if (!depsInstalled(backend)) run(npm, ["install"], backend, "מתקין את חבילות השרת (כדקה)");
+if (!depsInstalled(frontend)) run(npm, ["install"], frontend, "מתקין את חבילות האתר (כדקה)");
 if (buildProd) {
-  run(npm, ["install"], frontend, "מתקין תלויות ל-frontend לפריסה ציבורית");
   run(npm, ["run", "build"], frontend, "בונה את האתר לפריסה ציבורית", { NEXT_PUBLIC_API_URL: "same-origin", NEXT_DIST_DIR: ".next-prod" });
-  say("\nהבנייה לפריסה הסתיימה.");
+  say("\nהבנייה לפריסה הסתיימה. להפעלה: node backend/src/all.js");
   process.exit(0);
 }
-
-  if (!dev) {
+if (!dev) {
   const buildId = path.join(frontend, ".next", "BUILD_ID");
   const stale = fs.existsSync(buildId) && Math.max(newestMtime(path.join(frontend, "src")), fs.statSync(path.join(frontend, "package.json")).mtimeMs) > fs.statSync(buildId).mtimeMs;
   if (!fs.existsSync(buildId) || stale) run(npm, ["run", "build"], frontend, "בונה את האתר (כדקה)");

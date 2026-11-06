@@ -2,6 +2,7 @@
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 import crypto from "node:crypto";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -15,7 +16,8 @@ const mk = async () => {
 let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
 const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n").slice(0, 8).join(" | ")); } };
-const axe = (p) => new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+const settle = async (p) => { await p.evaluate(async () => { await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))); }).catch(() => {}); await p.waitForTimeout(150); };
+const axe = async (p) => { await settle(p); return new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze(); };
 const axeMsg = (r) => r.violations.map((v) => v.id + " " + v.nodes.map((n) => n.target.join(" ")).join("; ")).join(" || ");
 const stamp = Date.now().toString().slice(-6);
 const USER = "mom" + stamp;
@@ -34,7 +36,9 @@ A.on("pageerror", (e) => console.log("PAGEERROR", e.message));
 
 await step("82. register with email and phone", async () => {
   await A.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(A);
   await A.getByRole("button", { name: "הרשמה", exact: true }).first().click();
+  await A.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await A.getByLabel("שם להצגה").fill("אמא בדיקה");
   await A.getByLabel("שם משתמש").fill(USER);
   await A.getByLabel("סיסמה", { exact: true }).fill(PW);
@@ -108,6 +112,7 @@ const loginAs = async (ident, label) => {
   const c = await mk();
   const p = await c.newPage();
   await p.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(p);
   await p.getByLabel("שם משתמש, מייל או טלפון").fill(ident);
   await p.getByLabel("סיסמה", { exact: true }).fill(PW);
   await p.getByRole("button", { name: /^כניסה$/ }).click();
@@ -115,11 +120,11 @@ const loginAs = async (ident, label) => {
 };
 await step("81. login by email and by phone", async () => {
   const e = await loginAs(EMAIL.toUpperCase(), "email");
-  await e.p.getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
+  await e.p.locator("#main").getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
   ok(true, "login with email");
   await e.c.close();
   const t = await loginAs("+97250" + PHONE_IN.slice(4).replace("-", ""), "phone");
-  await t.p.getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
+  await t.p.locator("#main").getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
   ok(true, "login with phone");
   await t.c.close();
 });
@@ -128,6 +133,7 @@ await step("84. forgot password screen (no provider configured)", async () => {
   const c = await mk();
   const p = await c.newPage();
   await p.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(p);
   await p.getByRole("button", { name: "שכחתי סיסמה" }).click();
   await p.getByRole("heading", { name: "איפוס סיסמה" }).waitFor();
   await p.getByText("שליחת קודים לא מוגדרת").waitFor();
@@ -160,6 +166,7 @@ const ctxD = await mk();
 const D = await ctxD.newPage();
 await step("86. two-step login with the app code", async () => {
   await D.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(D);
   await D.getByLabel("שם משתמש, מייל או טלפון").fill(USER);
   await D.getByLabel("סיסמה", { exact: true }).fill(PW);
   await D.getByRole("button", { name: /^כניסה$/ }).click();
@@ -172,7 +179,7 @@ await step("86. two-step login with the app code", async () => {
   ok(true, "wrong code rejected");
   await D.getByLabel("קוד אימות").fill(totp(secret, now() + 1));
   await D.getByRole("button", { name: "אימות", exact: true }).click();
-  await D.getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
+  await D.locator("#main").getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
   ok(true, "logged in after second step");
 });
 
@@ -181,6 +188,7 @@ await step("86. backup code works once", async () => {
   const p = await c.newPage();
   const go = async (code) => {
     await p.goto(B + "/account", { waitUntil: "networkidle" });
+    await lampOn(p);
     await p.getByLabel("שם משתמש, מייל או טלפון").fill(USER);
     await p.getByLabel("סיסמה", { exact: true }).fill(PW);
     await p.getByRole("button", { name: /^כניסה$/ }).click();
@@ -188,12 +196,13 @@ await step("86. backup code works once", async () => {
     await p.getByRole("button", { name: "אימות", exact: true }).click();
   };
   await go(backup);
-  await p.getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
+  await p.locator("#main").getByText("אמא בדיקה").first().waitFor({ timeout: 8000 });
   ok(true, "backup code accepted");
   await c.close();
   const c2 = await mk();
   const p2 = await c2.newPage();
   await p2.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(p2);
   await p2.getByLabel("שם משתמש, מייל או טלפון").fill(USER);
   await p2.getByLabel("סיסמה", { exact: true }).fill(PW);
   await p2.getByRole("button", { name: /^כניסה$/ }).click();

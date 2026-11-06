@@ -1,0 +1,116 @@
+/* שלב 59 – העיצוב האחיד של כל האתר.
+   מעטפת כהה (גרפיט): כותרת דקה, סרגל זכוכית מימין, דוק צף למטה.
+   משטח עבודה בהיר (Bento) שבתוכו כל התוכן: כרטיסים לבנים, פינות עגולות, צללים רכים.
+   הצבעים באים מהטוקנים ב-globals.css (--pal-*), ולכן ערכות הצבעים, התצוגה הבהירה והניגודיות הגבוהה ממשיכות לעבוד.
+   הכל נשבר לשחור-צהוב בניגודיות גבוהה (html.hc): בלי זכוכית, בלי גרדיאנטים. */
+
+/* ───── פריסה: מקום לסרגל הימני ולדוק התחתון ───── */
+@media (min-width: 1024px) {
+  html[data-shell="on"] body { padding-inline-start: calc(var(--sb-now) + 36px); transition: padding 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+}
+html[data-shell="on"][data-dock="on"] body { padding-bottom: 92px; }
+
+/* ───── כותרת דקה: לוגו ושם מימין, כפתורי נגישות משמאל ───── */
+html[data-shell="on"] .site-header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; width: min(100% - 28px, 1240px); margin: 0 auto; padding: 14px 4px 8px; }
+html[data-shell="on"] .site-header .brand-link { order: 1; margin: 0; flex: none; }
+html[data-shell="on"] .site-header .a11y-bar { order: 2; flex: 1 1 360px; background: transparent; border: 0; padding: 0; gap: 8px; justify-content: flex-end; }
+@media (min-width: 1024px) {
+  html[data-shell="on"] .site-header .a11y-bar { gap: 6px; }
+  html[data-shell="on"] .a11y-btn { min-height: 36px; padding: 4px 11px; font-size: 0.84rem; }
+}
+@media (max-width: 640px) {
+  /* במובייל כפתורי הנגישות בשורה אחת שנגללת הצידה, כדי לא לתפוס חצי מסך */
+  html[data-shell="on"] .site-header .a11y-bar { flex: 1 1 100%; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  html[data-shell="on"] .site-header .a11y-bar::-webkit-scrollbar { display: none; }
+  html[data-shell="on"] .a11y-btn { flex: none; }
+}
+html[data-shell="on"] .a11y-btn { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.2); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+html[data-shell="on"] .a11y-btn[aria-pressed="true"] { background: var(--btn-bg); border-color: transparent; color: var(--on-accent); font-weight: 700; }
+html.light[data-shell="on"] .a11y-btn { background: rgba(255, 255, 255, 0.7); border-color: rgba(20, 22, 28, 0.2); }
+html.hc[data-shell="on"] .a11y-btn { background: #000; border-color: #ffeb00; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.hc[data-shell="on"] .a11y-btn[aria-pressed="true"] { background: #ffeb00; color: #000; }
+
+html[data-shell="on"] .emblem { width: auto; display: flex; align-items: center; gap: 12px; animation: none; }
+html[data-shell="on"] .emblem .logo3d { flex: none; }
+html[data-shell="on"] .emblem img, html[data-shell="on"] .emblem-logo { max-height: 54px; width: auto; animation: none; }
+html[data-shell="on"] .emblem-art { width: 120px; animation: none; filter: none; }
+html[data-shell="on"] .brand-title, html[data-shell="on"] .emblem.has-logo .brand-title { position: static; transform: none; margin: 0; font-size: 1.3rem; color: var(--text); text-align: start; text-shadow: none; }
+
+/* ───── משטח העבודה ───── */
+.page {
+  position: relative;
+  width: calc(100% - 28px);
+  max-width: 1240px;
+  margin: 10px auto 28px;
+  padding: clamp(18px, 3vw, 34px) clamp(14px, 3vw, 34px) 64px;
+  border-radius: 32px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 30px 80px -34px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+html.light .page { box-shadow: 0 30px 70px -40px rgba(17, 24, 39, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.8); }
+html[data-panel="dark"]:not(.light):not(.hc) .page { --bg: #12151c; --panel: #1b1f2a; box-shadow: 0 30px 80px -34px #000, inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+html.hc .page { border-radius: 0; box-shadow: none; background: #000; }
+@media (max-width: 640px) {
+  .page { width: calc(100% - 16px); margin-top: 6px; border-radius: 24px; padding-inline: 14px; }
+}
+.page-title { margin-bottom: 22px; }
+.page-title h1 { font-size: clamp(1.6rem, 3vw, 2.15rem); letter-spacing: -0.01em; }
+.site-footer { width: calc(100% - 28px); max-width: 1240px; padding-inline: 4px; }
+
+/* ───── כרטיסי Bento ───── */
+html:not(.hc) .page .card { border: 0; border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--sh-1); padding: clamp(16px, 2.2vw, 24px); }
+html:not(.hc) .page .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel); box-shadow: var(--sh-1); }
+html:not(.hc) .page .glass::before { display: none; }
+html:not(.hc) .page .activity-card:hover, html:not(.hc) .page .method-info:hover { box-shadow: var(--sh-2); transform: translateY(-3px); }
+html[data-panel="dark"]:not(.light):not(.hc) .page .card { border: 1px solid rgba(255, 255, 255, 0.08); }
+.grid-list { gap: 18px; }
+.page h2.section-title { letter-spacing: -0.005em; }
+
+/* ───── כפתורים ושדות ───── */
+html:not(.hc) .btn { border-radius: 14px; border-color: transparent; background: color-mix(in srgb, var(--text) 8%, transparent); }
+html:not(.hc) .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 13%, transparent); }
+html:not(.hc) .btn.btn-primary, html:not(.hc) .btn[aria-pressed="true"] { background: var(--btn-bg); color: var(--on-accent); box-shadow: 0 10px 22px -14px color-mix(in srgb, var(--accent) 80%, transparent); }
+html:not(.hc) .btn.btn-primary:hover:not(:disabled) { background: var(--btn-bg); filter: brightness(1.06); }
+/* מצב נבחר/לחוץ נשאר צבעוני גם בריחוף (אחרת כלל הריחוף הכללי הופך אותו לאפור עם טקסט לבן) */
+html:not(.hc) .btn[aria-pressed="true"]:hover:not(:disabled),
+html:not(.hc) .btn[aria-selected="true"]:hover:not(:disabled),
+html:not(.hc) .tabs button[aria-pressed="true"]:hover:not(:disabled),
+html:not(.hc) .home-tabs [role="tab"][aria-selected="true"]:hover:not(:disabled) { background: var(--btn-bg); color: var(--on-accent); filter: brightness(1.06); }
+html:not(.hc) .btn-danger { background: #9f1239; color: #fff; }
+input:not([type="checkbox"]):not([type="radio"]), select, textarea { border-color: var(--field-line, var(--line)); border-radius: 14px; }
+input[type="radio"] { accent-color: var(--accent); }
+
+/* ───── לשוניות וראשי דף הבית ───── */
+.home-tabs { border-bottom: 0; padding-bottom: 0; gap: 8px; }
+.home-tabs [role="tab"] { border-radius: 14px; }
+.home-tabs [role="tab"][aria-selected="true"] { background: var(--btn-bg); color: var(--on-accent); border-color: transparent; }
+html.hc .home-tabs [role="tab"][aria-selected="true"] { background: #ffeb00; color: #000; }
+.home-menu-grid { gap: 14px; }
+html:not(.hc) .page .home-menu-grid a { border: 0; border-radius: var(--r-lg); background: var(--panel); box-shadow: var(--sh-1); color: var(--text); transition: transform 0.2s, box-shadow 0.25s; }
+html:not(.hc) .page .home-menu-grid a:hover { transform: translateY(-4px); box-shadow: var(--sh-2); }
+html:not(.hc) .page .home-menu-main a:first-child { background: linear-gradient(135deg, var(--pal-a), var(--pal-b)); color: var(--pal-ink); }
+html:not(.hc) .page .home-menu-main a:first-child * { color: inherit; }
+.hero-steps li { border: 0; background: var(--bg); }
+html:not(.hc) .page .hero-steps li { background: color-mix(in srgb, var(--text) 5%, transparent); }
+
+/* ───── טבלאות ───── */
+html:not(.hc) .page table { border-collapse: separate; border-spacing: 0; border-radius: 14px; overflow: hidden; }
+html:not(.hc) .page th, html:not(.hc) .page td { border-color: var(--line); }
+
+/* ───── דוק וסרגל: התאמות בצבעי העיצוב החדש ───── */
+.sh-dock-btn::after { background: #14161c; color: #f3f4f7; border-color: rgba(255, 255, 255, 0.2); }
+.sh-brand { letter-spacing: -0.01em; }
+
+/* ───── עיצוב מחדש של דפים שהיו עם מעטפת משלהם ───── */
+.db-shell, .wa-shell { background: transparent; border: 0; box-shadow: none; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ───── הדפסה: משטח לבן, בלי מעטפת ───── */
+@media print {
+  html[data-shell="on"] body { padding: 0 !important; }
+  .page { width: 100%; max-width: none; margin: 0; padding: 0; border-radius: 0; box-shadow: none; background: #fff; color: #000; }
+  .site-header { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-shell="on"] body { transition: none; }
+}

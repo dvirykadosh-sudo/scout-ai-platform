@@ -11,7 +11,16 @@ import { ReadabilityModal, RunMode, ShareModal, SnippetsModal, clockTimes, distr
 import { GroupsModal, ParentsModal, PRESETS, PrepPanel, SearchAllModal, SimilarNotice, icsFor, presetBlock } from "./WriteMore4";
 import { CommentsModal, cleanText, useDictation, wordDiff } from "./WriteMore3";
 import { ImportStagesModal, QuestionsModal, RunLogModal, ShortcutsModal, SummarySheet } from "./WriteMore2";
+import { BackupPlanModal, ReadinessModal, StationsModal, TourButton, TribeMethodsModal } from "./WriteFinal";
 import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
+import { MoreToolsModal, OutdoorHint } from "./WriteV36";
+import { EditorProgress } from "./Polish";
+import { StageModeModal } from "./Depth3D2";
+import { ToolboxModal } from "./WriteV51";
+import { StyleLabModal } from "./StyleLab";
+import { GameRulesModal, HolidayModal, HooksModal, IllustrationsModal, MergeModal, ParticipationModal, SeriesModal, TranslateModal, ViewersModal, VoiceNotesModal, type V50Tool } from "./WriteV50";
+import { MapModal, PracticeModal, PrintablesModal, ReadAloudModal, StoryQuizModal } from "./WriteV47";
+import { AgeAdaptModal, SafetyModal, StageQuestionsModal, VoiceCheckModal } from "./WriteV39";
 import { GapsPanel, HelpModal, PrefsModal, SearchModal, StageCompare, useCatalog, type InsertFn } from "./WriteHelp";
 import { KINDS, KIND_LABEL, Md, countWords, emptyBlock, newBlockId, flatten, readAloud, sumMinutes, useHistory, type Block, type Doc, type Kind, type Snap } from "./WriteParts";
 
@@ -82,6 +91,9 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const [runOn, setRunOn] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [qOpen, setQOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print" | "stage" | V50Tool>("");
+  const [fin, setFin] = useState<"" | "stations" | "backup" | "ready" | "tribe">("");
   const [stagesOpen, setStagesOpen] = useState(false);
   const [keysOpen, setKeysOpen] = useState(false);
   const [comOpen, setComOpen] = useState(false);
@@ -675,10 +687,43 @@ export function WriteEditor({ initial }: { initial: Doc }) {
         )}
       </div>
 
-      <div className="write-bar card glass" role="region" aria-label="סרגל כלים ומצב המסמך">
+      <OutdoorHint snap={state} onOpen={() => setFin("backup")} />
+      <div className="write-bar card glass" role="region" aria-label="מצב המסמך">
         <p className={`write-status st-${status}`} role="status" aria-live="polite">
           {statusText}
         </p>
+        <EditorProgress total={total} target={target ?? undefined} blocks={state.blocks} />
+        <p className="hint" role="status">
+          {words} מילים · זמן הקראה בערך {readAloud(words)} ·{" "}
+          {target ? (
+            diff === 0 ? (
+              <span>השלבים מסתכמים ב-{total} דקות, כמו המשך המתוכנן</span>
+            ) : diff > 0 ? (
+              <strong>השלבים מסתכמים ב-{total} דקות, חורגים ב-{diff} דקות מהמשך המתוכנן</strong>
+            ) : (
+              <span>
+                השלבים מסתכמים ב-{total} דקות, נשארו {-diff} דקות לתכנון
+              </span>
+            )
+          ) : (
+            <span>השלבים מסתכמים ב-{total} דקות</span>
+          )}{" "}
+          · {doneCount} מתוך {state.blocks.length} שלבים מסומנים כמוכנים{endClock ? ` · הפעולה מסתיימת בערך בשעה ${endClock}` : ""}
+        </p>
+        {total > 0 && (
+          <div className="write-timeline" aria-hidden="true">
+            {state.blocks.map((b) => (
+              <span key={b.id} className={`kind-${b.kind}`} style={{ flexGrow: b.minutes ?? 0 }} title={`${b.title || KIND_LABEL[b.kind]}: ${b.minutes ?? 0} דק'`} />
+            ))}
+          </div>
+        )}
+        {target !== total && total > 0 && (
+          <button type="button" className="btn btn-small" onClick={() => h.set((s) => ({ ...s, meta: { ...s.meta, minutes: total } }))}>
+            לקבוע את המשך המתוכנן ל-{total} דקות
+          </button>
+        )}
+      </div>
+      <div className="write-actions-card card glass" role="region" aria-label="סרגל כלים ומצב המסמך">
         <div className="actions">
           <button type="button" className="btn btn-small" onClick={h.undo} disabled={!h.canUndo}>
             ביטול
@@ -722,6 +767,22 @@ export function WriteEditor({ initial }: { initial: Doc }) {
           <button type="button" className="btn btn-small" onClick={() => setStagesOpen(true)}>
             שלבים ממסמך אחר
           </button>
+          <button type="button" className="btn btn-small" onClick={() => setFin("stations")} disabled={!cur}>
+            חישוב תחנות
+          </button>
+          <button type="button" className="btn btn-small" onClick={() => setFin("backup")}>
+            תוכנית גיבוי
+          </button>
+          <button type="button" className="btn btn-small" onClick={() => setFin("ready")}>
+            מוכנות להעברה
+          </button>
+          <button type="button" className="btn btn-small" onClick={() => setFin("tribe")} disabled={!cur}>
+            מתודות השבט
+          </button>
+          <button type="button" className="btn btn-small" onClick={() => setMoreOpen(true)}>
+            כלים נוספים
+          </button>
+          <TourButton kind="write" />
           <button type="button" className="btn btn-small" onClick={printSummary}>
             דף מדריך להדפסה
           </button>
@@ -789,35 +850,6 @@ export function WriteEditor({ initial }: { initial: Doc }) {
             בדיקה בעוזר הכתיבה
           </button>
         </div>
-        <p className="hint" role="status">
-          {words} מילים · זמן הקראה בערך {readAloud(words)} ·{" "}
-          {target ? (
-            diff === 0 ? (
-              <span>השלבים מסתכמים ב-{total} דקות, כמו המשך המתוכנן</span>
-            ) : diff > 0 ? (
-              <strong>השלבים מסתכמים ב-{total} דקות, חורגים ב-{diff} דקות מהמשך המתוכנן</strong>
-            ) : (
-              <span>
-                השלבים מסתכמים ב-{total} דקות, נשארו {-diff} דקות לתכנון
-              </span>
-            )
-          ) : (
-            <span>השלבים מסתכמים ב-{total} דקות</span>
-          )}{" "}
-          · {doneCount} מתוך {state.blocks.length} שלבים מסומנים כמוכנים{endClock ? ` · הפעולה מסתיימת בערך בשעה ${endClock}` : ""}
-        </p>
-        {total > 0 && (
-          <div className="write-timeline" aria-hidden="true">
-            {state.blocks.map((b) => (
-              <span key={b.id} className={`kind-${b.kind}`} style={{ flexGrow: b.minutes ?? 0 }} title={`${b.title || KIND_LABEL[b.kind]}: ${b.minutes ?? 0} דק'`} />
-            ))}
-          </div>
-        )}
-        {target !== total && total > 0 && (
-          <button type="button" className="btn btn-small" onClick={() => h.set((s) => ({ ...s, meta: { ...s.meta, minutes: total } }))}>
-            לקבוע את המשך המתוכנן ל-{total} דקות
-          </button>
-        )}
       </div>
 
       {gapsOn && (
@@ -1091,15 +1123,42 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       <ParentsModal open={parentsOpen} onClose={() => setParentsOpen(false)} snap={state} token={token} />
       <SummarySheet snap={state} />
       <RunLogModal open={logOpen} onClose={() => setLogOpen(false)} runs={state.meta.runs ?? []} onChange={(runs) => h.set((s) => ({ ...s, meta: { ...s.meta, runs } }))} />
+      <StationsModal open={fin === "stations"} onClose={() => setFin("")} token={token} total={state.meta.minutes ?? 0} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
+      <BackupPlanModal open={fin === "backup"} onClose={() => setFin("")} token={token} snap={state} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, 60) }))} />
+      <ReadinessModal open={fin === "ready"} onClose={() => setFin("")} token={token} snap={state} />
+      <TribeMethodsModal open={fin === "tribe"} onClose={() => setFin("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
       <QuestionsModal open={qOpen} onClose={() => setQOpen(false)} token={token} value={state.meta.value ?? ""} age={state.meta.ageGroup} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
       <ImportStagesModal open={stagesOpen} onClose={() => setStagesOpen(false)} token={token} currentId={initial.id} onApply={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs.map((b) => ({ ...b, id: newBlockId(), done: false }))].slice(0, 60) }))} />
+      <MoreToolsModal open={moreOpen} onClose={() => setMoreOpen(false)} snap={state} docId={initial.id} token={token} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} onOpened={(id) => router.push(`/write/${id}`)} onTool={(t) => { setMoreOpen(false); setTool(t); }} />
+      <VoiceCheckModal open={tool === "voice"} onClose={() => setTool("")} snap={state} token={token} />
+      <SafetyModal open={tool === "safety"} onClose={() => setTool("")} snap={state} token={token} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, 60) }))} />
+      <AgeAdaptModal open={tool === "age"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onOpened={(id) => router.push(`/write/${id}`)} />
+      <MapModal open={tool === "map"} onClose={() => setTool("")} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <ReadAloudModal open={tool === "read"} onClose={() => setTool("")} snap={state} block={cur} />
+      <PracticeModal open={tool === "practice"} onClose={() => setTool("")} block={cur} />
+      <StoryQuizModal open={tool === "story"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <PrintablesModal open={tool === "print"} onClose={() => setTool("")} snap={state} token={token} />
+      <IllustrationsModal open={tool === "illus"} onClose={() => setTool("")} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <HolidayModal open={tool === "holiday"} onClose={() => setTool("")} token={token} onAdd={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs].slice(0, 60) }))} />
+      <MergeModal open={tool === "merge"} onClose={() => setTool("")} token={token} currentId={initial.id} blocks={state.blocks} onApply={(bs) => h.set((st) => ({ ...st, blocks: bs }))} />
+      <ViewersModal open={tool === "viewers"} onClose={() => setTool("")} token={token} docId={initial.id} blocks={state.blocks} />
+      <VoiceNotesModal open={tool === "vnotes"} onClose={() => setTool("")} docId={initial.id} block={cur} />
+      <HooksModal open={tool === "hooks"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <ParticipationModal open={tool === "meter"} onClose={() => setTool("")} docId={initial.id} />
+      <GameRulesModal open={tool === "rules"} onClose={() => setTool("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <TranslateModal open={tool === "translate"} onClose={() => setTool("")} token={token} snap={state} />
+      <SeriesModal open={tool === "series"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} onOpened={(id) => router.push(`/write/${id}`)} />
+      <StyleLabModal open={tool === "lab53"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <ToolboxModal open={tool === "box51"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      <StageModeModal open={tool === "stage"} onClose={() => setTool("")} blocks={state.blocks} />
+      <StageQuestionsModal open={tool === "questions"} onClose={() => setTool("")} block={cur} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
       <ShortcutsModal open={keysOpen} onClose={() => setKeysOpen(false)} />
       {runOn && <RunMode snap={state} onClose={() => setRunOn(false)} />}
       <SnippetsModal open={snipOpen} onClose={() => setSnipOpen(false)} token={token} current={cur?.text ?? ""} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} docId={initial.id} token={token} />
       <ReadabilityModal open={readOpen} onClose={() => setReadOpen(false)} snap={state} token={token} onTitle={(t) => h.set((s) => ({ ...s, title: t }))} onClean={cleanAll} />
       <CommentsModal open={comOpen} onClose={() => setComOpen(false)} docId={initial.id} token={token} onCount={setComCount} titleOf={(id) => { const b = state.blocks.find((x) => x.id === id); return b ? b.title || KIND_LABEL[b.kind] : "שלב שנמחק"; }} />
-      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} snap={state} token={token} />
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} snap={state} token={token} docId={initial.id} />
       <PrepModal open={prepOpen} onClose={() => setPrepOpen(false)} snap={state} token={token} />
       <ImportModal
         open={importOpen}

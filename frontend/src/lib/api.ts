@@ -6,11 +6,13 @@ export class ApiError extends Error {
   status: number;
   code: string;
   fields?: Record<string, string[]>;
-  constructor(status: number, code: string, message: string, fields?: Record<string, string[]>) {
+  requestId?: string;
+  constructor(status: number, code: string, message: string, fields?: Record<string, string[]>, requestId?: string) {
     super(message);
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.requestId = requestId;
   }
 }
 
@@ -37,16 +39,18 @@ export async function api<T>(path: string, { method = "GET", body, token, signal
     });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
-    throw new ApiError(0, "NETWORK", "אין חיבור לשרת. ודאו שהשרת פועל (npm start בתיקיית backend).");
+    throw new ApiError(0, "NETWORK", "אין חיבור לשרת. בדקו את האינטרנט ונסו שוב. אם האתר היה לא פעיל זמן מה, הוא מתעורר וייקח כחצי דקה.");
   }
   if (!res.ok) {
-    let data: { error?: { code?: string; message?: string; fields?: Record<string, string[]> } } = {};
+    let data: { error?: { code?: string; message?: string; fields?: Record<string, string[]>; requestId?: string } } = {};
     try {
       data = await res.json();
     } catch {
       /* ignore */
     }
-    throw new ApiError(res.status, data.error?.code ?? "ERROR", data.error?.message ?? "אירעה שגיאה", data.error?.fields);
+    // התחברות שפגה: מודיעים ל-Providers כדי לנקות ולהציג הודעה ברורה
+    if (res.status === 401 && token && data.error?.message === "נדרשת התחברות" && typeof window !== "undefined" && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event("scout:session-expired"));
+    throw new ApiError(res.status, data.error?.code ?? "ERROR", data.error?.message ?? "אירעה שגיאה", data.error?.fields, data.error?.requestId ?? res.headers.get("x-request-id") ?? undefined);
   }
   return (await res.json()) as T;
 }
@@ -68,13 +72,30 @@ export async function downloadDocx(id: number, title: string): Promise<void> {
   a.remove();
   // revoking immediately can cancel the download in some browsers
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  try {
+    if (!localStorage.getItem("scout.celebrated")) {
+      localStorage.setItem("scout.celebrated", "1");
+      window.dispatchEvent(new Event("scout:celebrate"));
+    }
+  } catch {}
+}
+
+/** כותרות להעלאת קובץ: מי שמחובר שולח את האסימון, והשרת מאפשר לו קובץ עד 3MB (לאורח עד 400KB). */
+function uploadHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/octet-stream" };
+  try {
+    const raw = window.sessionStorage.getItem("scout.session") ?? window.localStorage.getItem("scout.session");
+    const t = raw ? (JSON.parse(raw) as { token?: unknown }).token : null;
+    if (typeof t === "string" && t) h.Authorization = `Bearer ${t}`;
+  } catch {}
+  return h;
 }
 
 /** Sends a Word/txt file to the server and gets its plain text back. */
 export async function extractStyleFile<T>(file: File): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/style/extract?name=${encodeURIComponent(file.name)}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file });
+    res = await fetch(`${API_URL}/api/style/extract?name=${encodeURIComponent(file.name)}`, { method: "POST", headers: uploadHeaders(), body: file });
   } catch {
     throw new ApiError(0, "NETWORK", "אין חיבור לשרת");
   }
@@ -83,7 +104,11 @@ export async function extractStyleFile<T>(file: File): Promise<T> {
   return data as T;
 }
 
-export const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : "אירעה שגיאה");
+/** הודעת שגיאה למשתמש. בתקלת שרת מוסיפים קוד שאפשר להעביר למנהל. */
+export const errorMessage = (e: unknown): string => {
+  if (e instanceof ApiError && e.status >= 500 && e.requestId) return `${e.message} (קוד תקלה: ${e.requestId})`;
+  return e instanceof Error ? e.message : "אירעה שגיאה";
+};
 
 /** Flattens server field errors into one list of readable lines. */
 export function fieldErrorLines(e: unknown): string[] {
@@ -142,7 +167,7 @@ export interface ParsedDoc {
 export async function parseImportFile(file: File): Promise<ParsedDoc> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/api/activities/import-file?name=${encodeURIComponent(file.name)}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file });
+    res = await fetch(`${API_URL}/api/activities/import-file?name=${encodeURIComponent(file.name)}`, { method: "POST", headers: uploadHeaders(), body: file });
   } catch {
     throw new ApiError(0, "NETWORK", "אין חיבור לשרת");
   }

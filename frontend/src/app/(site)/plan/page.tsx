@@ -1,7 +1,7 @@
 import { MultiPlan } from "@/components/MultiPlan";
 import { PlanPage } from "@/components/PlanPage";
 
-export const metadata = { title: "תכנון תקופתי" };
+export const metadata = { title: "תכנון תקופתי", description: "תכנון תקופתי של פעולות לפי כיתה וערכים, עם כיסוי ערכים ושבוע אחר שבוע." };
 
 export default function Page() {
   return (

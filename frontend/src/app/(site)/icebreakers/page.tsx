@@ -1,6 +1,6 @@
 import { Icebreakers } from "@/components/Icebreakers";
 
-export const metadata = { title: "משחקי היכרות" };
+export const metadata = { title: "משחקי היכרות", description: "משחקי היכרות וקרח לשבט ולקבוצה חדשה, עם הוראות קצרות וציוד." };
 
 export default function Page() {
   return (

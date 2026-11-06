@@ -1,0 +1,105 @@
+/* שלב 58 – טוקנים של העיצוב החדש (סרגל זכוכית, דשבורד, מרכז וואטסאפ, כניסה).
+   הערכים הקיימים (--bg --panel --accent ...) נשארים ב-globals.css. כאן רק מה שחדש, בשלוש תצוגות: כהה, בהירה, ניגודיות גבוהה. */
+
+:root {
+  --field-line: rgba(255, 255, 255, 0.45);
+  --sb-open: 280px;
+  --sb-closed: 80px;
+  --sb-now: var(--sb-open);
+
+  /* סרגל זכוכית ודוק */
+  --sh-glass: rgba(23, 26, 35, 0.6);
+  --sh-edge: rgba(255, 255, 255, 0.16);
+  --sh-glow: color-mix(in srgb, var(--pal-a) 60%, transparent);
+  --sh-hover: rgba(255, 255, 255, 0.09);
+  --sh-badge-bg: var(--pal-a);
+  --sh-badge-ink: var(--pal-ink);
+
+  /* דשבורד: מעטפת כהה חצי שקופה, משטח עבודה בהיר */
+  --db-outer: transparent;
+  --db-work: #f4f5f7;
+  --db-card: #ffffff;
+  --db-ink: #14161c;
+  --db-ink-2: #4b5263;
+  --db-line: rgba(20, 22, 28, 0.12);
+  --db-side: #12151c;
+  --db-side-ink: #f3f4f7;
+  --db-side-muted: #c3c8d4;
+  --db-orange-ink: #1a0f02;
+
+  /* נקודות לוח השנה לפי סוג */
+  --dot-library: #60a5fa;
+  --dot-free: #2dd4bf;
+  --dot-team: #fb923c;
+  --dot-remind: #f472b6;
+
+  /* מרכז הוואטסאפ: סגול, ורוד, לבנדר */
+  --wa-ink: #2a1450;
+  --wa-ink-2: #5d4a85;
+  --wa-bg-1: #f6f0ff;
+  --wa-bg-2: #ffeef8;
+  --wa-card: #ffffff;
+  --wa-line: rgba(126, 34, 206, 0.16);
+  --wa-btn: linear-gradient(135deg, #7e22ce, #be185d);
+  --wa-banner: linear-gradient(120deg, #9333ea, #db2777);
+  --wa-ok: #0b6b3a;
+  --wa-warn: #92400e;
+  --wa-bad: #9f1239;
+}
+
+html.light,
+html:not(.hc):not([data-panel="dark"]) .page {
+  --field-line: #7b8394;
+}
+html.light {
+  --sh-glass: rgba(255, 255, 255, 0.72);
+  --sh-edge: rgba(20, 22, 28, 0.16);
+  --sh-glow: color-mix(in srgb, var(--pal-wb) 50%, transparent);
+  --sh-hover: rgba(20, 22, 28, 0.07);
+  --sh-badge-bg: var(--pal-wb);
+  --sh-badge-ink: #ffffff;
+}
+
+html.hc {
+  --sh-glass: #000;
+  --sh-edge: #ffeb00;
+  --sh-glow: transparent;
+  --sh-hover: #000;
+  --sh-badge-bg: #ffeb00;
+  --sh-badge-ink: #000;
+  --db-outer: #000;
+  --db-work: #000;
+  --db-card: #000;
+  --db-ink: #ffeb00;
+  --db-ink-2: #ffeb00;
+  --db-line: #ffeb00;
+  --db-side: #000;
+  --db-side-ink: #ffeb00;
+  --db-side-muted: #ffeb00;
+  --db-orange-ink: #000;
+  --dot-library: #ffeb00;
+  --dot-free: #ffeb00;
+  --dot-team: #ffeb00;
+  --dot-remind: #ffeb00;
+  --wa-ink: #ffeb00;
+  --wa-ink-2: #ffeb00;
+  --wa-bg-1: #000;
+  --wa-bg-2: #000;
+  --wa-card: #000;
+  --wa-line: #ffeb00;
+  --wa-btn: #ffeb00;
+  --wa-banner: #000;
+  --wa-ok: #ffeb00;
+  --wa-warn: #ffeb00;
+  --wa-bad: #ffffff;
+}
+
+/* תוויות ויזואליות בלבד: אותו עיקרון כמו .sr-only, אבל גלוי רק בקוראי מסך */
+.sh-only-sr {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,0 +1,6 @@
+# סודות ונתוני חיבור: לא עולים ל-GitHub לעולם
+.env
+session/
+data/
+node_modules/
+*.log

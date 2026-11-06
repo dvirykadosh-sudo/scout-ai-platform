@@ -1,6 +1,6 @@
 import { StoriesPage } from "@/components/StoriesPage";
 
-export const metadata = { title: "סיפורים ומשלים" };
+export const metadata = { title: "סיפורים ומשלים", description: "ספריית סיפורים ומשלים לפעולות בתנועת הצופים, לפי ערך ולפי גיל." };
 
 export default function Page() {
   return (

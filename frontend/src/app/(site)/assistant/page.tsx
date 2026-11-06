@@ -1,6 +1,6 @@
 import { AssistantPage } from "@/components/AssistantPage";
 
-export const metadata = { title: "עוזר כתיבה אישי" };
+export const metadata = { title: "עוזר כתיבה אישי", description: "עוזר כתיבה אישי למדריך: כותבים חופשי, והעוזר מארגן, מציע ומשפר." };
 
 export default function Page() {
   return (

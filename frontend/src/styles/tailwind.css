@@ -1,0 +1,8 @@
+/* Tailwind v4 בשימוש מבוקר:
+   - theme + utilities בלבד, בלי preflight (ה-CSS הקיים של האתר נשאר כמו שהוא)
+   - קידומת tw: לכל מחלקה, כדי שלא יתנגשו עם שמות המחלקות הקיימות */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(tw);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw);
+@source "../components";
+@source "../app";

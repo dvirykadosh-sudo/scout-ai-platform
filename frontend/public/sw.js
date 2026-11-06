@@ -1,5 +1,5 @@
 /* Service worker: lets saved activities and the field mode work without a signal. */
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC = `static-${VERSION}`;
 const PAGES = `pages-${VERSION}`;
 const OK_API = [/^\/api\/activities\/\d+$/, /^\/api\/meta$/];
@@ -41,6 +41,8 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   const p = url.pathname;
+  // וידאו וכתוביות: לא עוברים דרך ה-service worker (בקשות טווח ו-206 לא נשמרות במטמון)
+  if (req.headers.has("range") || /\.(mp4|vtt|webm|mp3)$/i.test(p)) return;
   if (p.startsWith("/api/")) {
     if (OK_API.some((r) => r.test(p))) e.respondWith(networkFirst(req, PAGES));
     return;

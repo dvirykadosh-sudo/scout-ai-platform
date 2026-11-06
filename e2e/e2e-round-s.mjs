@@ -2,6 +2,7 @@
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 import crypto from "node:crypto";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -33,7 +34,9 @@ const rows = () => A.locator(`section[aria-labelledby="w-mine"] li`);
 
 await step("register and create a document with a value", async () => {
   await A.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(A);
   await A.getByRole("button", { name: "הרשמה", exact: true }).first().click();
+  await A.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await A.getByLabel("שם להצגה").fill("בודק סטט");
   await A.getByLabel("שם משתמש").fill(USER);
   await A.getByLabel("סיסמה", { exact: true }).fill(PW);

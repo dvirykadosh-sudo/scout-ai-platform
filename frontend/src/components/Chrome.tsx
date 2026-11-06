@@ -1,9 +1,17 @@
 "use client";
 
+import { CompactToggle } from "./SystemParts";
+import { ReportButton } from "./PilotParts";
+import { NewBadge } from "./WriteFinal";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { API_URL, api } from "@/lib/api";
+import { PaletteToggle } from "./Polish";
+import { ReadingToggles } from "./Comfort54";
+import { NewDot } from "./Discover54";
+import { Logo3D } from "./Depth3D";
 import { NavBadge } from "./CareParts";
 import { useA11y, useAuth } from "./Providers";
 
@@ -16,6 +24,7 @@ const NAV = [
   { href: "/tools", label: "כלים ורעיונות" },
   { href: "/methods", label: "ספריית המתודות" },
   { href: "/plan", label: "תכנון תקופתי" },
+  { href: "/dashboard", label: "הלוח שלי" },
   { href: "/admin", label: "לוח בקרה לאדמין" },
 ];
 // נוסף מעבר לארבעת הנתיבים הבסיסיים
@@ -42,30 +51,29 @@ function Emblem() {
   return (
     <div className={`emblem ${LOGO_URL ? "has-logo" : ""}`}>
       {LOGO_URL ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="emblem-logo" src={LOGO_URL} alt="סמל שבט מעוז" />
+        <Logo3D src={LOGO_URL} />
       ) : (
         <svg className="emblem-art" viewBox="0 0 440 190" role="img" aria-label="סמל נשר (מקום שמור ללוגו השבט)">
           <defs>
             <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#8E6BD1" />
-              <stop offset="0.55" stopColor="#3b2a78" />
-              <stop offset="1" stopColor="#1E1245" />
+              <stop offset="0" stopColor="#fdba74" />
+              <stop offset="0.55" stopColor="#c2410c" />
+              <stop offset="1" stopColor="#431407" />
             </linearGradient>
             <linearGradient id="crest" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#2a1766" />
-              <stop offset="1" stopColor="#170d38" />
+              <stop offset="0" stopColor="#1f2937" />
+              <stop offset="1" stopColor="#0f172a" />
             </linearGradient>
           </defs>
-          <g id="wingR" fill="url(#wing)" stroke="#b27cff" strokeWidth="1.5" strokeLinejoin="round">
+          <g id="wingR" fill="url(#wing)" stroke="#fdba74" strokeWidth="1.5" strokeLinejoin="round">
             <path d="M232 46 C275 30 345 22 428 62 C392 62 372 78 362 98 C348 88 332 90 320 104 C308 96 294 98 284 112 C270 104 256 112 244 128 L232 150 Z" />
           </g>
-          <g transform="translate(440 0) scale(-1 1)" fill="url(#wing)" stroke="#b27cff" strokeWidth="1.5" strokeLinejoin="round">
+          <g transform="translate(440 0) scale(-1 1)" fill="url(#wing)" stroke="#fdba74" strokeWidth="1.5" strokeLinejoin="round">
             <path d="M232 46 C275 30 345 22 428 62 C392 62 372 78 362 98 C348 88 332 90 320 104 C308 96 294 98 284 112 C270 104 256 112 244 128 L232 150 Z" />
           </g>
-          <path d="M220 8 L242 36 L232 46 H208 L198 36 Z" fill="#5D2FA3" stroke="#d9c2ff" strokeWidth="1.5" strokeLinejoin="round" />
-          <path d="M212 22 L220 30 L228 22" fill="none" stroke="#efe9ff" strokeWidth="2" strokeLinecap="round" />
-          <rect x="118" y="62" width="204" height="76" rx="16" fill="url(#crest)" stroke="#b27cff" strokeWidth="2" />
+          <path d="M220 8 L242 36 L232 46 H208 L198 36 Z" fill="#f97316" stroke="#ffedd5" strokeWidth="1.5" strokeLinejoin="round" />
+          <path d="M212 22 L220 30 L228 22" fill="none" stroke="#fff7ed" strokeWidth="2" strokeLinecap="round" />
+          <rect x="118" y="62" width="204" height="76" rx="16" fill="url(#crest)" stroke="#fdba74" strokeWidth="2" />
         </svg>
       )}
       <p className="brand-title">מחולל פעולות</p>
@@ -88,6 +96,9 @@ export function SiteHeader() {
         <button type="button" className="a11y-btn" aria-pressed={largeText} onClick={toggleLarge}>
           הגדלת טקסט
         </button>
+        <CompactToggle />
+        <PaletteToggle />
+        <ReadingToggles />
         <button type="button" className="a11y-btn" onClick={cycleTheme}>
           תצוגה: {theme === "auto" ? "לפי המכשיר" : theme === "light" ? "בהירה" : "כהה"}
         </button>
@@ -121,6 +132,19 @@ export function SiteFooter() {
     <footer className="site-footer">
       <p>כל הזכויות שמורות לשבט מעוז - ראשון לציון © 2026</p>
       <p className="footer-links">
+        <Link href="/whats-new">מה חדש<NewBadge /></Link>
+        <Link href="/install">התקנה בטלפון</Link>
+        {" · "}
+        <Link href="/story">סיפור אישי<NewDot id="story" /></Link>
+        {" · "}
+        <Link href="/chat">עוזר שיחות<NewDot id="chat" /></Link>
+        {" · "}
+        <Link href="/coverage">מפת כיסוי<NewDot id="coverage" /></Link>
+        {" · "}
+        <Link href="/status">מצב האתר<NewDot id="status" /></Link>
+        {" · "}
+        <Link href="/style-guide">מדריך סגנון</Link>
+        {" · "}
         <Link href="/accessibility">הצהרת נגישות</Link>
         {" · "}
         <Link href="/privacy">פרטיות ותנאי שימוש</Link>
@@ -129,6 +153,9 @@ export function SiteFooter() {
           קיצורי מקלדת
         </button>
       </p>
+      <div className="footer-links">
+        <ReportButton />
+      </div>
     </footer>
   );
 }

@@ -1,0 +1,121 @@
+/* שלב 58 – מרכז הוואטסאפ: גווני סגול, ורוד ולבנדר. משטח עבודה בהיר בתוך המעטפת הכהה, כמו הדשבורד. */
+
+.wa-shell { padding: 14px; border-radius: 28px; background: var(--db-outer); border: 1px solid rgba(255, 255, 255, 0.1); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+html.hc .wa-shell { border: 2px solid #ffeb00; backdrop-filter: none; }
+.wa-work { border-radius: 22px; padding: 18px; color: var(--wa-ink); background: linear-gradient(135deg, var(--wa-bg-1), var(--wa-bg-2)); min-width: 0; }
+html.hc .wa-work { background: #000; border: 2px solid #ffeb00; }
+
+.wa-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 18px 22px; border-radius: 20px; color: #fff; background: var(--wa-banner); }
+.wa-banner h1 { margin: 0; font-size: 1.6rem; color: #fff; }
+.wa-banner p { margin: 2px 0 0; color: #fff; opacity: 0.95; }
+html.hc .wa-banner { border: 2px solid #ffeb00; color: #ffeb00; }
+html.hc .wa-banner h1, html.hc .wa-banner p { color: #ffeb00; }
+.wa-banner .grow { flex: 1; min-width: 200px; }
+
+/* חיווי חיבור */
+.wa-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; font-weight: 800; background: #fff; color: var(--wa-ink); }
+.wa-pill i { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
+.wa-pill[data-state="connected"] i { background: #16a34a; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2); }
+.wa-pill[data-state="qr"] i, .wa-pill[data-state="reconnecting"] i, .wa-pill[data-state="starting"] i { background: #f59e0b; animation: wa-pulse 1.3s infinite; }
+.wa-pill[data-state="disconnected"] i, .wa-pill[data-state="conflict"] i { background: #e11d48; }
+@keyframes wa-pulse { 50% { opacity: 0.35; } }
+html.hc .wa-pill { background: #000; color: #ffeb00; border: 1px solid #ffeb00; }
+html.hc .wa-pill i { background: #ffeb00 !important; }
+
+/* לשוניות */
+.wa-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; padding: 6px; border-radius: 18px; background: rgba(255, 255, 255, 0.7); }
+html.hc .wa-tabs { background: #000; border: 1px solid #ffeb00; }
+.wa-tab { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 14px; border: 0; background: transparent; color: var(--wa-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.wa-tab:hover { background: rgba(147, 51, 234, 0.1); }
+.wa-tab[aria-selected="true"] { background: var(--wa-btn); color: #fff; }
+html.hc .wa-tab[aria-selected="true"] { background: #ffeb00; color: #000; }
+
+.wa-card { background: var(--wa-card); color: var(--wa-ink); border-radius: 20px; padding: 18px; box-shadow: 0 12px 28px -18px rgba(88, 28, 135, 0.45); min-width: 0; }
+html.hc .wa-card { border: 2px solid #ffeb00; box-shadow: none; }
+.wa-card h2, .wa-card h3 { margin: 0 0 10px; color: var(--wa-ink); }
+.wa-card p { color: var(--wa-ink-2); }
+.wa-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.wa-stack { display: flex; flex-direction: column; gap: 14px; }
+.wa-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.wa-muted { color: var(--wa-ink-2); font-size: 0.9rem; }
+.wa-ok { color: var(--wa-ok); font-weight: 700; }
+.wa-bad { color: var(--wa-bad); font-weight: 700; }
+.wa-warn { color: var(--wa-warn); font-weight: 700; }
+
+/* כפתורים */
+.wa-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 14px; border: 0; font: inherit; font-weight: 800; color: #fff; background: var(--wa-btn); cursor: pointer; text-decoration: none; transition: transform 0.15s, box-shadow 0.15s; }
+.wa-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 22px -10px rgba(190, 24, 93, 0.7); }
+.wa-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.wa-btn.soft { background: #f3e8ff; color: #581c87; }
+.wa-btn.danger { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+.wa-btn.small { min-height: 36px; padding: 0 12px; font-size: 0.9rem; }
+html.hc .wa-btn, html.hc .wa-btn.soft, html.hc .wa-btn.danger { background: #000; color: #ffeb00; border: 2px solid #ffeb00; }
+
+/* שדות */
+.wa-field { display: flex; flex-direction: column; gap: 4px; }
+.wa-field label, .wa-field .lab { font-weight: 700; font-size: 0.92rem; color: var(--wa-ink); }
+.wa-field input, .wa-field select, .wa-field textarea { font: inherit; min-height: 44px; padding: 8px 12px; border-radius: 12px; border: 1px solid #c4b5fd; background: #fff; color: var(--wa-ink); }
+.wa-field textarea { min-height: 110px; resize: vertical; }
+html.hc .wa-field input, html.hc .wa-field select, html.hc .wa-field textarea { background: #000; color: #ffeb00; border-color: #ffeb00; }
+.wa-check { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 8px 0; }
+.wa-check input { width: 22px; height: 22px; margin-top: 2px; accent-color: #9333ea; }
+
+/* QR */
+.wa-qr { display: grid; place-items: center; width: min(260px, 100%); aspect-ratio: 1; margin-inline: auto; padding: 12px; border-radius: 20px; background: #fff; border: 2px dashed #c4b5fd; }
+.wa-qr img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.wa-token { direction: ltr; text-align: left; padding: 10px 12px; border-radius: 12px; background: #1b1033; color: #f5e8ff; font-family: ui-monospace, monospace; word-break: break-all; }
+.wa-steps { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 6px; color: var(--wa-ink); }
+
+/* קנבן */
+.wa-kanban { display: grid; grid-template-columns: repeat(5, minmax(210px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.wa-col { background: rgba(255, 255, 255, 0.6); border-radius: 18px; padding: 10px; min-height: 160px; }
+html.hc .wa-col { background: #000; border: 1px solid #ffeb00; }
+.wa-col-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 4px 10px; font-weight: 800; color: var(--wa-ink); }
+.wa-col-h b { padding: 2px 10px; border-radius: 999px; background: #f3e8ff; color: #581c87; font-size: 0.85rem; }
+.wa-job { background: #fff; border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--wa-line); color: var(--wa-ink); }
+html.hc .wa-job { background: #000; border-color: #ffeb00; }
+.wa-job strong { display: block; }
+.wa-job p { margin: 4px 0 6px; font-size: 0.88rem; color: var(--wa-ink-2); overflow-wrap: anywhere; }
+.wa-job small { color: var(--wa-ink-2); }
+.wa-job .wa-row { margin-top: 6px; }
+
+/* תיבת הודעות */
+.wa-inbox { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 14px; }
+.wa-conv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 520px; overflow: auto; }
+.wa-conv { width: 100%; text-align: start; padding: 10px 12px; border-radius: 14px; border: 1px solid transparent; background: #faf5ff; color: var(--wa-ink); font: inherit; cursor: pointer; }
+.wa-conv[aria-current="true"] { background: var(--wa-btn); color: #fff; }
+.wa-conv small { display: block; opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.hc .wa-conv { background: #000; color: #ffeb00; border-color: #ffeb00; }
+html.hc .wa-conv[aria-current="true"] { background: #ffeb00; color: #000; }
+.wa-thread { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow: auto; padding: 4px; }
+.wa-bubble { max-width: 82%; padding: 9px 13px; border-radius: 16px 16px 16px 4px; background: #f3e8ff; color: var(--wa-ink); overflow-wrap: anywhere; }
+.wa-bubble.out { align-self: flex-end; border-radius: 16px 16px 4px 16px; background: #fce7f3; }
+.wa-bubble small { display: block; color: var(--wa-ink-2); margin-top: 2px; }
+html.hc .wa-bubble { background: #000; border: 1px solid #ffeb00; color: #ffeb00; }
+
+/* טבלאות */
+.wa-table-wrap { overflow-x: auto; }
+.wa-table { width: 100%; border-collapse: collapse; color: var(--wa-ink); }
+.wa-table th, .wa-table td { padding: 9px 10px; text-align: start; border-bottom: 1px solid var(--wa-line); vertical-align: top; }
+.wa-table th { font-size: 0.85rem; color: var(--wa-ink-2); }
+.wa-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; background: #f3e8ff; color: #581c87; }
+.wa-tag.sent { background: #dcfce7; color: #14532d; }
+.wa-tag.failed { background: #ffe4e6; color: #881337; }
+.wa-tag.queued, .wa-tag.leased { background: #fef3c7; color: #78350f; }
+html.hc .wa-tag { background: #000; color: #ffeb00; border: 1px solid #ffeb00; }
+
+.wa-alert { padding: 12px 14px; border-radius: 14px; background: #fff1f2; color: #881337; border: 1px solid #fecdd3; font-weight: 600; }
+.wa-alert.info { background: #f3e8ff; color: #3b0764; border-color: #d8b4fe; }
+html.hc .wa-alert { background: #000; color: #ffeb00; border-color: #ffeb00; }
+
+@media (max-width: 900px) { .wa-grid2, .wa-inbox { grid-template-columns: minmax(0, 1fr); } .wa-kanban { grid-template-columns: repeat(5, 240px); } }
+@media (max-width: 560px) { .wa-work { padding: 12px; } .wa-shell { padding: 8px; border-radius: 22px; } .wa-tab { padding: 0 12px; } }
+@media (prefers-reduced-motion: reduce) { .wa-btn { transition: none; } .wa-pill i { animation: none !important; } }
+@media print { .wa-shell { display: none; } }
+
+/* אישור שליחה (שלב הסיכום לפני שהודעות נכנסות לתור) */
+.wa-confirm { padding: 14px 16px; border-radius: 16px; background: #fdf2f8; border: 2px solid #db2777; color: var(--wa-ink); }
+.wa-confirm p { color: var(--wa-ink); }
+html.hc .wa-confirm { background: #000; border-color: #ffeb00; color: #ffeb00; }
+html.hc .wa-confirm p { color: #ffeb00; }
+.wa-card h3 { font-size: 1.05rem; }

@@ -1,0 +1,15 @@
+import { chromium } from "playwright-core";
+const B = "http://localhost:5055", J = { "Content-Type": "application/json" };
+const r = await (await fetch(B + "/api/auth/register", { method: "POST", headers: J, body: JSON.stringify({ username: "s48" + Date.now().toString().slice(-6), password: "Str0ng-e2e-pw-26", displayName: "מדריך בדיקה", signupCode: "maoz2026", acceptTerms: true }) })).json();
+const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const ctx = await b.newContext({ viewport: { width: 1000, height: 700 }, locale: "he-IL", colorScheme: "dark" });
+await ctx.addInitScript(([t, u]) => { localStorage.setItem("scout.hero.seen", "1"); localStorage.setItem("scout.splash", "1"); localStorage.setItem("scout.session", JSON.stringify({ token: t, user: u })); }, [r.token, r.user]);
+const p = await ctx.newPage();
+await p.goto(B + "/", { waitUntil: "networkidle" }); await p.mouse.move(100, 500); await p.waitForTimeout(500);
+await p.locator(".logo3d").screenshot({ path: "/tmp/eyes.png" });
+await p.goto(B + "/team", { waitUntil: "networkidle" }); await p.waitForTimeout(400);
+await p.locator(".map3d").screenshot({ path: "/tmp/map.png" });
+await p.goto(B + "/methods", { waitUntil: "networkidle" });
+await p.getByRole("button", { name: "תצוגת גלגל" }).click(); await p.waitForTimeout(800);
+await p.locator(".wheel-box").screenshot({ path: "/tmp/wheel.png" });
+await b.close();

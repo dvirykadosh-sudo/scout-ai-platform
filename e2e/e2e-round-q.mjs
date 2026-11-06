@@ -2,6 +2,7 @@
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 import crypto from "node:crypto";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -32,7 +33,9 @@ const dlg = () => A.getByRole("dialog");
 
 await step("registration: code with spaces and capitals works; mobile attrs", async () => {
   await A.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(A);
   await A.getByRole("button", { name: "הרשמה", exact: true }).first().click();
+  await A.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   ok((await A.getByLabel("שם משתמש").getAttribute("autocapitalize")) === "none", "username autocapitalize none");
   await A.getByLabel("שם להצגה").fill("בודק הרשמה");
   await A.getByLabel("שם משתמש").fill(USER);
@@ -46,7 +49,8 @@ await step("registration: code with spaces and capitals works; mobile attrs", as
 
 await step("home quick menu and axe", async () => {
   await A.goto(B + "/", { waitUntil: "networkidle" });
-  await A.getByRole("heading", { name: "תפריט מהיר" }).waitFor();
+  await A.getByRole("heading", { name: "מה רוצים לעשות היום?" }).waitFor();
+  await A.getByText("כל הכלים", { exact: true }).click();
   ok((await A.getByRole("navigation", { name: "תפריט מהיר" }).getByRole("link").count()) >= 6, "menu links");
   await A.waitForTimeout(800);
   const r = await axe(A);

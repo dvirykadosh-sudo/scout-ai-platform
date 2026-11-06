@@ -10,6 +10,7 @@ import { EditActivityModal } from "./EditActivityModal";
 import { AdaptModal } from "./AdaptModal";
 import { CollectionModal } from "./CollectionModal";
 import { AddStoryModal } from "./AddStoryModal";
+import { MyStoryModal } from "./Story56";
 import { KindTools } from "./KindTools";
 import { CollaboratorsModal } from "./CollaboratorsModal";
 import { ScheduleModal } from "./ScheduleModal";
@@ -46,6 +47,7 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
   const [colOpen, setColOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
+  const [myStoryOpen, setMyStoryOpen] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
   const [schedOpen, setSchedOpen] = useState(false);
   const [collabOpen, setCollabOpen] = useState(false);
@@ -199,6 +201,9 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
             <button type="button" className="btn" onClick={() => setStoryOpen(true)}>
               הוספת סיפור
             </button>
+            <button type="button" className="btn" onClick={() => setMyStoryOpen(true)}>
+              הסיפור שלי
+            </button>
             <button type="button" className="btn" onClick={() => setFbOpen(true)}>
               משוב מחניכים
             </button>
@@ -236,6 +241,7 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
       )}
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} activityId={activity.id} title={activity.title} />
       {canManage && <AddStoryModal open={storyOpen} onClose={() => setStoryOpen(false)} activity={activity} onChanged={onChanged} />}
+      {canManage && <MyStoryModal open={myStoryOpen} onClose={() => setMyStoryOpen(false)} activity={activity} onChanged={onChanged} />}
       <AdaptModal open={adaptOpen} onClose={() => setAdaptOpen(false)} activity={activity} />
       <CollectionModal open={colOpen} onClose={() => setColOpen(false)} activityId={activity.id} />
       <ShareModal open={fbOpen} onClose={() => setFbOpen(false)} activityId={activity.id} title={activity.title} path={`/feedback/${activity.id}`} heading="משוב מחניכים" intro="הקישור פותח שאלון קצר ואנונימי של שלוש שאלות. אפשר להקרין את ה-QR בסוף הפעולה." />

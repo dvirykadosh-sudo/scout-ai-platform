@@ -2,6 +2,7 @@
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 import crypto from "node:crypto";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -15,8 +16,9 @@ const mk = async () => {
 let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
 const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n").slice(0, 8).join(" | ")); } };
-const axe = (p) => new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
-const axeMsg = (r) => r.violations.map((v) => v.id + " " + v.nodes.map((n) => n.target.join(" ")).join("; ")).join(" || ");
+const settle = async (p) => { await p.evaluate(async () => { await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))); }).catch(() => {}); await p.waitForTimeout(150); };
+const axe = async (p) => { await settle(p); return new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze(); };
+const axeMsg = (r) => r.violations.map((v) => v.id + " " + v.nodes.map((n) => n.target.join(" ") + " " + JSON.stringify({ fg: n.any[0]?.data?.fgColor, bg: n.any[0]?.data?.bgColor, r: n.any[0]?.data?.contrastRatio })).join("; ")).join(" || ");
 const stamp = Date.now().toString().slice(-6);
 const USER = "wri" + stamp;
 const PW = "Str0ng-e2e-pw-26";
@@ -31,7 +33,9 @@ const txt = (p, n) => p.getByLabel("טקסט השלב " + n, { exact: true });
 
 await step("register and open the writing page", async () => {
   await A.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(A);
   await A.getByRole("button", { name: "הרשמה", exact: true }).first().click();
+  await A.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await A.getByLabel("שם להצגה").fill("כותב בדיקה");
   await A.getByLabel("שם משתמש").fill(USER);
   await A.getByLabel("סיסמה", { exact: true }).fill(PW);
@@ -139,6 +143,8 @@ await step("110. find and replace, one undo step", async () => {
   await A.getByLabel("חיפוש", { exact: true }).fill("אומץ");
   await A.getByText("נמצאו 2 מופעים").waitFor({ timeout: 4000 });
   await A.getByRole("button", { name: "הבא", exact: true }).click();
+  // "הבא" מעביר מיקוד לשדה הטקסט אחרי 30ms; מחכים לזה, אחרת ההקלדה עלולה לנחות בשדה הלא נכון
+  await A.waitForFunction(() => { const e = document.activeElement; return !!e && (e.tagName === "TEXTAREA" || (e.tagName === "INPUT" && e.id.startsWith("wb-"))); }, null, { timeout: 4000 });
   await A.getByLabel("החלפה ב", { exact: true }).fill("חוסן");
   await A.getByRole("button", { name: "החלפת הכול" }).click();
   await A.getByText(/הוחלפו \d+ מופעים/).waitFor({ timeout: 4000 });

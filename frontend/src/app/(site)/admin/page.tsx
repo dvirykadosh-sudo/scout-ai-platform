@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AdminPanel } from "@/components/AdminPanel";
 import { PageTitle } from "@/components/ui";
 
-export const metadata: Metadata = { title: "לוח בקרה לאדמין" };
+export const metadata: Metadata = { title: "לוח בקרה לאדמין", robots: { index: false, follow: false } };
 
 export default function AdminPage() {
   return (

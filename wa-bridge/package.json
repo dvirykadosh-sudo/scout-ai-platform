@@ -1,0 +1,16 @@
+{
+  "name": "maoz-wa-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "גשר וואטסאפ מקומי לאתר שבט מעוז: רץ על המחשב, שואב הודעות מהאתר ושולח דרך וואטסאפ ווב",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/index.js",
+    "setup": "node src/setup.js",
+    "test": "node --test test/*.test.mjs"
+  },
+  "optionalDependencies": {
+    "@open-wa/wa-automate": "^5.10.0"
+  }
+}

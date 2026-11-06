@@ -281,6 +281,8 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
   const closeRef = useRef<HTMLButtonElement>(null);
   const [big, setBig] = useState(1);
   const beeped = useRef(false);
+  const warned = useRef(false);
+  const [sun, setSun] = useState(false);
   const b = snap.blocks[i];
   useEffect(() => closeRef.current?.focus(), []);
   useEffect(() => {
@@ -293,6 +295,17 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
+  // התראה שקטה (רטט) דקה לפני סוף השלב
+  useEffect(() => {
+    if (running && left === 60 && !warned.current && (b?.minutes ?? 0) > 1) {
+      warned.current = true;
+      try {
+        navigator.vibrate?.(150);
+      } catch {
+        /* optional */
+      }
+    }
+  }, [left, running, b]);
   useEffect(() => {
     if (left === 0 && running && !beeped.current && (b?.minutes ?? 0) > 0) {
       beeped.current = true;
@@ -314,6 +327,7 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
   }, [left, running, b]);
   const go = (n: number) => {
     beeped.current = false;
+    warned.current = false;
     if (n < 0 || n >= snap.blocks.length) return;
     setI(n);
     setLeft((snap.blocks[n].minutes ?? 0) * 60);
@@ -321,7 +335,7 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
   };
   if (!b) return null;
   return (
-    <div className="write-run" role="dialog" aria-modal="true" aria-label="מצב הרצה">
+    <div className={`write-run ${sun ? "write-run-sun" : ""}`} role="dialog" aria-modal="true" aria-label="מצב הרצה">
       <div className="write-run-head">
         <p className="hint">
           שלב {i + 1} מתוך {snap.blocks.length} · {KIND_LABEL[b.kind]}
@@ -344,6 +358,9 @@ export function RunMode({ snap, onClose }: { snap: Snap; onClose: () => void }) 
         </button>
         <button type="button" className="btn" onClick={() => go(i + 1)} disabled={i === snap.blocks.length - 1}>
           לשלב הבא
+        </button>
+        <button type="button" className="btn btn-small" aria-pressed={sun} onClick={() => setSun(!sun)}>
+          מצב שמש
         </button>
         <button type="button" className="btn btn-small" onClick={() => setBig((x) => Math.min(2, +(x + 0.2).toFixed(1)))}>
           הגדלת טקסט
@@ -437,6 +454,17 @@ export function SharedView({ token }: { token: string }) {
       .then(setD)
       .catch((e) => setErr(errorMessage(e)));
   }, [token]);
+  // 339: מדווחים לבעלים באיזה שלב אנחנו נמצאים (בלי עריכה, בלי נתונים אישיים)
+  const [cur, setCur] = useState("");
+  useEffect(() => {
+    if (!d) return;
+    let cid = "";
+    try { cid = sessionStorage.getItem("scout.viewer.cid") || ""; if (!cid) { cid = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem("scout.viewer.cid", cid); } } catch { cid = Math.random().toString(36).slice(2) + "xxxxxx"; }
+    const send = () => api(`/api/write/shared/${encodeURIComponent(token)}/presence`, { method: "POST", body: { cid, name: "צופה", blockId: cur } }).catch(() => {});
+    send();
+    const t = setInterval(send, 15000);
+    return () => clearInterval(t);
+  }, [d, token, cur]);
   if (err)
     return (
       <p className="error-box" role="alert">
@@ -453,7 +481,7 @@ export function SharedView({ token }: { token: string }) {
       </p>
       <p className="hint">צפייה בלבד · עודכן {fmtDate(d.updatedAt)} · הקישור תקף עד {fmtDate(d.expiresAt)}</p>
       {d.blocks.map((b) => (
-        <section key={b.id} className={`card glass kind-${b.kind}`}>
+        <section key={b.id} className={`card glass kind-${b.kind}`} onClick={() => setCur(b.id)} onFocus={() => setCur(b.id)}>
           <h2 className="section-title">
             {b.title || KIND_LABEL[b.kind]}
             {b.minutes ? ` (${b.minutes} דקות)` : ""}

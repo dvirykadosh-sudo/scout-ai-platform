@@ -1,4 +1,11 @@
+import { DepthLayers } from "@/components/Depth3D";
+import { BottomNav, Effects, Splash } from "@/components/Polish";
 import { SiteFooter, SiteHeader } from "@/components/Chrome";
+import { ServerWake } from "@/components/WriteFinal";
+import { CommandPalette, StatusBanners } from "@/components/SystemParts";
+import { SiteMonitor } from "@/components/Monitor54";
+import { NpsPrompt } from "@/components/Discover54";
+import { SiteShell } from "@/components/shell/SiteShell";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,14 +23,26 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <tbody className="print-body">
         <tr>
           <td>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="print-wm" src="/logo-maoz.png" alt="" aria-hidden="true" />
             <a className="skip-link" href="#main">
               דלג לתוכן הראשי
             </a>
+            <Effects />
+            <DepthLayers />
             <SiteHeader />
+            <SiteShell />
+            <ServerWake />
+            <StatusBanners />
+            <CommandPalette />
+            <SiteMonitor />
             <main id="main" tabIndex={-1} className="page">
               {children}
             </main>
+            <NpsPrompt />
             <SiteFooter />
+            <BottomNav />
+            <Splash />
           </td>
         </tr>
       </tbody>

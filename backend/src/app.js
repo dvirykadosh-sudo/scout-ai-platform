@@ -22,7 +22,24 @@ import { registerAccountRoutes } from "./routes-accounts.js";
 import { registerSecurityRoutes } from "./routes-security.js";
 import { registerWriteRoutes } from "./routes-write.js";
 import { registerWriteSuggestRoutes } from "./routes-write-suggest.js";
-import { registerWriteExportRoutes } from "./routes-write-export.js";
+import { findLogo, registerWriteExportRoutes } from "./routes-write-export.js";
+import { registerWriteFinalRoutes } from "./routes-write-final.js";
+import { registerWriteV36Routes } from "./routes-write-v36.js";
+import { registerOpsRoutes } from "./routes-ops.js";
+import { registerWriteV39Routes } from "./routes-write-v39.js";
+import { registerWriteV47Routes } from "./routes-write-v47.js";
+import { registerWriteV50Routes } from "./routes-write-v50.js";
+import { registerWriteV51Routes } from "./routes-write-v51.js";
+import { registerWriteV53Routes } from "./routes-write-v53.js";
+import { registerV54Routes } from "./routes-v54.js";
+import { registerWaRoutes } from "./wa/index.js";
+import { registerV57Routes } from "./routes-v57.js";
+import { registerV56Routes } from "./routes-v56.js";
+import { cleanDict } from "./human-voice.js";
+import compression from "compression";
+import { registerAccountV52Routes, regSettings } from "./routes-accounts-v52.js";
+import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
+import { maintenanceGuard, maintenanceMessage } from "./ops.js";
 import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
 import { ipHash, isBlocked, logAccess, pageFrom, purgeOld, readSettings } from "./security.js";
 import { registerKindRoutes } from "./routes-kinds.js";
@@ -33,7 +50,10 @@ import { BACKUP_NAME, backupDirFor, createBackup, listBackups } from "./backup.j
 import { styleSchema } from "./style.js";
 import { config } from "./config.js";
 import { audit, nowIso } from "./db.js";
+import { notifyAdmins } from "./notify.js";
 import { buildBookletDocx, buildDocx } from "./docx.js";
+import { setWatermarkSource } from "./watermark.js";
+import { registerSystemRoutes, startedAt as bootedAt } from "./routes-system.js";
 import { activityEmailHtml } from "./email.js";
 import { AGE_GROUPS, GRADES, GENDER_GROUPS, METHODS, ROLES, STAGE_LAYERS, STAGE_NAMES, MIDOT } from "./shared/constants.js";
 import { emergencySchema, importParsedSchema, regenSchema, adminUserPatchSchema, bookletSchema, changePwSchema, duplicateSchema, generateSchema, importSchema, listQuerySchema, loginSchema, planSchema, qualitySchema, ratingSchema, registerSchema, runSchema, stagesSchema, updateSchema } from "./validate.js";
@@ -41,17 +61,85 @@ import { emergencySchema, importParsedSchema, regenSchema, adminUserPatchSchema,
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fail = (code, message, fields) => ({ error: { code, message, ...(fields ? { fields } : {}) } });
 
+// שלב 55: מפתח פנימי שבו שרת הדפים (Next.js, אותו תהליך) קורא ל-API בלי להיספר כמבקר ובלי להעמיס על מגבלת הקצב.
+// ההכרה דורשת גם מפתח אקראי וגם חיבור מהמחשב עצמו, כך שמבחוץ אי אפשר לנצל את זה.
+process.env.INTERNAL_SSR_KEY ||= crypto.randomBytes(16).toString("hex");
+export const isInternal = (req) => {
+  const k = req.headers["x-internal-ssr"];
+  const a = req.socket?.remoteAddress || "";
+  return typeof k === "string" && k === process.env.INTERNAL_SSR_KEY && /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(a);
+};
+
 export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPath }) {
   const app = express();
   app.disable("x-powered-by");
   // behind a hosting proxy (Render, Fly...) req.ip must be the visitor, not the proxy
   if (config.isProd) app.set("trust proxy", 1);
   // strict headers for the API; pages (Next.js) need inline scripts, so no CSP there
-  const apiHelmet = helmet();
-  const pageHelmet = helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false });
+  const apiHelmet = helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"], formAction: ["'none'"] } }, hsts: config.isProd ? { maxAge: 63072000, includeSubDomains: true } : false });
+  // pages: Next.js needs inline scripts/styles, everything else is locked to this origin
+  const pageHelmet = helmet({
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        mediaSrc: ["'self'", "blob:"],
+        connectSrc: ["'self'"],
+        workerSrc: ["'self'"],
+        manifestSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: config.isProd ? [] : null,
+      },
+    },
+    hsts: config.isProd ? { maxAge: 63072000, includeSubDomains: true } : false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  });
+  app.use((req, res, next) => {
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(self), geolocation=(), payment=(), usb=()");
+    res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+    next();
+  });
+  // שלב 54: מזהה בקשה (433/428), Server-Timing ודחיסת gzip לתשובות ה-API
+  app.use((req, res, next) => {
+    const rid = crypto.randomBytes(5).toString("hex");
+    const t0 = process.hrtime.bigint();
+    res.setHeader("X-Request-Id", rid);
+    if (req.path.startsWith("/api")) res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    const head = res.writeHead;
+    res.writeHead = function (...args) {
+      if (!res.headersSent) res.setHeader("Server-Timing", `app;dur=${(Number(process.hrtime.bigint() - t0) / 1e6).toFixed(1)}`);
+      return head.apply(this, args);
+    };
+    const json = res.json.bind(res);
+    res.json = (body) => (res.statusCode >= 500 && body?.error && typeof body.error === "object" && !body.error.requestId ? json({ ...body, error: { ...body.error, requestId: rid } }) : json(body));
+    next();
+  });
+  app.use("/api", compression({ threshold: 1024 }));
+  // שלב 58: תשובות אישיות לא נשמרות במטמון (דפדפן, שרת ביניים). תוכן ציבורי בלי התחברות נשאר כמו שהיה.
+  app.use("/api", (req, res, next) => {
+    if (req.headers.authorization || req.headers["x-maoz-ext"] || /^\/api\/(me|admin|auth|chat|wa)(\/|$)/.test(req.path)) res.setHeader("Cache-Control", "private, no-store");
+    next();
+  });
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
-  app.use(cors({ origin: config.webOrigin }));
+  // CORS: only the configured site origin (same-origin calls need no CORS at all); no wildcard, no credentials
+  app.use(cors({ origin: config.webOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"], maxAge: 600 }));
+  // שלב 58: גוף של עד 3MB נקרא רק אם נשלחה כותרת התחברות (האימות המלא נעשה בנתיב עצמו)
+  app.use("/api/chat", (req, res, next) => {
+    const h = req.headers.authorization || req.headers["x-maoz-ext"];
+    if (typeof h === "string" && h.length > 10 && h.length < 800) return next();
+    return res.status(401).json(fail("UNAUTHORIZED", "נדרשת התחברות"));
+  });
+  app.use("/api/chat", express.json({ limit: "3mb" }));
   app.use(express.json({ limit: "200kb" }));
+  app.use(maintenanceGuard(db));
+  app.use(pageCountMiddleware(db));
   // האימות מול מסד הנתונים (חיבורים מבוטלים, תפקידים) קורא את המסד דרך הבקשה
   app.use((req, res, next) => {
     req.db = db;
@@ -68,9 +156,30 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       handler: (req, res) => res.status(429).json(fail("RATE_LIMIT", "יותר מדי בקשות. נסו שוב בעוד כמה דקות")),
     });
 
+  // ── הגבלת קצב כללית לכל ה-API (בנוסף להגבלות הפרטניות): קריאות נדיבות, כתיבות מחמירות ──
+  const apiReadLimit = limiter(60_000, 300);
+  const apiWriteLimit = limiter(60_000, 90);
+  app.use("/api", (req, res, next) => {
+    if (req.path.startsWith("/health") || isInternal(req)) return next();
+    return (["GET", "HEAD", "OPTIONS"].includes(req.method) ? apiReadLimit : apiWriteLimit)(req, res, next);
+  });
+
+  // ── יצירת פעולות בלי התחברות (עותק, התאמה, "מהיר"...): מגבלה לכתובת ותקרה יומית כללית נגד הצפת המסד ──
+  const anonCreateIp = limiter(60 * 60_000, 15);
+  const ANON_CREATE = /^\/api\/activities\/(quick|generate|emergency|import|import-parsed|\d+\/(duplicate|similar|upgrade-peak|shorten|adapt))\/?$/; // שלב 58: נוספו generate/emergency/import/import-parsed
+  app.use((req, res, next) => {
+    if (req.method !== "POST" || !ANON_CREATE.test(req.path) || optionalAuth(req)) return next();
+    if (config.nodeEnv !== "test") {
+      const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+      const n = db.prepare("SELECT COUNT(*) AS c FROM activities WHERE owner_id IS NULL AND is_seed = 0 AND created_at >= ?").get(since).c;
+      if (n >= 300) return res.status(429).json(fail("DAILY_CAP", "הגענו למכסה היומית של פעולות בלי התחברות. התחברו כמדריכים כדי להמשיך"));
+    }
+    return anonCreateIp(req, res, next);
+  });
+
   // ── כתובות חסומות: לפני כל השאר, גם לדפים וגם ל-API ──
   app.use((req, res, next) => {
-    if (req.path !== "/api/health" && isBlocked(db, req.ip)) {
+    if (!req.path.startsWith("/api/health") && isBlocked(db, req.ip)) {
       return req.path.startsWith("/api") ? res.status(403).json(fail("BLOCKED", "הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת")) : res.status(403).type("text/plain; charset=utf-8").send("הגישה מהכתובת הזו נחסמה. אם זו טעות, פנו למנהל המערכת.");
     }
     next();
@@ -79,7 +188,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   // ── מעקב מבקרים (ללוח האדמין): חיבור לפי כתובת ודפדפן, ורישום "ביקור" אחד בכל 30 דקות ──
   const visitSeen = new Map();
   app.use((req, res, next) => {
-    if (req.path.startsWith("/api") && req.path !== "/api/health") {
+    if (req.path.startsWith("/api") && !req.path.startsWith("/api/health") && !isInternal(req)) {
       const ua = String(req.headers["user-agent"] || "").slice(0, 200);
       const hash = ipHash(req.ip);
       const shown = readSettings(db).visitorIpMode === "hashed" ? `h:${hash.slice(0, 10)}` : req.ip || "";
@@ -101,7 +210,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   if (serveStatic) app.use(express.static(path.join(here, "..", "public")));
 
-  const signupOpen = () => !!config.signupCode || !config.isProd;
+  const signupOpen = () => !!config.signupCode || !!regSettings(db).code || !config.isProd;
 
   // ── לוגו השבט: מועלה על ידי האדמין, נשמר כקובץ ליד מסד הנתונים ──
   const logoFile = dbFile === ":memory:" ? null : path.join(path.dirname(path.resolve(dbFile)), "logo.bin");
@@ -121,11 +230,13 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     logo = null;
   }
 
+  setWatermarkSource(() => findLogo(() => logo && /png|jpeg/.test(logo.type) ? logo : null));
+
   // ── public: meta ──
-  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso() }));
+  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), startedAt: bootedAt.toISOString(), maintenance: maintenanceMessage(db) }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
-    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode, logoVersion: logo?.v ?? null }),
+    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode || !!regSettings(db).code, logoVersion: logo?.v ?? null }),
   );
 
   app.get("/api/logo", (req, res) => {
@@ -158,6 +269,13 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
   app.put("/api/me/style", requireUser(), (req, res) => {
     const style = styleSchema.parse(req.body?.style ?? undefined);
+    if (req.body?.style?.card === undefined || req.body?.style?.voice === undefined) {
+      try {
+        const cur = JSON.parse(db.prepare("SELECT style_json FROM users WHERE id = ?").get(req.user.id)?.style_json || "{}");
+        if (req.body?.style?.card === undefined) style.card = cur.card || "";
+        if (req.body?.style?.voice === undefined && cur.voice) style.voice = cleanDict(cur.voice);
+      } catch { /* ignore */ }
+    }
     db.prepare("UPDATE users SET style_json = ? WHERE id = ?").run(JSON.stringify(style), req.user.id);
     res.json({ style });
   });
@@ -281,11 +399,14 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     res.status(201).json(saveGenerated(input, { ...draft, source: "external" }, req, "activity.import"));
   });
 
+  // שלב 59: גוף של עד 3MB נקרא רק למי שהתחבר באמת (אימות מלא מול המסד). אורחים מוגבלים ל-400KB: מספיק לקובץ Word רגיל של פעולה אחת.
+  const uploadBody = (req, res, next) => express.raw({ type: () => true, limit: optionalAuth(req) ? "3mb" : "400kb" })(req, res, next);
+
   // ── writing style: sample analysis + Word/text extraction ──
   app.post("/api/style/analyze", limiter(15 * 60_000, 60), (req, res) => {
     res.json(analyzeSample(req.body?.sample));
   });
-  app.post("/api/style/extract", limiter(15 * 60_000, 30), express.raw({ type: () => true, limit: "3mb" }), async (req, res) => {
+  app.post("/api/style/extract", limiter(15 * 60_000, 30), uploadBody, async (req, res) => {
     try {
       const name = String(req.query.name || "");
       const text = await extractText(Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0), name);
@@ -471,7 +592,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     );
   });
 
-  app.post("/api/activities/import-file", limiter(15 * 60_000, 40), express.raw({ type: () => true, limit: "3mb" }), async (req, res) => {
+  app.post("/api/activities/import-file", limiter(15 * 60_000, 40), uploadBody, async (req, res) => {
     try {
       const name = String(req.query.name || "");
       const text = await extractText(Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0), name);
@@ -528,8 +649,23 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerWriteStatsRoutes(app, { db, limiter, fail, requireUser });
   registerWriteCommunityRoutes(app, { db, limiter, fail, requireUser });
   registerWriteSearchRoutes(app, { db, limiter, fail, requireUser });
-  registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo });
+  registerWriteFinalRoutes(app, { db, limiter, fail, requireUser });
+  registerWriteV36Routes(app, { db, limiter, fail, requireUser });
+  registerWriteV39Routes(app, { db, limiter, fail, requireUser });
+  registerWriteV47Routes(app, { limiter, requireUser });
+  registerWriteV50Routes(app, { db, limiter, requireUser });
+  registerWriteV51Routes(app, { limiter, requireUser });
+  registerWriteV53Routes(app, { db, limiter, fail, requireUser });
+  registerV54Routes(app, { db, dbFile, limiter, fail, requireUser, requireAdmin, audit, mailer, config, bootedAt });
+  registerV56Routes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion, audit, config });
+  registerV57Routes(app, { db, limiter, fail, requireUser, audit, config });
+  // שלב 58: מנוע הוואטסאפ (תור, תבניות, בוט, גשר מקומי). בבדיקות אין טיימרים.
+  registerWaRoutes(app, { db, limiter, fail, requireAdmin, audit, notifyAdmins, publicUrl: config.publicUrl }, { startScheduler: config.nodeEnv !== "test" });
+  registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
+  registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
+  registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });
   registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen });
+  registerAccountV52Routes(app, { db, mailer, limiter, fail, requireUser, requireAdmin });
 
   // מחיקה אוטומטית של יומני כניסות, מבקרים וחיבורים ישנים (לפי ההגדרה), פעם בכמה שעות
   try {
@@ -582,6 +718,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     audit(db, req.user.username, "backup.download", { name });
     res.download(path.join(bdir, name), name);
   });
+
+  registerSystemRoutes(app, { db, dbFile, config, fail, requireAdmin, audit });
 
   // ── errors ──
   app.use("/api", (req, res) => res.status(404).json(fail("NOT_FOUND", "הכתובת לא נמצאה")));

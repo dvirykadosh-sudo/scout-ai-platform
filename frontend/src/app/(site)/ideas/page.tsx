@@ -1,6 +1,6 @@
 import { PeakIdeas } from "@/components/PeakIdeas";
 
-export const metadata = { title: "רעיונות לפעולת שיא" };
+export const metadata = { title: "רעיונות לפעולת שיא", description: "בנק רעיונות לפעולת שיא בשבט, לפי גיל וערך." };
 
 export default function Page() {
   return (

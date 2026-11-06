@@ -148,7 +148,7 @@ export const effectiveStaff = (u) => (u?.role === "ADMIN" ? (STAFF_KEYS.includes
 
 const SECTION = (path) => path.replace(/^\/api\/admin\//, "").split(/[/?.]/)[0];
 const USER_SECTIONS = new Set(["users", "audit", "logs", "sessions", "security", "roles", "access", "visitors", "blocks"]);
-const SENSITIVE = new Set([...USER_SECTIONS, "backups"]);
+const SENSITIVE = new Set([...USER_SECTIONS, "backups", "wa"]); // שלב 58: וואטסאפ (מספרי טלפון והודעות) לאדמין ראשי בלבד
 
 /** האם תפקיד צוות רשאי לבצע בקשת אדמין. נקרא מ-requireAdmin. */
 export function staffMayDo(staff, method, path) {

@@ -315,8 +315,37 @@ export function registerWriteCommunityRoutes(app, { db, limiter, fail, requireUs
     res.json({ ok: true });
   });
   app.get("/api/admin/write-usage", requireAdmin(), (req, res) => {
-    const c = (q) => db.prepare(q).get().c;
-    res.json({ docs: c("SELECT COUNT(*) AS c FROM write_docs"), writers: c("SELECT COUNT(DISTINCT owner_id) AS c FROM write_docs"), shares: c("SELECT COUNT(*) AS c FROM write_shares"), comments: c("SELECT COUNT(*) AS c FROM write_comments"), templates: c("SELECT COUNT(*) AS c FROM write_tribe_templates") });
+    const c = (q, ...a) => db.prepare(q).get(...a).c;
+    const d7 = new Date(Date.now() - 7 * DAY_MS).toISOString();
+    const d30 = new Date(Date.now() - 30 * DAY_MS).toISOString();
+    const methods = {};
+    let stages = 0;
+    let words = 0;
+    let n = 0;
+    for (const r of db.prepare("SELECT blocks_json, words FROM write_docs ORDER BY id DESC LIMIT 2000").all()) {
+      const blocks = JSON.parse(r.blocks_json);
+      stages += blocks.length;
+      words += r.words;
+      n++;
+      const seen = new Set();
+      for (const b of blocks) for (const m of methodsIn(`${b.title}\n${b.text}`).slice(0, 2)) seen.add(m.name);
+      for (const m of seen) methods[m] = (methods[m] || 0) + 1;
+    }
+    const feedback = db.prepare("SELECT feature, SUM(vote = 1) AS up, SUM(vote = -1) AS down, COUNT(*) AS n FROM feature_feedback GROUP BY feature ORDER BY n DESC").all();
+    res.json({
+      docs: c("SELECT COUNT(*) AS c FROM write_docs"),
+      writers: c("SELECT COUNT(DISTINCT owner_id) AS c FROM write_docs"),
+      shares: c("SELECT COUNT(*) AS c FROM write_shares"),
+      comments: c("SELECT COUNT(*) AS c FROM write_comments"),
+      templates: c("SELECT COUNT(*) AS c FROM write_tribe_templates"),
+      created7: c("SELECT COUNT(*) AS c FROM write_docs WHERE created_at >= ?", d7),
+      created30: c("SELECT COUNT(*) AS c FROM write_docs WHERE created_at >= ?", d30),
+      active30: c("SELECT COUNT(DISTINCT owner_id) AS c FROM write_docs WHERE updated_at >= ?", d30),
+      avgStages: n ? Math.round((stages / n) * 10) / 10 : 0,
+      avgWords: n ? Math.round(words / n) : 0,
+      topMethods: Object.entries(methods).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, k]) => ({ name, n: k })),
+      feedback,
+    });
   });
 
   // ── 166: סל מחזור ──

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "מחולל פעולות: עוזר שיחות",
+  "short_name": "עוזר שיחות",
+  "version": "1.0.0",
+  "description": "מנתח שיחה פתוחה בוואטסאפ ווב ומציע מה לענות. מסתיר שמות וטלפונים במחשב לפני השליחה. לא שולח הודעות.",
+  "minimum_chrome_version": "110",
+  "action": {
+    "default_title": "עוזר שיחות",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png" }
+  },
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"]
+}

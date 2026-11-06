@@ -6,9 +6,14 @@ import { ApiError, api, errorMessage, fmtDate } from "@/lib/api";
 import { ACTION_LABELS } from "@/lib/constants";
 import type { LogRow, SessionRow, Stats } from "@/lib/types";
 import { AdminAnnouncements } from "./CommunityParts";
+import { AdminWriteMetrics } from "./WriteFinal";
+import { AdminOps, AdminSystem } from "./SystemParts";
+import { AdminPilot } from "./PilotParts";
 import { AdminFlags, AdminReport, AdminStorage } from "./CareParts";
 import { AdminApproval, AdminBackups, AdminFeatured, AdminInsights, AdminLogo } from "./AdminExtras";
 import { AdminAudit, AdminSecurity, AdminUsers } from "./AdminAccounts";
+import { AdminAccessControl } from "./AdminV52";
+import { AdminMonitor } from "./AdminV54";
 import { canSee } from "@/lib/staff";
 import { AdminAccessLog, AdminBlocks, AdminSecurityOverview, AdminSecuritySettings, AdminVisitors } from "./AdminAccess";
 import { ChangePassword, LoginForm } from "./AuthForms";
@@ -176,11 +181,15 @@ function Dashboard() {
             </Link>
           </section>
 
+          <AdminSystem />
+          <AdminOps />
+          <AdminPilot />
           {canSee(staff, "content") && <AdminInsights />}
           {canSee(staff, "contentEdit") && (
             <>
               <AdminFeatured />
               <AdminAnnouncements />
+              <AdminWriteMetrics />
               <AdminFlags />
               <AdminApproval />
             </>
@@ -188,6 +197,8 @@ function Dashboard() {
           {canSee(staff, "users") && (
             <>
               <AdminSecurity />
+              <AdminAccessControl />
+              <AdminMonitor />
               <AdminUsers />
             </>
           )}
@@ -212,7 +223,7 @@ function Dashboard() {
             <h2 id="sessions-title" className="section-title">
               חיבורים אחרונים
             </h2>
-            <div className="table-wrap">
+            <div className="table-wrap" tabIndex={0} role="region" aria-label="חיבורים אחרונים">
               <table className="data-table">
                 <caption className="sr-only">חיבורים אחרונים לשרת</caption>
                 <thead>
@@ -252,7 +263,7 @@ function Dashboard() {
                 ))}
               </select>
             </Field>
-            <div className="table-wrap">
+            <div className="table-wrap" tabIndex={0} role="region" aria-label="יומן פעילות">
               <table className="data-table">
                 <caption className="sr-only">יומן פעילות</caption>
                 <thead>

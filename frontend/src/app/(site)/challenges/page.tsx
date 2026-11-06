@@ -1,6 +1,6 @@
 import { ChallengesPage } from "@/components/ChallengesPage";
 
-export const metadata = { title: "אתגרי חינוך" };
+export const metadata = { title: "אתגרי חינוך", description: "אתגרי חינוך לשבט: משימות קצרות שמחברות ערכים למעשה." };
 
 export default function Page() {
   return (

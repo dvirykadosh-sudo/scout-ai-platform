@@ -1,6 +1,6 @@
 import { CalendarPage } from "@/components/CalendarPage";
 
-export const metadata = { title: "יומן ותזכורות" };
+export const metadata = { title: "יומן ותזכורות", description: "יומן פעולות ותזכורות למדריך, עם ייצוא ליומן הטלפון." };
 
 export default function Page() {
   return (

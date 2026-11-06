@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, storageGet, storageSet } from "@/lib/api";
 import type { Activity, ListResponse } from "@/lib/types";
+import { Coverflow } from "./Depth3D";
 import { ActivityGlance } from "./ActivityView";
 import { TopicSuggestions } from "./TopicSuggestions";
 
@@ -17,14 +18,15 @@ const STEPS = [
 
 /** First-visit welcome and real examples from the library. */
 export function HomeHero() {
+  return <HomeWelcome />;
+}
+
+/** הכרטיס שמופיע רק בביקור הראשון. */
+export function HomeWelcome() {
   const [seen, setSeen] = useState(true);
-  const [examples, setExamples] = useState<Activity[]>([]);
 
   useEffect(() => {
     setSeen(storageGet(SEEN) === "1");
-    api<ListResponse>("/api/activities?sort=rating&pageSize=3")
-      .then((d) => setExamples(d.items))
-      .catch(() => {});
   }, []);
 
   const close = () => {
@@ -64,22 +66,36 @@ export function HomeHero() {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+/** השראה: נושאים מוצעים ודוגמאות מהמאגר. */
+export function HomeInspiration() {
+  const [examples, setExamples] = useState<Activity[]>([]);
+  useEffect(() => {
+    api<ListResponse>("/api/activities?sort=rating&pageSize=3")
+      .then((d) => setExamples(d.items))
+      .catch(() => {});
+  }, []);
+  return (
+    <>
       <TopicSuggestions />
       {examples.length > 0 && (
         <section className="examples" aria-labelledby="ex-title">
           <h2 id="ex-title" className="section-title">
             מהמאגר, כדי לקבל השראה
           </h2>
-          <ul className="examples-list">
+          <Coverflow label="פעולות מומלצות מהמאגר">
             {examples.map((a) => (
-              <li key={a.id} className="card glass">
+              <div key={a.id} className="card glass">
                 <h3 className="card-title">
                   <Link href={`/library/${a.id}`}>{a.title}</Link>
                 </h3>
                 <ActivityGlance a={a} />
-              </li>
+              </div>
             ))}
-          </ul>
+          </Coverflow>
         </section>
       )}
     </>

@@ -274,7 +274,7 @@ export function AdminInsights() {
           </li>
         ))}
       </ul>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0} role="region" aria-label="מדריכים פעילים">
         <table className="data-table">
           <caption>מדריכים פעילים</caption>
           <thead>

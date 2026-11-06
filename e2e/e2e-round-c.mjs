@@ -1,6 +1,7 @@
 // בדיקות דפדפן לסבב ג': התאמות, נושאים, הערות, אוספים, משוב, אישור ותובנות.
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
+import { lampOn } from "./lamp.mjs";
 const B = process.env.BASE_URL || "http://localhost:5055";
 const CODE = process.env.SIGNUP_CODE || "maoz2026";
 const ADMIN_PW = process.env.ADMIN_PASSWORD || "Strong#Pass99";
@@ -19,12 +20,16 @@ const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
 const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n")[0]); } };
 
 await page.goto(B + "/account", { waitUntil: "networkidle" });
+
+await lampOn(page);
 await page.getByRole("button", { name: /הרשמה/ }).first().click();
+await page.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
 await page.getByLabel("שם להצגה").fill("גלית");
 await page.getByLabel("שם משתמש").fill("galit" + Date.now().toString().slice(-6));
 await page.getByLabel("סיסמה", { exact: true }).fill("password99");
 await page.getByLabel("קוד הרשמה של השבט").fill(CODE);
 await page.getByLabel("קראתי ואני מאשר").check();
+await page.waitForTimeout(2300);
 await page.getByRole("button", { name: /הרשמה|יצירת חשבון/ }).last().click();
 await page.getByText("הפעולות שלי").first().waitFor({ timeout: 8000 });
 
@@ -41,6 +46,7 @@ const makeActivity = async (topic) => {
 
 await step("topic ideas", async () => {
   await page.goto(B + "/", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "השראה והצעות" }).click();
   await page.getByRole("heading", { name: "רעיונות לנושא" }).waitFor();
   await page.locator(".topic-ideas .tags a").first().click();
   await page.waitForURL(/topic=/);
@@ -78,6 +84,7 @@ await step("collections", async () => {
   await dlg.getByRole("checkbox", { name: /אוסף בדיקה/ }).waitFor();
   await page.keyboard.press("Escape");
   await page.goto(B + "/account", { waitUntil: "networkidle" });
+  await lampOn(page);
   await page.getByText("אוסף בדיקה (1)").click();
   const [dl] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "הורדת האוסף כחוברת Word" }).click()]);
   ok(!!dl, "collection downloaded as a booklet");

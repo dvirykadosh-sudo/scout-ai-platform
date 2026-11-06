@@ -1,5 +1,7 @@
 "use client";
 
+import { FlipBookModal } from "./Depth3D2";
+import { EmptyArt, KindIcon } from "./Polish";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, downloadBooklet, errorMessage, storageGet, storageSet } from "@/lib/api";
@@ -11,6 +13,7 @@ import { ActivityActions } from "./ActivityActions";
 import { ActivityGlance } from "./ActivityView";
 import { useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
+import { RecentlyViewed, SmartFallback, VoiceSearchButton } from "./Discover54";
 
 const PAGE_SIZE = 6;
 const SAVED_KEY = "scout.savedSearches";
@@ -44,6 +47,9 @@ export function Library() {
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [favOnly, setFavOnly] = useState(false);
+  const [stack, setStack] = useState(false);
+  const [bookOpen, setBookOpen] = useState(false);
+  useEffect(() => { try { setStack(localStorage.getItem("scout.stack") === "1"); } catch {} }, []);
   const [minRating, setMinRating] = useState("");
   const [adv, setAdv] = useState<Adv>(NO_ADV);
   const [hydrated, setHydrated] = useState(false);
@@ -235,10 +241,12 @@ export function Library() {
           תכנון תקופתי
         </Link>
       </nav>
+      <RecentlyViewed />
       <form className="card glass filters" role="search" aria-label="חיפוש וסינון פעולות" onSubmit={(e) => e.preventDefault()}>
         <div className="form-grid filters-grid">
           <Field label="חיפוש חופשי" htmlFor="f-q" className="span-2">
             <input id="f-q" type="search" list="f-q-list" value={q} onChange={(e) => setQ(e.target.value)} placeholder="שם פעולה, ערך, מילה מהתוכן..." />
+            <VoiceSearchButton onText={setQ} />
             <datalist id="f-q-list">
               {suggest.map((t) => (
                 <option key={t} value={t} />
@@ -383,8 +391,10 @@ export function Library() {
 
       {loading && !data && <Skeleton lines={5} />}
 
+      {data && data.items.length === 0 && !loading && debouncedQ.length >= 2 && !favOnly && <SmartFallback q={debouncedQ} onPick={setQ} />}
       {data && data.items.length === 0 && !loading && (
         <div className="card empty">
+          <EmptyArt />
           <p>{favOnly && !favKey ? "עדיין לא סימנתם פעולות כמועדפות. לחצו על 'הוספה למועדפים' בכל פעולה." : "לא נמצאו פעולות שמתאימות לחיפוש."}</p>
           {hasFilters ? (
             <button type="button" className="btn" onClick={clear}>
@@ -398,12 +408,17 @@ export function Library() {
         </div>
       )}
 
-      <ul className="list" aria-busy={loading}>
+      <p className="no-print">
+        <button type="button" className="btn btn-small" aria-pressed={stack} onClick={() => { setStack(!stack); try { localStorage.setItem("scout.stack", stack ? "0" : "1"); } catch {} }}>
+          {stack ? "תצוגת רשימה" : "תצוגת ערימה"}
+        </button>
+      </p>
+      <ul className={`list${stack ? " stacked" : ""}`} aria-busy={loading}>
         {data?.items.map((a: Activity) => (
           <li key={a.id} className="card glass activity-card">
             {a.kind && KIND_LABELS[a.kind] && (
               <p className="kind-line">
-                <span className="chip chip-accent">{KIND_LABELS[a.kind]}</span>
+                <span className="chip chip-accent"><KindIcon kind={a.kind} /> {KIND_LABELS[a.kind]}</span>
               </p>
             )}
             <h2 className="card-title">
@@ -452,9 +467,13 @@ export function Library() {
           <button type="button" className="btn btn-primary" onClick={makeBooklet} disabled={bookBusy}>
             {bookBusy ? "יוצר..." : "הורדת חוברת"}
           </button>
+          <button type="button" className="btn" onClick={() => setBookOpen(true)}>
+            עיון כספר
+          </button>
           <button type="button" className="btn" onClick={() => setPicked([])}>
             ניקוי בחירה
           </button>
+          <FlipBookModal open={bookOpen} onClose={() => setBookOpen(false)} title={bookTitle} picks={picked} />
         </section>
       )}
     </>

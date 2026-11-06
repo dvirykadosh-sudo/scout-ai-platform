@@ -7,7 +7,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, downloadBooklet, errorMessage, fmtDate } from "@/lib/api";
 import type { Activity, Run } from "@/lib/types";
-import { ChangePassword, LoginForm, RegisterForm, useSignupInfo } from "./AuthForms";
+import { SecurityPlus } from "./AccountV52";
+import { ChangePassword } from "./AuthForms";
+import { LampLogin } from "./login/LampLogin";
 import { useAuth, useToast } from "./Providers";
 import { SecurityPanel } from "./SecurityPanel";
 import { STAFF_LABEL } from "@/lib/staff";
@@ -251,38 +253,11 @@ function MyActivities() {
 export function AccountPanel() {
   const { token, user, ready, clear } = useAuth();
   const toast = useToast();
-  const signup = useSignupInfo();
-  const [tab, setTab] = useState<"login" | "register">("login");
   const [pwOpen, setPwOpen] = useState(false);
 
   if (!ready) return <Skeleton lines={3} />;
 
-  if (!token || !user) {
-    return (
-      <div>
-        <div className="tabs" role="group" aria-label="כניסה או הרשמה">
-          <button type="button" className="btn" aria-pressed={tab === "login"} onClick={() => setTab("login")}>
-            כבר יש לי חשבון
-          </button>
-          <button type="button" className="btn" aria-pressed={tab === "register"} onClick={() => setTab("register")}>
-            הרשמה
-          </button>
-        </div>
-        {tab === "login" ? (
-          <LoginForm title="התחברות" hint="התחברות מאפשרת לשמור את הפעולות והסגנון שלכם, ולערוך אותם. אפשר גם להשתמש במחולל בלי חשבון." />
-        ) : signup === null ? (
-          <Skeleton lines={3} />
-        ) : signup.signupOpen ? (
-          <RegisterForm needsCode={signup.signupNeedsCode} />
-        ) : (
-          <section className="card glass narrow">
-            <h2 className="section-title">ההרשמה סגורה</h2>
-            <p>ההרשמה העצמית לא פתוחה כרגע באתר. בקשו ממנהל/ת השבט שייצרו לכם משתמש בלוח הבקרה, או שיפתחו את ההרשמה עם קוד שבט ויתנו לכם אותו.</p>
-          </section>
-        )}
-      </div>
-    );
-  }
+  if (!token || !user) return <LampLogin embedded />;
 
   if (user.mustChangePw) return <ChangePassword />;
 
@@ -316,6 +291,7 @@ export function AccountPanel() {
       {pwOpen && <ChangePassword onDone={() => setPwOpen(false)} />}
       <NotificationsPanel />
       <SecurityPanel />
+      <SecurityPlus />
       <MyActivities />
       <Forgotten />
       <MyTags />

@@ -9,13 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "autoprefixer": "^10.6.2",
+    "@tailwindcss/postcss": "^4.3.3",
+    "framer-motion": "^14.9.0",
+    "lucide-react": "^1.66.0",
     "next": "^16.4.2",
-    "postcss": "^8.5.32",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tailwindcss": "^4.3.4"
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

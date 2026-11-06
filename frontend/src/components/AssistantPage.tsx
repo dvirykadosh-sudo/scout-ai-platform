@@ -1017,7 +1017,7 @@ export function AssistantPage() {
   );
 }
 
-const STAGE_COLORS = ["#7c4dff", "#1c7a3f", "#a85a00", "#0a6c9e", "#8a2a6a"];
+const STAGE_COLORS = ["#c2410c", "#1c7a3f", "#a85a00", "#0a6c9e", "#8a2a6a"];
 
 /** 55. ציר זמן חי: רוחב כל שלב לפי הדקות, מול המשך שתכננתם. */
 function Timeline({ a, target }: { a: Analysis; target: number }) {

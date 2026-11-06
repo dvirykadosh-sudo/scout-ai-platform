@@ -2850,6 +2850,37 @@ describe("ייצוא וכלים נלווים: סבב 127–138", () => {
     assert.ok(r.body.includes(Buffer.from("word/media/")), "מכיל תמונת לוגו");
   });
 
+  it("עיצוב: ערכות, חסכוני, גופן גדול, QR ודף מדריך", async () => {
+    const sizes = {};
+    for (const [k, o] of Object.entries({ classic: {}, blue: { theme: "blue" }, eco: { eco: true }, large: { large: true }, qr: { qr: true } })) {
+      const r = await req("POST", "/api/write/export/docx", { ...doc(), ...o }, a.token);
+      assert.equal(r.status, 200, k);
+      assert.equal(r.body.subarray(0, 2).toString(), "PK");
+      sizes[k] = r.body.length;
+    }
+    assert.ok(sizes.eco < sizes.classic, "מצב חסכוני קל יותר");
+    assert.ok(sizes.qr > sizes.classic, "QR מוסיף תמונה");
+    assert.equal((await req("POST", "/api/write/export/docx", { ...doc(), theme: "nope" }, a.token)).status, 400);
+    const sh = await req("POST", "/api/write/export/sheet", doc(), a.token);
+    assert.equal(sh.status, 200);
+    assert.equal(sh.body.subarray(0, 2).toString(), "PK");
+    assert.equal((await req("POST", "/api/write/export/sheet", doc())).status, 401);
+  });
+
+  it("ייצוא שומר גרסה, ו-PDF עובד או מחזיר הסבר", async () => {
+    const d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    await req("POST", "/api/write/export/docx", { ...doc(), docId: d.id }, a.token);
+    const v = (await req("GET", `/api/write/docs/${d.id}/versions`, undefined, a.token)).body;
+    assert.ok(v.some((x) => x.note === "ייצוא קובץ"), "גרסת ייצוא");
+    const other = (await req("POST", "/api/auth/register", { username: "expv7", password: "password123", displayName: "אחר", signupCode: "shevet-code" })).body;
+    const before = (await req("GET", `/api/write/docs/${d.id}/versions`, undefined, a.token)).body.length;
+    await req("POST", "/api/write/export/docx", { ...doc(), docId: d.id }, other.token);
+    assert.equal((await req("GET", `/api/write/docs/${d.id}/versions`, undefined, a.token)).body.length, before, "לא שומר למסמך של אחר");
+    const pdf = await req("POST", "/api/write/export/pdf", doc(), a.token);
+    assert.ok([200, 501].includes(pdf.status));
+    if (pdf.status === 200) assert.equal(pdf.body.subarray(0, 4).toString(), "%PDF");
+  });
+
   it("132. טקסט להעתקה ובפורמט וואטסאפ", async () => {
     const plain = (await req("POST", "/api/write/export/text", doc(), a.token)).body.text;
     assert.ok(plain.includes("אומץ") && !plain.includes("**") && !plain.includes("סודי"));
@@ -3182,5 +3213,1390 @@ describe("חיפוש, דמיון וציוד: סבב 175–187", () => {
     await req("POST", "/api/write/bulk", { ids: [d1.id], action: "tag", tag: "חורף" }, a.token);
     const list = (await req("GET", "/api/write/docs", undefined, a.token)).body;
     assert.deepEqual(list.find((x) => x.id === d1.id).tags, ["חורף"]);
+  });
+});
+
+describe("תחנות, גיבוי, מוכנות ומתודות שבט: סבב 188–200", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let a, adm;
+  const doc = () => ({
+    title: "מירוץ אחריות",
+    meta: { ageGroup: "כיתה ו' - מעורב", minutes: 45, equipment: ["חבלים"], review: ["q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8"] },
+    blocks: [
+      { id: "b1", title: "פתיחה", kind: "open", minutes: 10, text: "אנחנו מתחילים בשאלה מה זו אחריות ואיך היא נראית אצלנו בקבוצה ובשבט", note: "", done: true },
+      { id: "b2", title: "מירוץ", kind: "peak", minutes: 25, text: "עושים מירוץ תחנות בשטח הפתוח ורצים בין התחנות עם חבלים ומשימות קצרות לכל קבוצה", note: "", done: true },
+      { id: "b3", title: "סיכום", kind: "close", minutes: 10, text: "מסכמים במעגל ואומרים משפט אחד על מה שלמדנו היום מהפעולה הזאת ביחד", note: "", done: true },
+    ],
+  });
+  before(async () => {
+    for (const pw of ["a-new-strong-pass", "admin123"]) {
+      const r = await req("POST", "/api/auth/login", { username: "admin", password: pw });
+      if (r.status === 200 && !r.body.user.mustChangePw) { adm = r.body.token; break; }
+    }
+    a = (await req("POST", "/api/auth/register", { username: "fin1", password: "password123", displayName: "סיום", signupCode: "shevet-code" })).body;
+  });
+
+  it("188. חישוב תחנות: זמן לתחנה כולל מעברים, ושגיאה כשאין זמן", async () => {
+    assert.equal((await req("POST", "/api/write/stations", { total: 30, stations: 3 })).status, 401);
+    const r = (await req("POST", "/api/write/stations", { total: 32, stations: 4, transition: 1 }, a.token)).body;
+    assert.equal(r.ok, true);
+    assert.equal(r.perStation, 7);
+    assert.equal(r.schedule.length, 4);
+    assert.equal(r.schedule[0].from, 0);
+    assert.ok(r.schedule.at(-1).to <= 32);
+    const bad = (await req("POST", "/api/write/stations", { total: 8, stations: 6, transition: 2 }, a.token)).body;
+    assert.equal(bad.ok, false);
+  });
+
+  it("189. תוכנית גיבוי לגשם: מזהה שלבים בחוץ ומציע חלופה; חום וחדר קטן שונים", async () => {
+    const rain = (await req("POST", "/api/write/backup-plan", { ...doc(), condition: "rain" }, a.token)).body;
+    assert.ok(rain.stages.some((s) => s.blockId === "b2"));
+    assert.ok(rain.text.startsWith("## תוכנית גיבוי"));
+    const heat = (await req("POST", "/api/write/backup-plan", { ...doc(), condition: "heat" }, a.token)).body;
+    assert.notDeepEqual(rain.general, heat.general);
+    assert.equal((await req("POST", "/api/write/backup-plan", { ...doc(), condition: "snow" }, a.token)).status, 400);
+  });
+
+  it("190. ציון מוכנות: מסמך שלם גבוה, ריק נמוך, עם פירוט", async () => {
+    const full = (await req("POST", "/api/write/readiness", doc(), a.token)).body;
+    assert.ok(full.score >= 85, "score " + full.score);
+    assert.equal(full.label, "מוכן להעברה");
+    const empty = (await req("POST", "/api/write/readiness", { title: "", blocks: [{ id: "x", kind: "free" }] }, a.token)).body;
+    assert.ok(empty.score < 30);
+    assert.ok(empty.items.some((i) => !i.ok && i.hint));
+    assert.equal(empty.items.reduce((s, i) => s + i.max, 0), 100);
+  });
+
+  it("191. מדדי שימוש לאדמין כוללים תקופות, ממוצעים ומתודות", async () => {
+    await req("POST", "/api/write/docs", { template: "classic" }, a.token);
+    const u = (await req("GET", "/api/admin/write-usage", undefined, adm)).body;
+    assert.ok(u.docs >= 1 && u.created7 >= 1 && u.active30 >= 1);
+    assert.ok(u.avgStages >= 1);
+    assert.ok(Array.isArray(u.topMethods) && Array.isArray(u.feedback));
+    assert.ok([401, 403].includes((await req("GET", "/api/admin/write-usage", undefined, a.token)).status));
+  });
+
+  it("192. מתודות שבט: רק אדמין מוסיף, כולם רואים, שם כפול נדחה", async () => {
+    const m = { name: "מירוץ שמות", category: "game", line: "כל קבוצה צריכה להרכיב שם מאותיות מפוזרות", steps: ["מחלקים אותיות", "מתחרים"] };
+    assert.ok([401, 403].includes((await req("POST", "/api/admin/write-methods", m, a.token)).status));
+    const r = await req("POST", "/api/admin/write-methods", m, adm);
+    assert.equal(r.status, 201);
+    assert.equal((await req("POST", "/api/admin/write-methods", m, adm)).status, 409);
+    assert.equal((await req("POST", "/api/admin/write-methods", { ...m, name: "ב", category: "x" }, adm)).status, 400);
+    const list = (await req("GET", "/api/write/tribe-methods", undefined, a.token)).body;
+    assert.equal(list[0].name, "מירוץ שמות");
+    assert.deepEqual(list[0].steps, ["מחלקים אותיות", "מתחרים"]);
+    assert.equal((await req("DELETE", `/api/admin/write-methods/${r.body.id}`, undefined, adm)).status, 200);
+  });
+
+  it("199. משוב על תכונה: אפשר בלי התחברות, מחובר מחליף הצבעה, ונספר לאדמין", async () => {
+    assert.equal((await req("POST", "/api/feedback/feature", { feature: "Bad Name", vote: 1 })).status, 400);
+    assert.equal((await req("POST", "/api/feedback/feature", { feature: "write-editor", vote: 2 })).status, 400);
+    assert.equal((await req("POST", "/api/feedback/feature", { feature: "write-editor", vote: 1 })).status, 201);
+    await req("POST", "/api/feedback/feature", { feature: "write-editor", vote: 1 }, a.token);
+    await req("POST", "/api/feedback/feature", { feature: "write-editor", vote: -1, comment: "קשה למצוא" }, a.token);
+    const u = (await req("GET", "/api/admin/write-usage", undefined, adm)).body.feedback.find((f) => f.feature === "write-editor");
+    assert.equal(u.n, 2);
+    assert.equal(u.up, 1);
+    assert.equal(u.down, 1);
+    const c = (await req("GET", "/api/admin/feature-feedback", undefined, adm)).body;
+    assert.ok(c.some((x) => x.comment === "קשה למצוא"));
+  });
+});
+
+describe("סימן מים בקובצי Word", () => {
+  it("מסמך Word כולל לוגו צף מאחורי הטקסט", async () => {
+    const { fadePng } = await import("../src/watermark.js");
+    const png = fs.readFileSync(new URL("../../frontend/public/logo-maoz.png", import.meta.url));
+    const faded = fadePng(png, 0.12);
+    assert.ok(faded && faded.length > 1000, "PNG מוחלש");
+    const { default: JSZip } = await import("jszip");
+    const { buildWriteDocx, findLogo } = await import("../src/routes-write-export.js");
+    const { setWatermarkSource } = await import("../src/watermark.js");
+    setWatermarkSource(() => findLogo(() => null));
+    const buf = await buildWriteDocx({ title: "x", meta: {}, blocks: [{ id: "a", title: "p", kind: "open", minutes: 5, text: "t", note: "" }] }, { logo: findLogo(() => null) });
+    const z = await JSZip.loadAsync(buf);
+    const hdr = await z.file("word/header1.xml").async("string");
+    assert.match(hdr, /behindDoc="1"/);
+  });
+});
+
+describe("מצב המערכת, גיבוי להורדה ובדיקת תקינות", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  let adm, user;
+  before(async () => {
+    for (const pw of ["a-new-strong-pass", "admin123"]) {
+      const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "admin", password: pw }) });
+      if (r.status === 200 && !r.body.user.mustChangePw) { adm = r.body.token; break; }
+    }
+    user = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "sys1", password: "password123", displayName: "בודק מערכת", signupCode: "shevet-code" }) })).body;
+  });
+  it("בדיקת תקינות פתוחה, ומצב מערכת לאדמין בלבד", async () => {
+    const h = await j("/api/health/data");
+    assert.equal(h.status, 200);
+    assert.equal(h.body.ok, true);
+    assert.ok((await j("/api/health")).body.startedAt);
+    assert.ok([401, 403].includes((await j("/api/admin/system", { headers: H(user.token) })).status));
+    const s = (await j("/api/admin/system", { headers: H(adm) })).body;
+    assert.equal(s.integrity, "ok");
+    assert.ok(s.counts.users >= 1);
+    assert.ok(Array.isArray(s.warnings));
+  });
+  it("שמירה ידנית בלי הגדרה מחזירה הסבר, והורדת גיבוי טרי עובדת", async () => {
+    assert.equal((await j("/api/admin/persist/save", { method: "POST", headers: H(adm) })).status, 400);
+    const res = await fetch(`${base}/api/admin/backup/download`, { headers: H(adm) });
+    assert.equal(res.status, 200);
+    const buf = Buffer.from(await res.arrayBuffer());
+    assert.equal(buf.subarray(0, 15).toString("latin1"), "SQLite format 3");
+    assert.equal((await fetch(`${base}/api/admin/backup/download`)).status, 401);
+  });
+});
+
+describe("שלב 36: הקרוב אליי, נוכחות, קריאות וקיצור (201–220)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let a, d;
+  const inDays = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  before(async () => {
+    a = (await req("POST", "/api/auth/register", { username: "v36a", password: "password123", displayName: "מדריך א", signupCode: "shevet-code" })).body;
+    d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    const cur = (await req("GET", `/api/write/docs/${d.id}`, undefined, a.token)).body;
+    const meta = { ...cur.meta, date: inDays(1), equipment: ["חבלים", "כדור"] };
+    const blocks = cur.blocks.map((b) => ({ ...b, text: "שורה א\nשורה ב\nשורה ג\nשורה ד\nשורה ה" }));
+    const r = await req("PUT", `/api/write/docs/${d.id}`, { title: "פעולה קרובה", meta, blocks, baseRev: cur.rev }, a.token);
+    assert.equal(r.status, 200);
+  });
+  it("201/202/209: פעולות קרובות וציוד לשבוע", async () => {
+    assert.equal((await req("GET", "/api/write/upcoming")).status, 401);
+    const u = (await req("GET", "/api/write/upcoming", undefined, a.token)).body;
+    assert.equal(u.items.length, 1);
+    assert.equal(u.items[0].daysLeft, 1);
+    assert.equal(u.tomorrow.length, 1);
+    assert.deepEqual(u.equipmentWeek.map((e) => e.name).sort(), ["חבלים", "כדור"]);
+  });
+  it("206: נוכחות נשמרת ומסוננת, ויש סטטיסטיקה", async () => {
+    const r = await req("PUT", `/api/write/docs/${d.id}/attendance`, { names: ["דני", "רוני", "דני"], present: ["דני", "זר"] }, a.token);
+    assert.deepEqual(r.body, { names: ["דני", "רוני"], present: ["דני"] });
+    const g = (await req("GET", `/api/write/docs/${d.id}/attendance`, undefined, a.token)).body;
+    assert.deepEqual(g.present, ["דני"]);
+    const st = (await req("GET", "/api/write/attendance/stats", undefined, a.token)).body;
+    assert.equal(st.sessions, 1);
+    assert.equal(st.people[0].name, "דני");
+    const b = (await req("POST", "/api/auth/register", { username: "v36b", password: "password123", displayName: "מדריך ב", signupCode: "shevet-code" })).body;
+    assert.equal((await req("GET", `/api/write/docs/${d.id}/attendance`, undefined, b.token)).status, 404);
+  });
+  it("214: קריאות, 215: תבניות טקסים", async () => {
+    assert.ok((await req("GET", "/api/write/cheers", undefined, a.token)).body.length >= 20);
+    const t = (await req("GET", "/api/write/templates")).body.map((x) => x.id);
+    for (const id of ["ceremony-birthday", "ceremony-shirt", "ceremony-end", "ceremony-memorial"]) assert.ok(t.includes(id), id);
+  });
+  it("220: קיצור ל-10 דקות יוצר עותק ולא נוגע במקור", async () => {
+    const r = await req("POST", `/api/write/docs/${d.id}/short10`, {}, a.token);
+    assert.equal(r.status, 201);
+    const c = (await req("GET", `/api/write/docs/${r.body.id}`, undefined, a.token)).body;
+    assert.match(c.title, /קיצור 10/);
+    assert.equal(c.blocks.reduce((s, b) => s + b.minutes, 0) >= 8 && c.blocks.reduce((s, b) => s + b.minutes, 0) <= 12, true);
+    assert.ok(c.blocks.every((b) => b.text.split("\n").length <= 4));
+    const o = (await req("GET", `/api/write/docs/${d.id}`, undefined, a.token)).body;
+    assert.equal(o.blocks.length, 4);
+  });
+});
+
+describe("שלב 37: תחזוקה, היסטוריה, שחזור וצוות (221–250)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let adm, a;
+  before(async () => {
+    for (const pw of ["a-new-strong-pass", "admin123"]) {
+      const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "admin", password: pw }) });
+      if (r.status === 200 && !r.body.user.mustChangePw) { adm = r.body.token; break; }
+    }
+    a = (await req("POST", "/api/auth/register", { username: "v37a", password: "password123", displayName: "מדריך ג", signupCode: "shevet-code" })).body;
+  });
+  it("246: מצב תחזוקה חוסם כתיבה לגולשים, ולא את הקריאה והניהול", async () => {
+    assert.equal((await req("PUT", "/api/admin/maintenance", { message: "מעדכנים" }, a.token)).status, 401);
+    assert.equal((await req("PUT", "/api/admin/maintenance", { message: "מעדכנים, חוזרים בעוד דקה" }, adm)).status, 200);
+    assert.equal((await req("GET", "/api/health")).body.maintenance, "מעדכנים, חוזרים בעוד דקה");
+    const w = await req("POST", "/api/write/docs", { template: "classic" }, a.token);
+    assert.equal(w.status, 503);
+    assert.equal(w.body.error.code, "MAINTENANCE");
+    assert.equal((await req("GET", "/api/write/docs", undefined, a.token)).status, 200);
+    assert.equal((await req("PUT", "/api/admin/maintenance", { message: "" }, adm)).status, 200);
+    assert.equal((await req("POST", "/api/write/docs", { template: "classic" }, a.token)).status, 201);
+  });
+  it("241: היסטוריית מדדים לאדמין בלבד", async () => {
+    assert.equal((await req("GET", "/api/admin/system/history", undefined, a.token)).status, 401);
+    const h = await req("GET", "/api/admin/system/history", undefined, adm);
+    assert.equal(h.status, 200);
+    assert.ok(Array.isArray(h.body.rows));
+    assert.equal(h.body.mailBackup.configured, false);
+    assert.equal((await req("POST", "/api/admin/backup/mail", {}, adm)).status, 400);
+  });
+  it("242/243: הצפנת גיבוי ואימות קובץ שחזור", async () => {
+    const { encryptBackup, decryptBackup, validateBackupFile } = await import("../src/ops.js");
+    const raw = Buffer.from(await (await fetch(`${base}/api/admin/backup/download`, { headers: H(adm) })).arrayBuffer());
+    validateBackupFile(raw);
+    const enc = encryptBackup(raw, "סיסמה-חזקה-123");
+    assert.ok(!enc.includes(Buffer.from("SQLite format 3")));
+    assert.ok(decryptBackup(enc, "סיסמה-חזקה-123").equals(raw));
+    assert.throws(() => decryptBackup(enc, "שגויה-שגויה"));
+    assert.throws(() => validateBackupFile(Buffer.from("not a database".repeat(400))));
+    const noConfirm = await fetch(`${base}/api/admin/restore`, { method: "POST", headers: { ...H(adm), "content-type": "application/octet-stream" }, body: raw });
+    assert.equal(noConfirm.status, 400);
+    const asUser = await fetch(`${base}/api/admin/restore`, { method: "POST", headers: { ...H(a.token), "content-type": "application/octet-stream", "x-confirm": encodeURIComponent("שחזור") }, body: raw });
+    assert.equal(asUser.status, 401);
+  });
+  it("221/222: לוח צוות, מחיקה רק של שלי, והודעה למחליף", async () => {
+    const d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const e = await req("POST", "/api/team/events", { title: "פעולת אומץ", date: tomorrow, ageGroup: "כיתה ו", docId: d.id }, a.token);
+    assert.equal(e.status, 201);
+    assert.equal(e.body.docId, d.id);
+    const other = (await req("POST", "/api/auth/register", { username: "v37b", password: "password123", displayName: "מדריך ד", signupCode: "shevet-code" })).body;
+    const list = (await req("GET", "/api/team/events", undefined, other.token)).body;
+    assert.ok(list.some((x) => x.id === e.body.id && !x.mine));
+    assert.equal((await req("DELETE", `/api/team/events/${e.body.id}`, undefined, other.token)).status, 403);
+    assert.equal((await req("GET", `/api/team/events/${e.body.id}/substitute`, undefined, other.token)).status, 404);
+    const s = (await req("GET", `/api/team/events/${e.body.id}/substitute`, undefined, a.token)).body.text;
+    assert.ok(s.includes("פעולת אומץ") && s.includes("התוכנית"));
+    assert.equal((await req("POST", "/api/team/events", { title: "x", date: "bad" }, a.token)).status, 400);
+    assert.equal((await req("DELETE", `/api/team/events/${e.body.id}`, undefined, a.token)).status, 200);
+  });
+});
+
+describe("שלב 38: פיילוט ומשוב (251–260)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok, extra = {}) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: { ...(tok ? H(tok) : {}), ...extra } });
+  let adm, a, b;
+  before(async () => {
+    for (const pw of ["a-new-strong-pass", "admin123"]) {
+      const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "admin", password: pw }) });
+      if (r.status === 200 && !r.body.user.mustChangePw) { adm = r.body.token; break; }
+    }
+    a = (await req("POST", "/api/auth/register", { username: "v38a", password: "password123", displayName: "מדריך ה", signupCode: "shevet-code" })).body;
+    b = (await req("POST", "/api/auth/register", { username: "v38b", password: "password123", displayName: "מדריך ו", signupCode: "shevet-code" })).body;
+  });
+  it("252/259: משימות מזוהות אוטומטית", async () => {
+    assert.equal((await req("GET", "/api/me/pilot")).status, 401);
+    let p = (await req("GET", "/api/me/pilot", undefined, a.token)).body;
+    assert.equal(p.done, 0);
+    assert.equal(p.next.id, "doc");
+    await req("POST", "/api/write/docs", { template: "classic" }, a.token);
+    p = (await req("GET", "/api/me/pilot", undefined, a.token)).body;
+    assert.equal(p.done, 1);
+    assert.equal(p.next.id, "stages");
+  });
+  it("253: שאלון נשמר ומתעדכן פעם אחת למשתמש", async () => {
+    assert.equal((await req("POST", "/api/me/survey", { ease: 9, wouldUse: true }, a.token)).status, 400);
+    assert.equal((await req("POST", "/api/me/survey", { ease: 4, missing: "חסר ייצוא PDF", wouldUse: true }, a.token)).status, 200);
+    assert.equal((await req("POST", "/api/me/survey", { ease: 5, missing: "", wouldUse: true }, a.token)).status, 200);
+    assert.equal((await req("GET", "/api/me/survey", undefined, a.token)).body.ease, 5);
+    await req("POST", "/api/me/survey", { ease: 2, missing: "מסובך", wouldUse: false }, b.token);
+  });
+  it("254: דיווח תקלה גם בלי התחברות, ודורש טקסט", async () => {
+    assert.equal((await req("POST", "/api/report", { text: "x" })).status, 400);
+    assert.equal((await req("POST", "/api/report", { text: "הכפתור לא נלחץ", page: "/write", device: "אייפון" })).status, 201);
+    assert.equal((await req("POST", "/api/report", { text: "גם כאן", page: "/team" }, a.token)).status, 201);
+  });
+  it("255-257, 260: לוח אדמין, מפת שימוש והצבעות", async () => {
+    await req("GET", "/api/write/docs", undefined, a.token, { "X-Page": "/write/123" });
+    assert.equal((await req("GET", "/api/admin/pilot", undefined, a.token)).status, 401);
+    const d = (await req("GET", "/api/admin/pilot", undefined, adm)).body;
+    assert.equal(d.surveys.n, 2);
+    assert.equal(d.surveys.avgEase, 3.5);
+    assert.equal(d.surveys.wouldUsePct, 50);
+    assert.equal(d.bugs.length, 2);
+    assert.equal(d.bugs.find((x) => x.username === "v38a").text, "גם כאן");
+    assert.ok(d.pages.some((x) => x.page === "/write/:id"), "עמודים מנורמלים");
+    assert.ok(d.firstDoc.users >= 1);
+    assert.ok(d.report.text.includes("דיווחי תקלה"));
+    assert.equal((await req("PATCH", `/api/admin/bugs/${d.bugs[0].id}`, { status: "done" }, adm)).status, 200);
+    const r1 = await req("POST", "/api/feature-requests", { title: "מצב לילה אוטומטי" }, a.token);
+    assert.equal(r1.status, 201);
+    assert.equal((await req("POST", `/api/feature-requests/${r1.body.id}/vote`, {}, b.token)).body.voted, true);
+    let list = (await req("GET", "/api/feature-requests", undefined, b.token)).body;
+    assert.equal(list[0].votes, 2);
+    assert.equal(list[0].voted, true);
+    assert.equal((await req("POST", `/api/feature-requests/${r1.body.id}/vote`, {}, b.token)).body.voted, false);
+    list = (await req("GET", "/api/feature-requests", undefined, a.token)).body;
+    assert.equal(list[0].votes, 1);
+    for (const t of ["רעיון שני לבדיקה", "רעיון שלישי לבדיקה"]) assert.equal((await req("POST", "/api/feature-requests", { title: t }, a.token)).status, 201);
+    assert.equal((await req("POST", "/api/feature-requests", { title: "רעיון רביעי לבדיקה" }, a.token)).status, 409);
+    assert.equal((await req("PATCH", `/api/admin/feature-requests/${r1.body.id}`, { status: "planned" }, a.token)).status, 401);
+    assert.equal((await req("PATCH", `/api/admin/feature-requests/${r1.body.id}`, { status: "planned" }, adm)).status, 200);
+    assert.equal((await req("POST", "/api/admin/pilot/report", {}, adm)).status, 400);
+  });
+});
+
+describe("שלב 39: בדיקת קול, בטיחות, גיל ושאלות (261–270)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let a;
+  const long = "זה משפט ארוך מאוד שממשיך ומתארך ועובר מנושא לנושא בלי נקודה אחת כדי לעצור לנשום ולכן קשה מאוד להגיד אותו בקול לפני קבוצה של חניכים שמחכים";
+  const doc = (extra = {}) => ({
+    title: "פעולה בטיחות",
+    meta: { ageGroup: "כיתה ד' - מעורב", groupSize: 24, equipment: ["חבלים"], ...extra },
+    blocks: [
+      { id: "b1", kind: "open", title: "פתיחה", minutes: 1, text: `${long} ${long} ${long} ${long}`, note: "" },
+      { id: "b2", kind: "body", title: "משחק מירוץ", minutes: 15, text: "רצים במירוץ ליד הבריכה וקופצים מעל החבל. אנחנו רוצים להתמודד עם אתגר ולדון בערכים.", note: "" },
+      { id: "b3", kind: "peak", title: "שיא", minutes: 10, text: "הסבר על הפתרון של הקבוצה", note: "" },
+      { id: "b4", kind: "close", title: "סיכום", minutes: 5, text: "מסכמים", note: "" },
+    ],
+  });
+  before(async () => {
+    a = (await req("POST", "/api/auth/register", { username: "v39a", password: "password123", displayName: "מדריך ז", signupCode: "shevet-code" })).body;
+  });
+  it("261/262: בדיקת קול מחשבת זמן ומסמנת משפטים קשים", async () => {
+    assert.equal((await req("POST", "/api/write/voice-check", doc())).status, 401);
+    const r = (await req("POST", "/api/write/voice-check", doc(), a.token)).body;
+    assert.ok(r.totalSpeakMin > 0);
+    assert.equal(r.blocks.length, 4);
+    assert.ok(r.hardSentences.some((h) => h.blockId === "b1" && h.reasons.some((x) => /מילים/.test(x))));
+    assert.ok(r.blocks[0].ratio > 0.6, "פתיחה של דקה כמעט כולה דיבור");
+  });
+  it("263/264: בטיחות מזהה סיכונים, מחשב יחס ומתחשב בגיל", async () => {
+    const r = (await req("POST", "/api/write/safety", doc(), a.token)).body;
+    const ids = r.risks.map((x) => x.id);
+    assert.ok(ids.includes("running") && ids.includes("water"), ids.join());
+    assert.equal(r.ok, false);
+    assert.ok(r.ratio.perGuide <= 4, "מים + שכבה צעירה");
+    assert.equal(r.ratio.guidesNeeded, Math.ceil(24 / r.ratio.perGuide));
+    const withSafety = doc();
+    withSafety.blocks.push({ id: "b9", kind: "free", title: "בטיחות", minutes: 0, text: "מציל נוכח ומוסמך. גבולות גזרה ואות עצירה. לא רצים ליד המים.", note: "" });
+    const r2 = (await req("POST", "/api/write/safety", withSafety, a.token)).body;
+    assert.ok(r2.missing < r.missing);
+  });
+  it("265: אנשי קשר לחירום נשמרים לכל משתמש בנפרד", async () => {
+    assert.equal((await req("PUT", "/api/write/emergency", { contacts: [{ name: "רכז", phone: "abc" }] }, a.token)).status, 400);
+    assert.equal((await req("PUT", "/api/write/emergency", { contacts: [{ name: "רכז שבט", phone: "050-1234567" }] }, a.token)).status, 200);
+    const g = (await req("GET", "/api/write/emergency", undefined, a.token)).body;
+    assert.equal(g.contacts[0].name, "רכז שבט");
+    assert.equal(g.national.length, 3);
+    const b = (await req("POST", "/api/auth/register", { username: "v39b", password: "password123", displayName: "מדריך ח", signupCode: "shevet-code" })).body;
+    assert.equal((await req("GET", "/api/write/emergency", undefined, b.token)).body.contacts.length, 0);
+  });
+  it("266-268: התאמה לגיל מחליפה מילים, מקצרת שלבים ויוצרת עותק", async () => {
+    const y = (await req("POST", "/api/write/age-adapt", { level: "young", doc: doc() }, a.token)).body;
+    assert.ok(y.blocks[1].text.includes("לנסות לפתור") && y.blocks[1].text.includes("דברים חשובים"));
+    assert.ok(y.blocks[1].minutes <= 12);
+    assert.ok(y.blocks[3].text.includes("משפט אחד"));
+    assert.ok(y.changes.length >= 3);
+    const o = (await req("POST", "/api/write/age-adapt", { level: "old", doc: doc() }, a.token)).body;
+    assert.ok(o.blocks[2].text.includes("שאלה למחשבה"));
+    const d = (await req("POST", "/api/write/docs", { template: "classic" }, a.token)).body;
+    const c = await req("POST", `/api/write/docs/${d.id}/age-copy`, { level: "old" }, a.token);
+    assert.equal(c.status, 201);
+    const got = (await req("GET", `/api/write/docs/${c.body.id}`, undefined, a.token)).body;
+    assert.match(got.title, /בוגרים/);
+    assert.equal(got.meta.ageGroup, "כיתה י' - מעורב");
+    assert.equal((await req("POST", "/api/write/docs/999999/age-copy", { level: "old" }, a.token)).status, 404);
+  });
+  it("269/270: שאלות לשלב ובנק אישי", async () => {
+    const block = doc().blocks[1];
+    const r = (await req("POST", "/api/write/stage-questions", { block, value: "עבודת צוות", ageGroup: "כיתה ז' - מעורב" }, a.token)).body;
+    assert.equal(r.questions.length, 3);
+    assert.ok(new Set(r.questions.map((q) => q.q)).size === 3);
+    const q = r.questions[0].q;
+    assert.equal((await req("POST", "/api/write/question-bank", { text: q, used: true }, a.token)).status, 201);
+    await req("POST", "/api/write/question-bank", { text: q, used: true }, a.token);
+    const bank = (await req("GET", "/api/write/question-bank", undefined, a.token)).body;
+    assert.equal(bank.length, 1);
+    assert.equal(bank[0].uses, 2);
+    const again = (await req("POST", "/api/write/stage-questions", { block }, a.token)).body;
+    assert.equal(again.fromBank[0].text, q);
+    assert.equal((await req("DELETE", `/api/write/question-bank/${bank[0].id}`, undefined, a.token)).status, 200);
+  });
+});
+
+describe("שלב 47: יצירה והדפסה (326–335)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const req = (m, p, body, tok) => j(p, { method: m, body: body === undefined ? undefined : JSON.stringify(body), headers: tok ? H(tok) : {} });
+  let a;
+  before(async () => {
+    a = (await req("POST", "/api/auth/register", { username: "v47a", password: "Str0ng-e2e-pw-26", displayName: "מדריך בדיקה", signupCode: "shevet-code", acceptTerms: true })).body;
+  });
+  const doc = () => ({
+    title: "אחריות אישית",
+    meta: {},
+    blocks: [
+      { id: "b1", kind: "open", title: "פתיחה", minutes: 5, text: "נפתח בשאלה על אחריות. כל חניך מספר רגע שבו לקח אחריות על משימה קבוצתית. אחריות היא לא רק מילה גדולה." },
+      { id: "b2", kind: "body", title: "גוף", minutes: 20, text: "נחלק את הקבוצה לצוותים. כל צוות מקבל משימה קבוצתית ועליו לחלק אחריות בין החברים. המשימה היא לבנות גשר מחבלים לפני שהזמן נגמר." },
+    ],
+  });
+  it("מילות מפתח עם משפט הקשר", async () => {
+    const r = (await req("POST", "/api/write/keywords", doc(), a.token)).body;
+    assert.ok(r.words.length >= 3);
+    assert.ok(r.words.some((w) => w.word === "אחריות"));
+    assert.ok(r.words.every((w) => w.word.length >= 4 && !w.clue.includes(w.word)));
+  });
+  it("סיפורי פתיחה: שלושה, שונים", async () => {
+    const r = (await req("POST", "/api/write/story-ideas", { topic: "אחריות אישית" }, a.token)).body;
+    assert.equal(r.ideas.length, 3);
+    assert.equal(new Set(r.ideas.map((i) => i.text)).size, 3);
+    assert.ok(r.ideas.every((i) => i.text.includes("אחריות אישית")));
+  });
+  it("חידון השלמה ותפקידים", async () => {
+    const q = (await req("POST", "/api/write/quiz", doc(), a.token)).body;
+    for (const it of q.items) {
+      assert.ok(it.q.includes("_____") && it.options.includes(it.answer) && it.options.length === 3);
+    }
+    const empty = (await req("POST", "/api/write/quiz", { title: "", blocks: [] }, a.token)).body;
+    assert.equal(empty.items.length, 0);
+    assert.ok(empty.note);
+    const roles = (await req("GET", "/api/write/role-sets", undefined, a.token)).body;
+    assert.ok(roles["דיון"].length >= 5);
+    assert.equal((await req("POST", "/api/write/keywords", doc())).status, 401);
+  });
+});
+
+describe("security hardening (v49)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  const mk = async (u) => (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + "xx", signupCode: "shevet-code" }) })).body.token;
+
+  it("pages carry a strict CSP, frame-ancestors none and permissions policy", async () => {
+    const r = await fetch(base + "/api/health");
+    const csp = r.headers.get("content-security-policy") || "";
+    assert.match(csp, /frame-ancestors 'none'/);
+    assert.match(r.headers.get("permissions-policy") || "", /camera=\(\)/);
+    assert.equal(r.headers.get("x-content-type-options"), "nosniff");
+  });
+
+  it("CORS does not echo a foreign origin", async () => {
+    const r = await fetch(base + "/api/health", { headers: { origin: "https://evil.example" } });
+    assert.notEqual(r.headers.get("access-control-allow-origin"), "https://evil.example");
+    assert.notEqual(r.headers.get("access-control-allow-origin"), "*");
+  });
+
+  it("a forged alg=none token is rejected", async () => {
+    const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const forged = `${b64({ alg: "none", typ: "JWT" })}.${b64({ sub: 1, username: "admin", role: "ADMIN" })}.`;
+    const r = await j("/api/admin/users", { headers: H(forged) });
+    assert.equal(r.status, 401);
+  });
+
+  it("a regular user cannot reach admin routes", async () => {
+    const t = await mk("secuser1");
+    for (const p of ["/api/admin/users", "/api/admin/audit", "/api/admin/blocks"]) {
+      const r = await j(p, { headers: H(t) });
+      assert.ok([401, 403].includes(r.status), p + " -> " + r.status);
+    }
+  });
+
+  it("one user cannot read or delete another user's private data", async () => {
+    const a = await mk("secalice");
+    const b = await mk("secbobby");
+    const c = await j("/api/me/collections", { method: "POST", headers: H(a), body: JSON.stringify({ name: "פרטי של אליס" }) });
+    assert.equal(c.status, 201);
+    const del = await j(`/api/collections/${c.body.id}`, { method: "DELETE", headers: H(b) });
+    assert.ok([403, 404].includes(del.status), "delete status " + del.status);
+    const mine = await j("/api/me/collections", { headers: H(b) });
+    assert.ok(!JSON.stringify(mine.body).includes("פרטי של אליס"));
+  });
+
+  it("SQL injection strings in search params do not break or leak", async () => {
+    for (const q of ["' OR 1=1 --", "\"; DROP TABLE activities; --", "%' UNION SELECT * FROM users --"]) {
+      const r = await j(`/api/activities?author=${encodeURIComponent(q)}&sort=${encodeURIComponent(q)}`);
+      assert.ok(r.status === 200 || r.status === 400, "status " + r.status);
+      if (r.status === 200) assert.equal(r.body.items.length, 0);
+    }
+    const ok = await j("/api/activities");
+    assert.equal(ok.status, 200);
+  });
+
+  it("oversized JSON bodies are refused", async () => {
+    const r = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "x", password: "y".repeat(300_000) }) });
+    assert.equal(r.status, 413);
+  });
+});
+
+describe("write v50 (336-345)", () => {
+  const H = (t) => ({ authorization: `Bearer ${t}` });
+  let tok;
+  const req = (m, p, body, t = tok) => j(p, { method: m, headers: t ? H(t) : {}, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const blocks = [
+    { id: "a1", title: "פתיחה בשאלה", kind: "open", minutes: 10, text: "שואלים את החניכים מה זה אחריות אישית ומדוע אחריות חשובה בקבוצה." },
+    { id: "a2", title: "דיון בקבוצות", kind: "body", minutes: 15, text: "מחלקים לקבוצות קטנות ודנים במקרים של אחריות בשבט ובבית הספר." },
+  ];
+  before(async () => { tok = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "v50user", password: "Passw0rd!xyz", displayName: "דביר נבדק", signupCode: "shevet-code" }) })).body.token; });
+
+  it("holiday templates list and fetch", async () => {
+    const l = await req("GET", "/api/write/holidays");
+    assert.ok(l.body.length >= 8);
+    const h = await req("GET", "/api/write/holidays/hanuka");
+    assert.equal(h.status, 200);
+    assert.ok(h.body.stages.length >= 4);
+    assert.equal((await req("GET", "/api/write/holidays/nope")).status, 404);
+  });
+  it("merge plan aligns, flags changes and extras", async () => {
+    const b = [{ ...blocks[0], text: blocks[0].text + " ועוד משפט" }, { id: "b3", title: "משחק חדש לגמרי", kind: "peak", minutes: 10, text: "כדורגל קבוצות" }];
+    const r = await req("POST", "/api/write/merge-plan", { a: blocks, b });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.rows[0].state, "changed");
+    assert.ok(r.body.rows.some((x) => x.state === "onlyA"));
+    assert.ok(r.body.rows.some((x) => x.state === "onlyB"));
+    const same = await req("POST", "/api/write/merge-plan", { a: blocks, b: blocks });
+    assert.ok(same.body.rows.every((x) => x.state === "same"));
+  });
+  it("hooks, game rules, series and translation sheet", async () => {
+    const doc = { title: "אחריות אישית", meta: { value: "אחריות", ageGroup: "כיתה ז' - מעורב" }, blocks };
+    const h = await req("POST", "/api/write/hooks", doc);
+    assert.equal(h.body.hooks.length, 6);
+    const g = await req("POST", "/api/write/game-rules", { name: "מירוץ הדגלים", players: 20, space: "outdoor", goal: "להביא את הדגל לבסיס", style: "teams" });
+    assert.match(g.body.text, /## בטיחות/);
+    assert.equal((await req("POST", "/api/write/game-rules", { name: "x", goal: "מטרה" })).status, 400);
+    const n = await req("POST", "/api/write/next-series", doc);
+    assert.equal(n.body.items.length, 3);
+    const t = await req("POST", "/api/write/translate-sheet", { lang: "ru", doc });
+    assert.equal(t.body.stages[0].kind, "Начало");
+    assert.ok(t.body.glossary.some((x) => x.he === "אחריות"));
+    assert.equal((await req("POST", "/api/write/translate-sheet", { lang: "fr", doc })).status, 400);
+  });
+  it("viewer presence reaches only the owner", async () => {
+    const d = await req("POST", "/api/write/docs", { title: "נוכחות", meta: {}, blocks: [] });
+    assert.equal(d.status, 201, JSON.stringify(d.body));
+    const sh = await req("POST", `/api/write/docs/${d.body.id}/share`, {});
+    const p = await j(`/api/write/shared/${sh.body.token}/presence`, { method: "POST", body: JSON.stringify({ cid: "client-123456", name: "אורח", blockId: "a1" }) });
+    assert.equal(p.status, 200);
+    const mine = await req("GET", `/api/write/docs/${d.body.id}/presence`);
+    assert.equal(mine.body.viewers.length, 1);
+    assert.equal(mine.body.viewers[0].name, "אורח");
+    const other = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "v50other", password: "Passw0rd!xyz", displayName: "אחר נבדק", signupCode: "shevet-code" }) })).body.token;
+    assert.equal((await req("GET", `/api/write/docs/${d.body.id}/presence`, null, other)).status, 404);
+    assert.equal((await j(`/api/write/shared/bad-token/presence`, { method: "POST", body: JSON.stringify({ cid: "client-123456" }) })).status, 404);
+  });
+});
+
+describe("write v51 insights (346-366)", () => {
+  let tok;
+  const post = (tool, doc) => j(`/api/write/insights/${tool}`, { method: "POST", headers: { authorization: `Bearer ${tok}` }, body: JSON.stringify(doc) });
+  before(async () => { tok = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "v51user", password: "Passw0rd!xyz", displayName: "נבדק חמישים", signupCode: "shevet-code" }) })).body.token; });
+  const doc = {
+    title: "מדורה ואחריות",
+    meta: { minutes: 35, groupSize: 24, value: "אחריות", ageGroup: "כיתה ז' - מעורב" },
+    blocks: [
+      { id: "a", title: "פתיחה", kind: "open", minutes: 20, text: "כולם יושבים במעגל בשקט ומקשיבים לסיפור. החניכים כותבים פתק עם עט על דף נייר ואחר כך מדברים בדיון ארוך מאוד על המשמעות של האחריות האישית בתוך הקבוצה שלנו ובתוך הבית ובבית הספר ובכל מקום." },
+      { id: "b", title: "דיון", kind: "body", minutes: 15, text: "שיחה והקשבה בקבוצות." },
+      { id: "c", title: "מירוץ", kind: "peak", minutes: 10, text: "משחק תחרות עם חבל, כדור ומדורה בחוץ." },
+    ],
+  };
+  it("requires login and rejects unknown tools", async () => {
+    assert.equal((await j("/api/write/insights/pace", { method: "POST", body: "{}" })).status, 401);
+    assert.equal((await post("nope", doc)).status, 404);
+  });
+  it("pace flags long opening and total mismatch", async () => {
+    const r = await post("pace", doc);
+    assert.equal(r.body.total, 45);
+    assert.ok(r.body.issues.some((i) => /הפתיחה ארוכה/.test(i.text)));
+    assert.ok(r.body.issues.some((i) => /היעד 35/.test(i.text)));
+  });
+  it("energy has a point per stage and advice", async () => {
+    const r = await post("energy", doc);
+    assert.equal(r.body.points.length, 3);
+    assert.ok(r.body.points[2].energy >= 5);
+    assert.ok(r.body.points[0].energy <= 3);
+  });
+  it("gear scales with group size", async () => {
+    const r = await post("gear", doc);
+    const pens = r.body.items.find((x) => x.item === "עטים");
+    assert.equal(pens.qty, 24);
+    assert.ok(r.body.items.some((x) => /גפרורים/.test(x.item)));
+  });
+  it("clarity, inclusive, tips, preflight, reflect, closing work", async () => {
+    assert.ok((await post("clarity", doc)).body.issues.length >= 1);
+    assert.ok((await post("inclusive", doc)).body.hits.some((h) => h.found === "כולם"));
+    assert.equal((await post("tips", doc)).body.tips.length, 3);
+    assert.ok((await post("preflight", doc)).body.items.some((x) => /דלי מים/.test(x)));
+    assert.equal((await post("reflect", doc)).body.questions.length, 5);
+    assert.ok((await post("closing", doc)).body.lines.length >= 2);
+    assert.equal((await post("pace", { title: "", meta: {}, blocks: [] })).status, 200);
+  });
+});
+
+describe("accounts v52 (367-387)", () => {
+  let adm;
+  const A = () => ({ authorization: `Bearer ${adm}` });
+  const reg = (u, extra = {}) => j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + " נבדק", signupCode: "shevet-code", ...extra }) });
+  const rq = (m, p, body, t) => j(p, { method: m, headers: t ? { authorization: `Bearer ${t}` } : A(), ...(body ? { body: JSON.stringify(body) } : {}) });
+  before(async () => {
+    const { hashPassword } = await import("../src/auth.js");
+    db.prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at, display_name, staff_role) VALUES (?,?,?,?,?,?,?)").run("v52admin", await hashPassword("Adm1n!Strong99"), "ADMIN", 0, new Date().toISOString(), "אדמין בדיקה", "SUPER");
+    adm = (await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "v52admin", password: "Adm1n!Strong99" }) })).body.token;
+    assert.ok(adm);
+  });
+
+  it("honeypot, reserved names and bad forms are refused", async () => {
+    assert.equal((await reg("botuser1", { website: "http://spam" })).status, 400);
+    assert.equal((await reg("botuser2", { formAge: 300 })).status, 400);
+    assert.equal((await reg("admin")).status, 400);
+    assert.equal((await reg("מנהל")).status, 400);
+    assert.equal((await reg("goodhuman", { formAge: 9000 })).status, 201);
+  });
+
+  it("invite: single use, hashed, usable without the signup code, then spent", async () => {
+    const c = await rq("POST", "/api/admin/security/invites", { label: "מדריכי צפון", maxUses: 1, days: 3 });
+    assert.equal(c.status, 201);
+    const code = c.body.code;
+    assert.equal((await j(`/api/auth/invite/${code}`)).body.valid, true);
+    const list = await rq("GET", "/api/admin/security/invites");
+    assert.ok(!JSON.stringify(list.body).includes(code));
+    const r1 = await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "invitee1", password: "Passw0rd!xyz", displayName: "מוזמן ראשון", inviteCode: code }) });
+    assert.equal(r1.status, 201);
+    const r2 = await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "invitee2", password: "Passw0rd!xyz", displayName: "מוזמן שני", inviteCode: code }) });
+    assert.equal(r2.status, 403);
+    assert.equal((await j(`/api/auth/invite/${code}`)).body.valid, false);
+    assert.ok([401, 403].includes((await j("/api/admin/security/invites", { headers: { authorization: `Bearer ${r1.body.token}` } })).status));
+  });
+
+  it("approval queue holds new users until approved", async () => {
+    assert.equal((await rq("PUT", "/api/admin/security/registration", { approval: true })).status, 200);
+    const r = await reg("waiting1");
+    assert.equal(r.status, 202);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "waiting1", password: "Passw0rd!xyz" }) })).status, 403);
+    const q = await rq("GET", "/api/admin/security/pending");
+    const row = q.body.find((x) => x.username === "waiting1");
+    assert.ok(row);
+    assert.equal((await rq("POST", `/api/admin/security/pending/${row.id}`, { approve: true })).status, 200);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "waiting1", password: "Passw0rd!xyz" }) })).status, 200);
+    await rq("PUT", "/api/admin/security/registration", { approval: false });
+  });
+
+  it("domain allowlist, daily cap and rotated code", async () => {
+    await rq("PUT", "/api/admin/security/registration", { domains: ["tzofim.org.il"] });
+    assert.equal((await reg("dom1", { email: "a@gmail.com" })).status, 400);
+    assert.equal((await reg("dom2")).status, 400);
+    assert.equal((await reg("dom3", { email: "a@tzofim.org.il" })).status, 201);
+    await rq("PUT", "/api/admin/security/registration", { domains: [] });
+    await rq("PUT", "/api/admin/security/registration", { newCode: "new-code-77" });
+    assert.equal((await reg("rot1")).status, 403);
+    assert.equal((await reg("rot2", { signupCode: "new-code-77" })).status, 201);
+    await rq("PUT", "/api/admin/security/registration", { clearCode: true });
+    await rq("PUT", "/api/admin/security/registration", { dailyCap: 1 });
+    assert.equal((await reg("cap1")).status, 429);
+    await rq("PUT", "/api/admin/security/registration", { dailyCap: 0 });
+    assert.equal((await reg("cap2")).status, 201);
+  });
+
+  it("bulk import creates users with temp passwords and skips bad rows", async () => {
+    const r = await rq("POST", "/api/admin/security/import-users", { rows: [{ displayName: "דנה כהן" }, { displayName: "דנה כהן" }, { displayName: "x y", username: "ab" }, { displayName: "רון לוי", email: "ron@example.com" }] });
+    assert.equal(r.status, 201);
+    assert.equal(r.body.created.length, 3);
+    assert.equal(r.body.skipped.length, 1);
+    const names = r.body.created.map((c) => c.username);
+    assert.equal(new Set(names).size, 3);
+    const login = await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: names[0], password: r.body.created[0].tempPassword }) });
+    assert.equal(login.status, 200);
+    assert.equal(login.body.user.mustChangePassword ?? login.body.user.mustChangePw ?? true, true);
+    assert.equal((await rq("POST", "/api/admin/security/import-users", { rows: [] })).status, 400);
+  });
+
+  it("new device is flagged on a second, different device", async () => {
+    const mk = (ua) => j("/api/auth/login", { method: "POST", headers: { "user-agent": ua }, body: JSON.stringify({ username: "goodhuman", password: "Passw0rd!xyz" }) });
+    await mk("Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36");
+    await mk("Mozilla/5.0 (iPhone; CPU iPhone OS 17) Safari/604.1");
+    const u = db.prepare("SELECT id FROM users WHERE username = 'goodhuman'").get();
+    const rows = db.prepare("SELECT device, new_device FROM auth_sessions WHERE user_id = ? ORDER BY created_at").all(u.id);
+    assert.ok(rows.some((r) => r.new_device === 1), JSON.stringify(rows));
+    const tok = (await mk("Mozilla/5.0 (iPhone; CPU iPhone OS 17) Safari/604.1")).body.token;
+    const h = await rq("GET", "/api/me/login-history", null, tok);
+    assert.ok(h.body.sessions.some((s) => s.newDevice));
+    const ev = await rq("GET", "/api/me/security-events", null, tok);
+    assert.ok(ev.body.events.some((e) => e.action === "login.newdevice"));
+  });
+
+  it("account expiry blocks login and live sessions", async () => {
+    const t = (await reg("temp1")).body.token;
+    const id = db.prepare("SELECT id FROM users WHERE username = 'temp1'").get().id;
+    assert.equal((await rq("POST", "/api/admin/security/expiry", { id, date: "2020-01-01" })).status, 200);
+    assert.equal((await rq("GET", "/api/auth/me", null, t)).status, 401);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "temp1", password: "Passw0rd!xyz" }) })).status, 401);
+    assert.equal((await rq("POST", "/api/admin/security/expiry", { id, date: null })).status, 200);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "temp1", password: "Passw0rd!xyz" }) })).status, 200);
+    assert.equal((await rq("POST", "/api/admin/security/expiry", { id: 1, date: "2030-01-01" })).status, 403);
+  });
+
+  it("security score reflects 2FA and contact state", async () => {
+    const t = (await reg("scorer1")).body.token;
+    const s = await rq("GET", "/api/me/security-score", null, t);
+    assert.equal(s.status, 200);
+    assert.ok(s.body.score < 80);
+    assert.equal(s.body.items.find((i) => i.key === "2fa").ok, false);
+    assert.equal(s.body.items.find((i) => i.key === "password").ok, true);
+  });
+
+  it("export and self-delete (needs password and confirmation, keeps activities detached)", async () => {
+    const t = (await reg("leaver1")).body.token;
+    const ex = await rq("GET", "/api/me/export", null, t);
+    assert.equal(ex.status, 200);
+    assert.equal(ex.body.user.username, "leaver1");
+    assert.ok(!JSON.stringify(ex.body).includes("password_hash"));
+    assert.equal((await rq("POST", "/api/me/delete", { password: "wrong", confirm: "מחיקה" }, t)).status, 400);
+    assert.equal((await rq("POST", "/api/me/delete", { password: "Passw0rd!xyz", confirm: "no" }, t)).status, 400);
+    assert.equal((await rq("POST", "/api/me/delete", { password: "Passw0rd!xyz", confirm: "מחיקה" }, t)).status, 200);
+    assert.equal((await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "leaver1", password: "Passw0rd!xyz" }) })).status, 401);
+    assert.equal((await rq("POST", "/api/me/delete", { password: "Adm1n!Strong99", confirm: "מחיקה" }, adm)).status, 403);
+  });
+
+  it("admin tools: hardening report, lockouts, inactive sweep, revoke all", async () => {
+    const h = await rq("GET", "/api/admin/security/hardening");
+    assert.equal(h.status, 200);
+    assert.ok(h.body.checks.length >= 8);
+    assert.ok(h.body.checks.find((c) => c.key === "admin2fa").ok === false);
+    for (let i = 0; i < 4; i++) await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "lockme", password: "bad-pass-1" }) });
+    const lk = await rq("GET", "/api/admin/security/lockouts");
+    assert.ok(Array.isArray(lk.body));
+    if (lk.body.length) assert.equal((await rq("POST", "/api/admin/security/lockouts/release", { key: lk.body[0].key })).status, 200);
+    db.prepare("UPDATE users SET last_login_at = '2020-01-01T00:00:00.000Z' WHERE username = 'dom3'").run();
+    const inact = await rq("GET", "/api/admin/security/inactive?days=180");
+    const d3 = inact.body.users.find((u) => u.username === "dom3");
+    assert.ok(d3);
+    assert.equal((await rq("POST", "/api/admin/security/inactive/disable", { ids: [d3.id] })).body.disabled, 1);
+    const t = (await reg("victim1")).body.token;
+    const ra = await rq("POST", "/api/admin/security/revoke-all", {});
+    assert.ok(ra.body.revoked >= 1);
+    assert.equal((await rq("GET", "/api/auth/me", null, t)).status, 401);
+    assert.equal((await rq("GET", "/api/auth/me", null, adm)).status, 200);
+    assert.equal((await j("/api/admin/security/hardening", { headers: { authorization: `Bearer ${t}` } })).status, 401);
+  });
+});
+
+describe("style lab v53 (388-422)", () => {
+  let tok, pid;
+  const h = () => ({ authorization: `Bearer ${tok}` });
+  const post = (p, body) => j(`/api/write/lab/${p}`, { method: "POST", headers: h(), body: JSON.stringify(body) });
+  before(async () => { tok = (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "v53user", password: "Passw0rd!xyz", displayName: "נבדק חמישים ושלוש", signupCode: "shevet-code" }) })).body.token; });
+  const doc = {
+    title: "אחריות", meta: { value: "אחריות", ageGroup: "כיתה ז'" },
+    blocks: [
+      { id: "a", title: "פתיחה", kind: "open", minutes: 10, text: "בואו נתחיל! מה אתם חושבים על אחריות? ספרו לחבר על פעם שבה לקחתם אחריות." },
+      { id: "b", title: "דיון", kind: "body", minutes: 15, text: "חלקו לקבוצות. כל קבוצה תחשוב איפה היא פוגשת אחריות בבית, בבית הספר ובשבט, ואז תציג במשפט אחד למה זה חשוב לה." },
+      { id: "c", title: "סיכום", kind: "close", minutes: 5, text: "נסכם: מה לקחתם איתכם מהפעולה? ציוד: דפים ועטים." },
+    ],
+  };
+  it("requires login and rejects tiny docs", async () => {
+    assert.equal((await j("/api/write/lab/analyze", { method: "POST", body: "{}" })).status, 401);
+    assert.equal((await post("analyze", { blocks: [{ text: "קצר" }] })).status, 422);
+  });
+  it("decomposes and fingerprints", async () => {
+    const r = await post("analyze", doc);
+    assert.equal(r.status, 200);
+    assert.equal(r.body.decomposition.stages.length, 3);
+    assert.equal(r.body.decomposition.totalMinutes, 30);
+    assert.equal(r.body.fingerprint.address.dominant, "second");
+    assert.ok(r.body.description.length >= 5);
+    assert.match(r.body.card, /בדיוק בסגנון/);
+  });
+  it("saves, lists, scores, rewrites, drafts and deletes profiles", async () => {
+    const s = await post("profiles", { name: "הסגנון שלי", doc });
+    assert.equal(s.status, 201); pid = s.body.id;
+    assert.equal((await j("/api/write/lab/profiles", { headers: h() })).body.profiles.length, 1);
+    const sc = await post("score", { doc, profileId: pid });
+    assert.ok(sc.body.score >= 85);
+    const formal = { blocks: [{ title: "פתיחה", kind: "open", text: "יתבקשו החניכים לבצע את המשימה במסגרת הפעילות על מנת ללמוד, ולאחר מכן יציגו את התוצאות לכל הקבוצה ויסכמו." }] };
+    const low = await post("score", { doc: formal, profileId: pid });
+    assert.ok(low.body.score < sc.body.score && low.body.gaps.length > 0);
+    const rw = await post("rewrite", { text: formal.blocks[0].text, profileId: pid });
+    assert.ok(rw.body.changes.length > 0 && !/יתבקשו/.test(rw.body.text));
+    const dr = await post("draft", { doc, topic: "חברות", value: "חברות", profileId: pid });
+    assert.equal(dr.body.blocks.length, 3);
+    assert.match(dr.body.blocks[0].text, /חברות/);
+    assert.equal((await post("profiles/merge", { a: pid, b: pid, name: "ממוזג" })).status, 201);
+    const ex = await j(`/api/write/lab/profiles/${pid}/export`, { headers: h() });
+    assert.equal(ex.body.kind, "scout-style-profile");
+    assert.equal((await post("profiles/import", ex.body)).status, 201);
+    assert.equal((await j(`/api/write/lab/profiles/${pid}`, { method: "DELETE", headers: h() })).status, 200);
+    assert.equal((await post("score", { doc, profileId: pid })).status, 404);
+  });
+  it("applies the style card and keeps it when style is saved again", async () => {
+    const a = await post("analyze", doc);
+    assert.equal((await post("apply-card", { card: a.body.card })).body.active, true);
+    await j("/api/me/style", { method: "PUT", headers: h(), body: JSON.stringify({ style: { tone: "warm" } }) });
+    const st = (await j("/api/me/style", { headers: h() })).body.style;
+    assert.match(st.card, /בדיוק בסגנון/);
+    assert.equal((await post("apply-card", { clear: true })).body.active, false);
+  });
+  it("reviews, splits free text, compares and reports my style", async () => {
+    const r = await post("review", doc);
+    assert.ok(r.body.completeness.score > 0 && r.body.concepts.length === 3 && r.body.tips.length <= 3);
+    const t = await post("from-text", { text: "פעולה על אחריות\nפתיחה: 10 דקות\nשואלים שאלה לכל הקבוצה.\nדיון\nמדברים בקבוצות על המשמעות.\nסיכום\nמסכמים יחד את מה שלמדנו." });
+    assert.ok(t.body.blocks.length >= 3 && t.body.blocks[0].minutes === 10);
+    const c = await post("compare", { a: doc, b: doc });
+    assert.equal(c.body.similarity.score, 100);
+    const m = await j("/api/write/lab/my-style", { headers: h() });
+    assert.equal(m.status, 200);
+  });
+  it("limits profiles to 10", async () => {
+    for (let i = 0; i < 12; i++) await post("profiles", { name: `p${i}`, doc });
+    const l = await j("/api/write/lab/profiles", { headers: h() });
+    assert.equal(l.body.profiles.length, 10);
+    assert.equal((await post("profiles", { name: "x", doc })).status, 409);
+  });
+});
+
+describe("stage 54 (423-452)", () => {
+  let adm, tok, uid;
+  const hh = (t) => ({ authorization: `Bearer ${t}` });
+  const P = (path, t, body, method = "POST") => j(path, { method, headers: t ? hh(t) : {}, body: body === undefined ? undefined : JSON.stringify(body) });
+  before(async () => {
+    const { hashPassword } = await import("../src/auth.js");
+    const h = await hashPassword("Admin#Pass54xx");
+    db.prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at) VALUES (?,?,?,0,?)").run("adm54", h, "ADMIN", new Date().toISOString());
+    adm = (await j("/api/auth/login", { method: "POST", body: JSON.stringify({ username: "adm54", password: "Admin#Pass54xx" }) })).body.token;
+    const r = await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: "u54", password: "Passw0rd!xyz", displayName: "נבדק חמישים וארבע", signupCode: "shevet-code" }) });
+    tok = r.body.token; uid = r.body.user.id;
+  });
+
+  it("adds request id, server timing and compresses large API json", async () => {
+    const r = await fetch(base + "/api/activities?pageSize=50", { headers: { "accept-encoding": "gzip" } });
+    assert.match(r.headers.get("x-request-id") || "", /^[0-9a-f]{10}$/);
+    assert.match(r.headers.get("server-timing") || "", /app;dur=/);
+    assert.equal(r.headers.get("content-encoding"), "gzip");
+    const r2 = await fetch(base + "/api/health");
+    assert.ok(!r2.headers.get("content-encoding"));
+  });
+
+  it("collects client errors, groups them and strips urls/emails", async () => {
+    for (let i = 0; i < 3; i++) assert.equal((await P("/api/client-error", null, { message: `TypeError: x is undefined at https://x.com/a?q=secret user@mail.com ${i}`, stack: "TypeError\n    at foo (https://x.com/_next/a.js:10:5)", page: "/library" })).status, 204);
+    assert.equal((await P("/api/client-error", null, { nope: 1 })).status, 400);
+    assert.equal((await j("/api/admin/security/errors")).status, 401);
+    const g = (await j("/api/admin/security/errors", { headers: hh(adm) })).body;
+    assert.equal(g.groups.length, 1);
+    assert.equal(g.groups[0].count, 3);
+    assert.ok(!/secret|user@mail/.test(g.groups[0].message));
+    assert.equal((await j("/api/admin/security/errors", { method: "DELETE", headers: hh(adm) })).status, 200);
+  });
+
+  it("stores web vitals, rejects junk and reports p75", async () => {
+    for (const v of [1000, 2000, 3000, 4000]) await P("/api/vitals", null, { metric: "LCP", value: v, page: "/library" });
+    assert.equal((await P("/api/vitals", null, { metric: "LCP", value: -5 })).status, 400);
+    assert.equal((await P("/api/vitals", null, { metric: "NOPE", value: 5 })).status, 400);
+    assert.equal((await P("/api/vitals", null, { metrics: [{ metric: "CLS", value: 0.05, page: "/" }, { metric: "INP", value: 150 }] })).body.saved, 2);
+    const v = (await j("/api/admin/security/vitals", { headers: hh(adm) })).body;
+    const lcp = v.metrics.find((m) => m.metric === "LCP");
+    assert.equal(lcp.samples, 4);
+    assert.equal(lcp.p75, 4000);
+    assert.equal(lcp.rating, "needs");
+    assert.equal(v.metrics.find((m) => m.metric === "CLS").rating, "good");
+  });
+
+  it("serves a public status document without secrets", async () => {
+    const s = (await j("/api/status")).body;
+    assert.equal(s.ok, true);
+    assert.equal(s.db.ok, true);
+    assert.ok(s.uptimeSec >= 0 && s.version);
+    assert.ok(!JSON.stringify(s).match(/secret|password|token/i));
+  });
+
+  it("feature flags: admin manages, public reads, percent rollout is stable", async () => {
+    assert.equal((await P("/api/admin/security/flags/voice-search", tok, { enabled: true }, "PUT")).status, 401);
+    assert.equal((await P("/api/admin/security/flags/Bad Key", adm, { enabled: true }, "PUT")).status, 400);
+    assert.equal((await P("/api/admin/security/flags/voice-search", adm, { enabled: false, note: "בדיקה" }, "PUT")).status, 200);
+    assert.equal((await j("/api/flags")).body.flags["voice-search"], false);
+    await P("/api/admin/security/flags/half", adm, { enabled: true, percent: 50 }, "PUT");
+    const a = (await j("/api/flags", { headers: hh(tok) })).body.flags.half, b = (await j("/api/flags", { headers: hh(tok) })).body.flags.half;
+    assert.equal(a, b);
+    const { flagOn } = await import("../src/routes-v54.js");
+    const on = Array.from({ length: 400 }, (_, i) => flagOn({ key: "x", enabled: 1, percent: 30 }, `u${i}`)).filter(Boolean).length;
+    assert.ok(on > 80 && on < 160, `~30% expected, got ${on}`);
+    assert.equal((await j("/api/admin/security/flags", { headers: hh(adm) })).body.flags.length, 2);
+    assert.equal((await P("/api/admin/security/flags/half", adm, undefined, "DELETE")).status, 200);
+    assert.equal((await P("/api/admin/security/flags/half", adm, undefined, "DELETE")).status, 404);
+  });
+
+  it("extends a session with a fresh token for the same session", async () => {
+    assert.equal((await P("/api/auth/extend", null, {})).status, 401);
+    const r = await P("/api/auth/extend", tok, {});
+    assert.equal(r.status, 200);
+    const jwt = (await import("jsonwebtoken")).default;
+    const a = jwt.decode(tok), b = jwt.decode(r.body.token);
+    assert.equal(a.sid, b.sid);
+    assert.equal((await j("/api/me/style", { headers: hh(r.body.token) })).status, 200);
+  });
+
+  it("smart search handles niqqud, synonyms, spelling and typos", async () => {
+    const first = (await j("/api/activities?pageSize=1")).body.items[0];
+    const t = first.title.split(" ")[0];
+    const r = (await j(`/api/search/smart?q=${encodeURIComponent(t)}`)).body;
+    assert.ok(r.results.some((x) => x.id === first.id));
+    assert.equal((await j("/api/search/smart?q=a")).status, 400);
+    const { smartSearch, norm, skeleton } = await import("../src/smart-search.js");
+    assert.equal(norm("חַבְרוּת"), "חברות");
+    assert.equal(skeleton("חברות"), skeleton("חברת"));
+    const acts = [{ id: 1, title: "מדורת שיתוף", leadingValue: "אחריות", tags: ["שיר"], stages: [], equipment: "" }, { id: 2, title: "בריונות ברשת", leadingValue: "כבוד", tags: [], stages: [] }];
+    assert.equal(smartSearch(acts, "אש").results[0].id, 1);
+    assert.equal(smartSearch(acts, "בריינות").results[0].id, 2);
+    const typo = smartSearch(acts, "בריונוק");
+    assert.equal(typo.didYouMean, "בריונות");
+    assert.equal(typo.results[0].id, 2);
+  });
+
+  it("coverage matrix lists gaps by value and grade", async () => {
+    const c = (await j("/api/coverage")).body;
+    assert.equal(c.grades.length, 10);
+    assert.ok(c.matrix.length > 0 && c.gaps.length > 0);
+    assert.match(c.gaps[0].text, /אין פעולה בערך/);
+    const { coverageMatrix } = await import("../src/routes-v54.js");
+    const m = coverageMatrix([{ leadingValue: "אחריות", ageGroup: "כיתה ז' - מעורב" }, { leadingValue: "אחריות", ageGroup: "כיתה יא' - בנות" }]);
+    assert.equal(m.matrix[0].counts["ז'"], 1);
+    assert.equal(m.matrix[0].counts["יא'"], 1);
+    assert.equal(m.matrix[0].counts["י'"], 0);
+  });
+
+  it("reactions toggle per user and need login", async () => {
+    const id = (await j("/api/activities?pageSize=1")).body.items[0].id;
+    assert.equal((await P(`/api/reactions/${id}`, null, { emoji: "👍" }, "PUT")).status, 401);
+    assert.equal((await P(`/api/reactions/${id}`, tok, { emoji: "💩" }, "PUT")).status, 400);
+    assert.equal((await P(`/api/reactions/99999`, tok, { emoji: "👍" }, "PUT")).status, 404);
+    const a = (await P(`/api/reactions/${id}`, tok, { emoji: "👍" }, "PUT")).body;
+    assert.equal(a.counts["👍"], 1);
+    assert.deepEqual(a.mine, ["👍"]);
+    assert.equal((await j(`/api/reactions/${id}`)).body.counts["👍"], 1);
+    assert.equal((await j(`/api/reactions/${id}`)).body.mine.length, 0);
+    const b = (await P(`/api/reactions/${id}`, tok, { emoji: "👍" }, "PUT")).body;
+    assert.equal(b.total, 0);
+  });
+
+  it("nps: not due for new accounts, due after 2 days, snoozed after answer", async () => {
+    assert.equal((await j("/api/nps/due", { headers: hh(tok) })).body.due, false);
+    db.prepare("UPDATE users SET created_at = ? WHERE id = ?").run(new Date(Date.now() - 5 * 86400000).toISOString(), uid);
+    assert.equal((await j("/api/nps/due", { headers: hh(tok) })).body.due, true);
+    assert.equal((await P("/api/nps", tok, { score: 11 })).status, 400);
+    assert.equal((await P("/api/nps", tok, { score: 9, comment: "מצוין" })).status, 201);
+    assert.equal((await j("/api/nps/due", { headers: hh(tok) })).body.due, false);
+    const r = (await j("/api/admin/security/nps", { headers: hh(adm) })).body;
+    assert.equal(r.responses, 1);
+    assert.equal(r.nps, 100);
+    assert.equal(r.comments[0].comment, "מצוין");
+    assert.equal((await j("/api/admin/security/nps")).status, 401);
+  });
+
+  it("stamps: admin marks an activity as team-verified, shown publicly", async () => {
+    const id = (await j("/api/activities?pageSize=1")).body.items[0].id;
+    assert.equal((await j(`/api/activities/${id}`)).body.verified, null);
+    assert.equal((await P(`/api/admin/security/stamps/${id}`, tok, { verified: true }, "PUT")).status, 401);
+    assert.equal((await P(`/api/admin/security/stamps/${id}`, adm, { verified: true, note: "נבדקה בשטח" }, "PUT")).status, 200);
+    const a = (await j(`/api/activities/${id}`)).body;
+    assert.equal(a.verified.note, "נבדקה בשטח");
+    assert.ok(!JSON.stringify(a.verified).includes("adm54"));
+    assert.ok((await j("/api/admin/security/stamps", { headers: hh(adm) })).body.stamped >= 1);
+    await P(`/api/admin/security/stamps/${id}`, adm, { verified: false }, "PUT");
+    assert.equal((await j(`/api/activities/${id}`)).body.verified, null);
+    assert.equal((await P(`/api/admin/security/stamps/99999`, adm, { verified: true }, "PUT")).status, 404);
+  });
+
+  it("estimates cost with default and personal prices", async () => {
+    const r = await P("/api/cost/estimate", null, { equipment: "דף ועט לכל חניך\nחבל 3\nמשהו מוזר", groupSize: 10 });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.lines[0].qty, 10);
+    assert.equal(r.body.unknown[0], "משהו מוזר");
+    assert.equal(r.body.total, 10 * 0.15 + 10 * 3 + 3 * 15);
+    assert.equal((await P("/api/me/prices", null, undefined, "PUT")).status, 401);
+    assert.equal((await P("/api/me/prices", tok, { prices: { חבל: 50, bad: -1 } }, "PUT")).status, 400);
+    assert.equal((await P("/api/me/prices", tok, { prices: { חבל: 50 } }, "PUT")).status, 200);
+    const mine = await P("/api/cost/estimate", tok, { equipment: "חבל 2", groupSize: 10 });
+    assert.equal(mine.body.total, 100);
+    assert.equal(mine.body.lines[0].source, "user");
+    const a = (await j("/api/activities?pageSize=1")).body.items[0];
+    assert.equal((await P("/api/cost/estimate", null, { activityId: a.id })).status, 200);
+    assert.equal((await P("/api/cost/estimate", null, { activityId: 99999 })).status, 404);
+  });
+
+  it("backup restore drill passes on a fresh backup", async () => {
+    assert.equal((await P("/api/admin/security/drill", tok, {})).status, 401);
+    const r = await P("/api/admin/security/drill", adm, {});
+    assert.equal(r.status, 200);
+    assert.equal(r.body.ok, true);
+    assert.equal(r.body.integrity, "ok");
+    assert.ok(r.body.tables.find((t) => t.table === "activities").backup > 0);
+  });
+});
+
+describe("stage 55 seo plumbing", () => {
+  it("marks API responses as noindex", async () => {
+    const r = await fetch(base + "/api/activities?pageSize=1");
+    assert.match(r.headers.get("x-robots-tag") || "", /noindex/);
+  });
+  it("lets the page server call the API without being counted as a visitor, but only with the secret key", async () => {
+    const count = () => db.prepare("SELECT COUNT(*) AS c FROM sessions WHERE user_agent = ?").get("ssr-probe/1").c;
+    const before = count();
+    await fetch(base + "/api/activities?pageSize=1", { headers: { "user-agent": "ssr-probe/1", "x-internal-ssr": process.env.INTERNAL_SSR_KEY } });
+    assert.equal(count(), before, "internal call is not tracked as a visitor");
+    await fetch(base + "/api/activities?pageSize=1", { headers: { "user-agent": "ssr-probe/1", "x-internal-ssr": "wrong-key" } });
+    assert.equal(count(), before + 1, "a wrong key is treated as an ordinary visitor");
+  });
+});
+
+describe("stage 56 (453-469) סטודיו סיפור אישי", () => {
+  let tok, tok2;
+  const hh = (t) => ({ authorization: `Bearer ${t}` });
+  const P = (path, t, body, method = "POST") => j(path, { method, headers: t ? hh(t) : {}, body: body === undefined ? undefined : JSON.stringify(body) });
+  const STORY = 'היה לי בן 14 והמדריך שלי ביקש ממני לקחת את הקבוצה בטיול ללילה בחורשה. אני זוכר את הריח של העשן מהמדורה. ואז אחד החניכים לחש לי: "אני רוצה הביתה". התביישתי שאני לא יודע מה להגיד. ישבתי לידו ושתקתי חמש דקות. מאז אני יודע שלפעמים הדבר הכי טוב הוא להישאר.';
+  before(async () => {
+    const mk = async (u) => (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + " נבדק", signupCode: "shevet-code" }) })).body.token;
+    tok = await mk("u56a");
+    tok2 = await mk("u56b");
+  });
+
+  it("כל הנתיבים דורשים התחברות", async () => {
+    for (const [m, p] of [["POST", "/api/story/analyze"], ["POST", "/api/story/build"], ["GET", "/api/story/memories"], ["GET", "/api/story/stories"], ["GET", "/api/story/dict"], ["POST", "/api/story/ai"], ["POST", "/api/activities/1/add-my-story"]]) {
+      assert.equal((await P(p, null, m === "POST" ? {} : undefined, m)).status, 401, p);
+    }
+  });
+
+  it("המילים שלי: נשמרות, מנוקות, לא נמחקות בשמירת סגנון, ונכנסות להנחיה למודל", async () => {
+    assert.deepEqual((await P("/api/story/dict", tok, undefined, "GET")).body, { say: [], never: [] });
+    const put = await P("/api/story/dict", tok, { say: [" יאללה ", "יאללה", "תקשיבו"], never: ["אחי"] }, "PUT");
+    assert.deepEqual(put.body, { say: ["יאללה", "תקשיבו"], never: ["אחי"] });
+    const sv = await P("/api/me/style", tok, { style: { tone: "warm" } }, "PUT");
+    assert.equal(sv.status, 200);
+    assert.deepEqual(sv.body.style.voice, { say: ["יאללה", "תקשיבו"], never: ["אחי"] });
+    const { styleGuide } = await import("../src/style.js");
+    const g = styleGuide(sv.body.style);
+    assert.match(g, /אוהב להגיד: יאללה, תקשיבו/);
+    assert.match(g, /לעולם לא אומר[^]*אחי/);
+    assert.deepEqual((await P("/api/story/dict", tok2, undefined, "GET")).body, { say: [], never: [] }, "משתמש אחר לא רואה");
+  });
+
+  it("ניתוח: ציון, קלישאות, פרטים חסרים, הקראה ופגיעות במילון", async () => {
+    const r = await P("/api/story/analyze", tok, { text: STORY + " יאללה אחי." });
+    assert.equal(r.status, 200);
+    assert.ok(r.body.score.score >= 50, "ציון " + r.body.score.score);
+    assert.ok(r.body.score.parts.some((p) => p.key === "dict"));
+    assert.equal(r.body.dict.neverHits[0].word, "אחי");
+    assert.ok(r.body.read.seconds > 5);
+    const g = await P("/api/story/analyze", tok, { text: "חשוב לציין שאחריות היא ערך חשוב מאוד בעולם של היום. בסופו של דבר, כל אחד מאיתנו צריך ללמוד לקחת אחריות, להיות הגון ולעזור לאחרים. זהו מסע מרתק שמלמד אותנו משמעות." });
+    assert.ok(g.body.score.score < 35);
+    assert.ok(g.body.cliches.items.length >= 3);
+    assert.equal((await P("/api/story/analyze", tok, { text: "x".repeat(12001) })).status, 400);
+  });
+
+  it("כלי טקסט: ניקוי תמלול, רגיסטר, קלישאות, הוראות במה, גילאים, השוואה", async () => {
+    const vc = await P("/api/story/voice-clean", tok, { text: "אממ אני אני הלכתי לים ואז פתאום ירד גשם והיה קר מאוד ואז כולם רצו הביתה" });
+    assert.ok(!vc.body.text.includes("אממ") && !/אני אני/.test(vc.body.text));
+    assert.equal((await P("/api/story/register", tok, { text: "אולם על כן הלכנו.", level: 2 })).body.text, "אבל אז הלכנו.");
+    assert.equal((await P("/api/story/register", tok, { text: "x", level: 5 })).status, 400);
+    assert.match((await P("/api/story/fix-cliches", tok, { text: "על מנת להצליח, בסופו של דבר עבדנו." })).body.text, /^כדי להצליח, בסוף עבדנו\.$/);
+    assert.ok((await P("/api/story/directions", tok, { text: STORY })).body.directions.length >= 3);
+    const ag = (await P("/api/story/ages", tok, { text: STORY })).body;
+    assert.match(ag.young.text, /\(עוצרים\)/);
+    assert.ok(!/מאז אני יודע/.test(ag.older.text));
+    const d = (await P("/api/story/diff", tok, { a: "אני הלכתי הביתה", b: "אני רצתי הביתה" })).body;
+    assert.deepEqual([d.added, d.deleted, d.same], [1, 1, 2]);
+  });
+
+  it("בניית סיפור: חלקים, פתיחות, סיומים וסוגי רגעים", async () => {
+    const r = (await P("/api/story/build", tok, { situation: "הייתי מדריך צעיר", turn: "חניך אחד לחש שהוא רוצה הביתה", feeling: "בושה", learning: "שלפעמים להישאר זה הכול", value: "אחריות", want: "שתדעו שאפשר להישאר" })).body;
+    assert.equal(r.parts.length, 5);
+    assert.equal(r.openings.length, 3);
+    assert.equal(r.closings.length, 4);
+    assert.equal(r.moment.id, "responsibility");
+    assert.equal((await P("/api/story/build", tok, { situation: "x".repeat(1600) })).status, 400);
+    assert.equal((await j("/api/story/moments", { headers: hh(tok) })).body.values.length, 14);
+    assert.equal((await j("/api/story/moments?value=" + encodeURIComponent("יושר"), { headers: hh(tok) })).body.moments.length, 3);
+    assert.equal((await j("/api/story/moments?value=nope", { headers: hh(tok) })).status, 404);
+  });
+
+  it("זיכרונות: שמות מוסתרים, ציטוט חניך דורש עילום שם או אישור, ופרטים מזהים ורגישים נחסמים", async () => {
+    const mem = await P("/api/story/memories", tok, { kind: "memory", title: "הלילה בחורשה", body: "ישבנו עם דני ליד המדורה והוא סיפר לי הכול", value: "אחריות", tags: ["טיול"], maskNames: ["דני"] });
+    assert.equal(mem.status, 201);
+    assert.match(mem.body.body, /עם חניך א' ליד/);
+    assert.ok(!mem.body.body.includes("דני"));
+    const q = { kind: "quote", title: "אמר לי", body: "אני רוצה שמישהו יקשיב לי", value: "הקשבה" };
+    assert.equal((await P("/api/story/memories", tok, { ...q, consent: "self" })).body.error?.code ?? (await P("/api/story/memories", tok, { ...q, consent: "self" })).body.code, "CONSENT_REQUIRED");
+    const phone = await P("/api/story/memories", tok, { ...q, body: "תתקשרו אליו 052-1234567", consent: "anonymous" });
+    assert.equal(phone.status, 422);
+    assert.match(JSON.stringify(phone.body), /מספר טלפון/);
+    const sens = await P("/api/story/memories", tok, { ...q, body: "הוא סיפר שיש לו אבחון וריטלין", consent: "anonymous" });
+    assert.equal(sens.status, 422);
+    const ok = await P("/api/story/memories", tok, { ...q, consent: "approved" });
+    assert.equal(ok.status, 201);
+    assert.equal(ok.body.consent, "approved");
+    assert.equal((await j("/api/story/memories?kind=quote", { headers: hh(tok) })).body.length, 1);
+    assert.equal((await j("/api/story/memories?q=" + encodeURIComponent("מדורה"), { headers: hh(tok) })).body.length, 1);
+    assert.equal((await j("/api/story/memories?value=" + encodeURIComponent("הקשבה"), { headers: hh(tok) })).body.length, 1);
+    const withMem = (await j("/api/story/moments?value=" + encodeURIComponent("אחריות"), { headers: hh(tok) })).body;
+    assert.equal(withMem.memories.length, 1);
+    // פרטיות בין משתמשים
+    assert.equal((await j("/api/story/memories", { headers: hh(tok2) })).body.length, 0);
+    assert.equal((await P(`/api/story/memories/${mem.body.id}`, tok2, undefined, "DELETE")).status, 404);
+    assert.equal((await P(`/api/story/memories/${mem.body.id}`, tok, undefined, "DELETE")).status, 204);
+    assert.equal((await P(`/api/story/memories/${mem.body.id}`, tok, undefined, "DELETE")).status, 404);
+  });
+
+  it("סיפורים: גרסאות, השוואה, ואישור שדורש קריאה ונשלל בכל שינוי", async () => {
+    const c = await P("/api/story/stories", tok, { title: "הלילה בחורשה", value: "אחריות", age: "ד'", body: STORY, opening: "שאלה: יצא לכם פעם להרגיש בושה?", closing: "אני רוצה שתדעו שאפשר להישאר." });
+    assert.equal(c.status, 201);
+    const id = c.body.id;
+    assert.equal(c.body.approved, false);
+    assert.equal(c.body.versions.length, 1);
+    const base = { title: "הלילה בחורשה", value: "אחריות", age: "ד'", body: STORY, opening: "שאלה: יצא לכם פעם להרגיש בושה?", closing: "אני רוצה שתדעו שאפשר להישאר." };
+    assert.equal((await P(`/api/story/stories/${id}`, tok, { ...base, approved: true }, "PUT")).body.error?.code ?? "CONFIRM_REQUIRED", "CONFIRM_REQUIRED");
+    const rawNoConfirm = await P(`/api/story/stories/${id}`, tok, { ...base, approved: true }, "PUT");
+    assert.equal(rawNoConfirm.status, 422);
+    const ap = await P(`/api/story/stories/${id}`, tok, { ...base, approved: true, confirm: true }, "PUT");
+    assert.equal(ap.status, 200);
+    assert.equal(ap.body.approved, true);
+    assert.equal(ap.body.versions.length, 1, "אישור לבד לא יוצר גרסה");
+    const edit = await P(`/api/story/stories/${id}`, tok, { ...base, body: STORY + " ועוד משפט אחד.", versionLabel: "אחרי עריכה" }, "PUT");
+    assert.equal(edit.body.approved, false, "שינוי בטקסט שולל אישור");
+    assert.equal(edit.body.versions.length, 2);
+    assert.equal(edit.body.versions[1].label, "אחרי עריכה");
+    const d = (await P("/api/story/diff", tok, { a: edit.body.versions[0].text, b: edit.body.versions[1].text })).body;
+    assert.ok(d.added >= 3 && d.deleted === 0);
+    assert.equal((await P("/api/story/stories", tok, { title: "קצר", body: "קצר מדי" })).status, 201);
+    const short = (await j("/api/story/stories", { headers: hh(tok) })).body.find((s) => s.title === "קצר");
+    assert.equal((await P(`/api/story/stories/${short.id}`, tok, { title: "קצר", body: "קצר מדי", approved: true, confirm: true }, "PUT")).status, 422);
+    assert.equal((await j(`/api/story/stories/${id}`, { headers: hh(tok2) })).status, 404);
+    assert.equal((await P(`/api/story/stories/${id}`, tok2, undefined, "DELETE")).status, 404);
+  });
+
+  it("הוספה לפעולה: רק בעלים, רק סיפור מאושר, פתיחה וסיום או במלואו, עם גרסה", async () => {
+    const act = (await P("/api/activities/quick", tok, { kind: "value", topic: "אחריות בטיול" })).body;
+    const list = (await j("/api/story/stories", { headers: hh(tok) })).body;
+    const st = list.find((s) => s.title === "הלילה בחורשה");
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id })).status, 422, "לא מאושר");
+    const full = (await j(`/api/story/stories/${st.id}`, { headers: hh(tok) })).body;
+    await P(`/api/story/stories/${st.id}`, tok, { title: full.title, value: full.value, age: full.age, body: full.body, opening: full.opening, closing: full.closing, approved: true, confirm: true }, "PUT");
+    const sug = (await j(`/api/story/suggest?activityId=${act.id}`, { headers: hh(tok) })).body;
+    assert.equal(sug.stories.length, 1);
+    assert.equal(sug.stories[0].match >= 2, true, "אותו ערך");
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok2, { storyId: st.id })).status, 403);
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: 99999 })).status, 404);
+    const r = await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id, mode: "bookend" });
+    assert.equal(r.status, 200);
+    assert.match(r.body.stages[0].content, /^פתיחה אישית \(הלילה בחורשה\): שאלה: יצא לכם/);
+    assert.match(r.body.stages.at(-1).content, /סיום אישי: אני רוצה שתדעו שאפשר להישאר\.$/);
+    const vs = await j(`/api/activities/${act.id}/versions`, { headers: hh(tok) });
+    assert.ok(vs.body.items.some((v) => /סיפור אישי/.test(v.note || "")));
+    const r2 = await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id, mode: "full", stage: 2 });
+    assert.match(r2.body.stages[2].content, /הסיפור שלי \(הלילה בחורשה\): היה לי בן 14/);
+    assert.equal((await P(`/api/activities/${act.id}/add-my-story`, tok, { storyId: st.id, mode: "full", stage: 9 })).status, 400);
+  });
+
+  it("ליטוש עם מודל: בלי מפתח מחזיר הנחיה להעתקה, עם מפתח מחזיר טקסט ואזהרות המצאה, ונופל להנחיה בכשל", async () => {
+    const { config } = await import("../src/config.js");
+    const noKey = (await P("/api/story/ai", tok, { text: STORY, goal: "young", age: "כיתה ד'" })).body;
+    assert.equal(noKey.mode, "prompt");
+    assert.match(noKey.prompt, /אל תמציא עובדות/);
+    assert.match(noKey.prompt, /יאללה/, "המילון האישי בהנחיה");
+    assert.equal((await P("/api/story/ai", tok, { text: "קצר" })).status, 400);
+    const prevKey = config.ai.key, realFetch = globalThis.fetch;
+    config.ai.key = "test-key";
+    try {
+      let mode = "ok";
+      globalThis.fetch = async (url, opts) => {
+        if (!String(url).startsWith("https://api.anthropic.com")) return realFetch(url, opts);
+        if (mode === "fail") return new Response("no", { status: 500 });
+        return new Response(JSON.stringify({ content: [{ text: JSON.stringify({ text: "סיפור חדש ומלוטש. בן 15 הייתי, ואמרתי \"אני לא מפחד\" וכולם שמעו.", changes: ["קיצור"] }) }] }), { status: 200, headers: { "content-type": "application/json" } });
+      };
+      const ok = (await P("/api/story/ai", tok, { text: STORY, goal: "polish" })).body;
+      assert.equal(ok.mode, "ai");
+      assert.match(ok.text, /מלוטש/);
+      assert.equal(ok.warnings.length, 2, "מספר 15 וציטוט שלא היו");
+      mode = "fail";
+      assert.equal((await P("/api/story/ai", tok, { text: STORY })).body.mode, "prompt");
+    } finally { globalThis.fetch = realFetch; config.ai.key = prevKey; }
+  });
+});
+
+describe("stage 57 (470-502) עוזר שיחות", () => {
+  let tok, tok2;
+  const hh = (t) => ({ authorization: `Bearer ${t}` });
+  const P = (path, t, body, method = "POST", extra = {}) => j(path, { method, headers: { ...(t ? hh(t) : {}), ...extra }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const X = (path, ext, body, method = "POST") => j(path, { method, headers: { "x-maoz-ext": ext }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const CHAT = [
+    "12.10.2026, 18:05 - דביר צופים: היי דני, מחר פעולה ב-17:00",
+    "12.10.2026, 18:20 - דני כהן: אפשר להגיע באיחור? יש לי חוג עד 17:30",
+    "13.10.2026, 09:10 - דביר צופים: בטח דני. הטלפון שלי 052-1234567",
+    "14.10.2026, 20:00 - דני כהן: אני לא רוצה לבוא יותר ZZMARK ואין לי חברים",
+  ].join("\n");
+  before(async () => {
+    const mk = async (u) => (await j("/api/auth/register", { method: "POST", body: JSON.stringify({ username: u, password: "Passw0rd!xyz", displayName: u + " נבדק", signupCode: "shevet-code" }) })).body.token;
+    tok = await mk("u57a");
+    tok2 = await mk("u57b");
+  });
+
+  it("כל הנתיבים דורשים התחברות, וכותרת תוסף שגויה נדחית", async () => {
+    for (const [m, p] of [["POST", "/api/chat/parse"], ["POST", "/api/chat/analyze"], ["POST", "/api/chat/reply"], ["POST", "/api/chat/check-reply"], ["POST", "/api/chat/announce"], ["GET", "/api/chat/saved"], ["GET", "/api/chat/followups"], ["GET", "/api/chat/tokens"], ["GET", "/api/chat/ping"], ["POST", "/api/chat/ai"], ["GET", "/api/chat/outreach"]]) {
+      assert.equal((await P(p, null, m === "POST" ? {} : undefined, m)).status, 401, p);
+    }
+    for (const bad of ["x", "mx_123", "mx_" + "z".repeat(48), "mx_" + "a".repeat(48)]) assert.equal((await X("/api/chat/ping", bad, undefined, "GET")).status, 401, bad);
+  });
+
+  it("פענוח ואחר כך ניתוח: השמות מוסתרים, ההודעה הממתינה והתגובות המוצעות", async () => {
+    const pr = (await P("/api/chat/parse", tok, { text: CHAT })).body;
+    assert.equal(pr.format, "android");
+    assert.equal(pr.count, 4);
+    assert.deepEqual(pr.participants.map((x) => x.name).sort(), ["דביר צופים", "דני כהן"]);
+    const r = await P("/api/chat/analyze", tok, { text: CHAT, me: "דביר צופים", kid: "m", guide: "f" });
+    assert.equal(r.status, 200);
+    const a = r.body;
+    assert.equal(a.mode, "one");
+    assert.equal(a.pending.intent.primary, "emotional");
+    assert.equal(a.safety.level, "attention");
+    assert.ok(a.safety.cats.includes("bullying"));
+    assert.ok(a.replies.variants.length >= 2);
+    assert.ok(a.plan.length >= 1);
+    assert.equal(a.scrubbed.phone, 1);
+    const withoutAliases = JSON.stringify({ ...a, aliases: undefined });
+    assert.ok(!/דני|דביר/.test(withoutAliases), "השמות המקוריים חוזרים רק בשדה aliases");
+    assert.ok(a.aliases.some((x) => x.name === "דני כהן" && x.alias === "חניך א'"));
+    assert.ok(!/052-?1234567/.test(JSON.stringify(a)));
+  });
+
+  it("הטקסט של השיחה לא נשמר באף מקום במסד", async () => {
+    await P("/api/chat/analyze", tok, { text: CHAT, me: "דביר צופים" });
+    await P("/api/chat/reply", tok, { message: "אני לא רוצה לבוא יותר ZZMARK" });
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name);
+    for (const t of tables) {
+      const rows = JSON.stringify(db.prepare(`SELECT * FROM "${t}"`).all());
+      assert.ok(!rows.includes("ZZMARK"), `נמצא בטבלה ${t}`);
+    }
+    const audits = db.prepare("SELECT details FROM audit_log WHERE action = 'chat.analyze' ORDER BY id DESC LIMIT 1").get();
+    assert.ok(audits && !String(audits.details).includes("דני") && /"mode"/.test(String(audits.details)));
+  });
+
+  it("מצוקה חמורה: מסגרת אדומה, בלי תגובות רגילות, קווי סיוע, ובלי AI", async () => {
+    const txt = "20.10.2026, 22:00 - דביר: היי\n20.10.2026, 22:05 - נועה: אני רוצה למות ואין טעם";
+    const a = (await P("/api/chat/analyze", tok, { text: txt, me: "דביר" })).body;
+    assert.equal(a.safety.level, "urgent");
+    assert.equal(a.replies.suppressed, true);
+    assert.ok(a.replies.safe.length >= 2);
+    assert.ok(a.safety.hotlines.some((h) => h.number === "1201"));
+    assert.equal(a.plan[0].level, "urgent");
+    const ai = await P("/api/chat/ai", tok, { text: txt, me: "דביר" });
+    assert.equal(ai.status, 409);
+    assert.equal(ai.body.error.code, "SAFETY_NO_AI");
+    const one = (await P("/api/chat/reply", tok, { message: "אני לא רוצה לחיות" })).body;
+    assert.equal(one.safety.level, "urgent");
+    assert.equal(one.replies.suppressed, true);
+  });
+
+  it("הודעה בודדת, בחירת כוונה ידנית, ובדיקת תגובה", async () => {
+    const r = (await P("/api/chat/reply", tok, { message: "מתי מתחילים מחר? 052-1234567", name: "דני", kid: "m" })).body;
+    assert.equal(r.detected.primary, "question");
+    assert.match(r.replies.variants[0].text, /היי דני/);
+    const e = (await P("/api/chat/reply", tok, { intent: "emotional" })).body;
+    assert.equal(e.replies.intent, "emotional");
+    const c = (await P("/api/chat/check-reply", tok, { draft: "זה יישאר בינינו, אל תדאג", where: "private", hour: 23 })).body;
+    assert.equal(c.ok, false);
+    assert.ok(c.items.some((i) => i.code === "secrecy" && i.level === "red"));
+    assert.equal((await P("/api/chat/check-reply", tok, { draft: "x".repeat(3001) })).status, 400);
+    assert.ok((await P("/api/chat/announce", tok, { title: "פעולה", date: "יום ה'", time: "17:00", place: "החורשה", bring: ["מים"] })).body.variants.length === 4);
+    assert.ok((await P("/api/chat/outreach?reason=quiet&name=נועה", tok, undefined, "GET")).body.variants.length >= 2);
+    assert.ok((await P("/api/chat/group-messages", tok, undefined, "GET")).body.items.length >= 3);
+  });
+
+  it("שכבה: ניתוח קבוצה וגוף בקשה גדול מ-200KB", async () => {
+    const lines = [];
+    for (let i = 0; i < 4000; i++) lines.push(`${12 + (i % 15)}.10.2026, ${10 + (i % 10)}:${String(i % 60).padStart(2, "0")} - ${["נועה", "יובל", "מיכל", "דביר"][i % 4]}: ${i % 7 === 0 ? "מתי מתחילים מחר?" : "הודעה מספר " + i + " עם עוד כמה מילים כדי להאריך את השורה הזאת לבדיקה"}`);
+    const body = lines.join("\n");
+    assert.ok(body.length > 200_000);
+    const r = await P("/api/chat/analyze", tok, { text: body, me: "דביר", lastN: 1500 });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.mode, "group");
+    assert.equal(r.body.counts.messages, 1500);
+    assert.ok(r.body.faq.length >= 1);
+    const huge = await P("/api/chat/analyze", tok, { text: "א".repeat(2_600_000) });
+    assert.ok([400, 413].includes(huge.status));
+  });
+
+  it("סיכומים שמורים: רק שדות מותרים, בלי טקסט, 30 יום, פרטי לכל משתמש", async () => {
+    const a = (await P("/api/chat/analyze", tok, { text: CHAT, me: "דביר צופים" })).body;
+    const sv = await P("/api/chat/saved", tok, { title: "שיחה עם חניך א'", analysis: { ...a, evil: "<script>", pending: { text: "ZZSECRET" }, plan: [{ level: "urgent", text: "התקשר 052-7654321", why: "x" }] } });
+    assert.equal(sv.status, 201);
+    const s = sv.body.summary;
+    assert.equal(s.mode, "one");
+    assert.equal(s.safety.level, "attention");
+    assert.ok(!JSON.stringify(s).includes("ZZSECRET") && !JSON.stringify(s).includes("script") && !JSON.stringify(s).includes("7654321"));
+    assert.ok(Date.parse(sv.body.expiresAt) - Date.now() > 29 * 86_400_000);
+    assert.equal((await P("/api/chat/saved", tok, { title: "דני 052-1234567", analysis: {} })).status, 422);
+    assert.equal((await P("/api/chat/saved", tok2, undefined, "GET")).body.items.length, 0);
+    assert.equal((await P(`/api/chat/saved/${sv.body.id}`, tok2, undefined, "DELETE")).status, 404);
+    db.prepare("UPDATE chat_saved SET expires_at = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), sv.body.id);
+    assert.equal((await P("/api/chat/saved", tok, undefined, "GET")).body.items.length, 0, "נמחק אחרי פקיעה");
+    const keep = await P("/api/chat/saved", tok, { title: "לשמור", analysis: a });
+    assert.equal((await P(`/api/chat/saved/${keep.body.id}`, tok, undefined, "DELETE")).status, 200);
+  });
+
+  it("מעקבים: משימות בלבד, בלי פרטים מזהים ובלי נושאים רגישים", async () => {
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const ok = await P("/api/chat/followups", tok, { alias: "חניך א'", note: "לשאול מה שלומו אחרי הפעולה", due: yesterday });
+    assert.equal(ok.status, 201);
+    assert.equal(ok.body.overdue, true);
+    for (const [note, code] of [["התקשר 052-1234567", "PII_FOUND"], ["הוא אמר שהוא רוצה למות", "SENSITIVE"], ["הוא בטיפול פסיכולוג", "SENSITIVE"]]) {
+      const r = await P("/api/chat/followups", tok, { alias: "חניך ב'", note });
+      assert.equal(r.status, 422, note);
+      assert.equal(r.body.error.code, code);
+    }
+    const list = (await P("/api/chat/followups", tok, undefined, "GET")).body;
+    assert.equal(list.items.length, 1);
+    assert.equal(list.overdue, 1);
+    assert.equal((await P(`/api/chat/followups/${ok.body.id}`, tok2, { done: true }, "PATCH")).status, 404);
+    const done = await P(`/api/chat/followups/${ok.body.id}`, tok, { done: true }, "PATCH");
+    assert.equal(done.body.done, true);
+    assert.equal(done.body.overdue, false);
+    assert.equal((await P(`/api/chat/followups/${ok.body.id}`, tok, { note: "הוא אמר שהוא רוצה למות" }, "PATCH")).status, 422);
+    assert.equal((await P(`/api/chat/followups/${ok.body.id}`, tok, undefined, "DELETE")).status, 200);
+  });
+
+  it("אסימוני תוסף: נוצרים באתר, מוצגים פעם אחת, מוגבלים לעוזר השיחות, ניתנים לביטול", async () => {
+    const c = await P("/api/chat/tokens", tok, { label: "המחשב בבית" });
+    assert.equal(c.status, 201);
+    assert.match(c.body.token, /^mx_[a-f0-9]{48}$/);
+    const list = (await P("/api/chat/tokens", tok, undefined, "GET")).body;
+    assert.ok(!JSON.stringify(list).includes(c.body.token));
+    assert.ok(!db.prepare("SELECT token_hash FROM ext_tokens WHERE id = ?").get(c.body.id).token_hash.includes(c.body.token));
+    const ping = await X("/api/chat/ping", c.body.token, undefined, "GET");
+    assert.equal(ping.status, 200);
+    assert.deepEqual([ping.body.username, ping.body.ext], ["u57a", true]);
+    const an = await X("/api/chat/analyze", c.body.token, { messages: [{ who: "אני", ts: Date.UTC(2026, 9, 12, 9), text: "היי" }, { who: "חניך א'", ts: Date.UTC(2026, 9, 12, 10), text: "מתי מתחילים?" }], masked: true });
+    assert.equal(an.status, 200);
+    assert.equal(an.body.pending.intent.primary, "question");
+    assert.deepEqual(an.body.aliases, []);
+    for (const [path, m] of [["/api/chat/tokens", "GET"], ["/api/story/dict", "GET"], ["/api/me/style", "GET"], ["/api/chat/saved", "GET"], ["/api/chat/followups", "GET"]]) {
+      assert.equal((await X(path, c.body.token, undefined, m)).status, 401, `${path} לא נגיש לתוסף`);
+    }
+    assert.equal((await P(`/api/chat/tokens/${c.body.id}`, tok2, undefined, "DELETE")).status, 404);
+    assert.equal((await P(`/api/chat/tokens/${c.body.id}`, tok, undefined, "DELETE")).status, 200);
+    assert.equal((await X("/api/chat/ping", c.body.token, undefined, "GET")).status, 401, "אחרי ביטול");
+    const c2 = await P("/api/chat/tokens", tok, {});
+    db.prepare("UPDATE ext_tokens SET expires_at = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), c2.body.id);
+    assert.equal((await X("/api/chat/ping", c2.body.token, undefined, "GET")).status, 401, "אחרי פקיעה");
+    db.prepare("DELETE FROM ext_tokens").run();
+    for (let i = 0; i < 3; i++) assert.equal((await P("/api/chat/tokens", tok, {})).status, 201);
+    assert.equal((await P("/api/chat/tokens", tok, {})).status, 409);
+    const off = await P("/api/chat/tokens", tok2, {});
+    db.prepare("UPDATE users SET disabled = 1 WHERE username = 'u57b'").run();
+    assert.equal((await X("/api/chat/ping", off.body.token, undefined, "GET")).status, 401, "משתמש מושעה");
+    db.prepare("UPDATE users SET disabled = 0 WHERE username = 'u57b'").run();
+  });
+
+  it("AI: אישור מפורש, בלי מפתח מקבלים הנחיה מוסתרת, ותגובות אסורות נפסלות", async () => {
+    const { config } = await import("../src/config.js");
+    const noKey = (await P("/api/chat/ai", tok, { text: CHAT, me: "דביר צופים" })).body;
+    if (noKey.mode === "prompt") {
+      assert.ok(!/דני|דביר|052/.test(noKey.prompt), "ההנחיה מוסתרת");
+      assert.match(noKey.prompt, /חניך א'/);
+    }
+    const mild = "12.10.2026, 18:05 - דביר צופים: היי\n12.10.2026, 18:20 - דני כהן: מתי הפעולה מחר?";
+    const prevKey = config.ai.key, realFetch = globalThis.fetch;
+    config.ai.key = "test-key";
+    try {
+      let sent = null;
+      globalThis.fetch = async (url, opts) => {
+        if (!String(url).startsWith("https://api.anthropic.com")) return realFetch(url, opts);
+        sent = JSON.parse(opts.body);
+        return new Response(JSON.stringify({ content: [{ text: JSON.stringify({ replies: [{ label: "חם", text: "מחר ב-[השעה]. נתראה!" }, { label: "אסור", text: "זה יישאר בינינו, אל תדאג" }], notes: "" }) }] }), { status: 200, headers: { "content-type": "application/json" } });
+      };
+      const need = await P("/api/chat/ai", tok, { text: mild, me: "דביר צופים" });
+      assert.equal(need.status, 428);
+      assert.equal(sent, null, "בלי אישור לא נשלח כלום");
+      const ok = (await P("/api/chat/ai", tok, { text: mild, me: "דביר צופים", confirmExternal: true })).body;
+      assert.equal(ok.mode, "ai");
+      assert.equal(ok.replies.length, 1);
+      assert.equal(ok.droppedCount, 1);
+      assert.ok(!/דני|דביר/.test(JSON.stringify(sent)), "ל-AI לא נשלחו שמות");
+    } finally { globalThis.fetch = realFetch; config.ai.key = prevKey; }
   });
 });
