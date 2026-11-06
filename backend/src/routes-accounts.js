@@ -132,11 +132,10 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   const emailHtml = (title, body) =>
     `<!doctype html><html lang="he" dir="rtl"><body style="font-family:Arial,sans-serif;background:#f4f1fb;padding:16px"><div style="max-width:520px;margin:auto;background:#fff;border-radius:12px;padding:24px;color:#222"><h2 style="margin-top:0;color:#4b2a8a">${escapeHtml(title)}</h2>${body}<p style="color:#777;font-size:12px">אם לא ביקשתם את זה, אפשר להתעלם מההודעה.</p></div></body></html>`;
 
-  /** שולח הודעה בערוץ. מחזיר "sent" | "dev" (אין ספק, מצב פיתוח) | "none" (אין ספק, ייצור). */
+  /** שולח הודעה בערוץ. מחזיר "sent" | "dev" (אין ספק, מצב פיתוח) | "none" (אין ספק, ייצור). זורק שגיאה אם השליחה בפועל נכשלה. */
   const deliver = async (channel, to, subject, message, htmlBody) => {
     if (channel === "email" && mailer?.hasTransport) {
-      mailer.enqueue(subject, emailHtml(subject, htmlBody ?? `<p style="font-size:16px">${escapeHtml(message)}</p>`), to);
-      mailer.processQueue().catch(() => {});
+      await mailer.sendNow({ to, subject, html: emailHtml(subject, htmlBody ?? `<p style="font-size:16px">${escapeHtml(message)}</p>`) });
       return "sent";
     }
     if (channel === "phone" && config.sms.webhook) {
