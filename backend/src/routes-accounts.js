@@ -160,7 +160,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   const noProvider = (res) => res.status(503).json(fail("NO_PROVIDER", "שליחת הודעות לא מוגדרת באתר הזה. בקשו מהאדמין לאמת או לאפס בשבילכם"));
   const origin = (req) => config.publicUrl || (config.isProd ? `${req.protocol}://${req.get("host")}` : config.webOrigin);
 
-  app.get("/api/auth/options", (req, res) => res.json({ providers: providers(), signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode }));
+  app.get("/api/auth/options", (req, res) => res.json({ providers: providers(), signupOpen: true, signupNeedsCode: false }));
 
   // ───── 81. כניסה בשם משתמש, מייל או טלפון ─────
   const capFields = () => {
@@ -289,15 +289,9 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
       audit(db, v.username, "register.bot", {});
       return res.status(400).json(fail("BAD_REQUEST", "לא הצלחנו להשלים את ההרשמה. נסו שוב בעוד רגע"));
     }
-    const sameCode = (a, b) => String(a).replace(/\s+/g, "").toLowerCase() === String(b).replace(/\s+/g, "").toLowerCase();
     const invite = v.inviteCode ? findInvite(db, v.inviteCode) : null;
-    if (!invite && !signupOpen()) return res.status(403).json(fail("SIGNUP_CLOSED", "ההרשמה סגורה. פנו למנהל המערכת שייצור לכם משתמש או ישלח הזמנה"));
     if (v.inviteCode && !invite) return res.status(403).json(fail("BAD_INVITE", "קוד ההזמנה לא תקף. ייתכן שפג תוקפו או שכבר נוצל"));
-    const needCode = effectiveSignupCode(db);
-    if (!invite && needCode && !sameCode(v.signupCode, needCode)) {
-      audit(db, v.username, "register.badcode", {});
-      return res.status(403).json(fail("BAD_CODE", "קוד ההרשמה שגוי. בקשו אותו ממנהל השבט"));
-    }
+    // ההרשמה העצמית פתוחה לכולם: אין יותר חסימה לפי signupOpen או קוד שבט
     if (isReservedName(db, v.username) || isReservedName(db, v.displayName)) return res.status(400).json(fail("RESERVED_NAME", "השם הזה שמור למערכת. בחרו שם אחר"));
     if (dailyCapReached(db)) return res.status(429).json(fail("DAILY_CAP", "הגענו למספר ההרשמות היומי. נסו שוב מחר או בקשו הזמנה ממנהל השבט"));
     const reg = regSettings(db);

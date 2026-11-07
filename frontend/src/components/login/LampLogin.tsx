@@ -106,13 +106,8 @@ export function LampLogin({ embedded = false }: { embedded?: boolean }) {
                   />
                 ) : signup === null ? (
                   <p role="status">טוען…</p>
-                ) : signup.signupOpen ? (
-                  <RegisterForm needsCode={signup.signupNeedsCode} />
                 ) : (
-                  <section>
-                    <h2 className="section-title">ההרשמה סגורה</h2>
-                    <p>ההרשמה העצמית לא פתוחה כרגע באתר. בקשו ממנהל/ת השבט שייצרו לכם משתמש בלוח הבקרה, או שיפתחו את ההרשמה עם קוד שבט ויתנו לכם אותו.</p>
-                  </section>
+                  <RegisterForm needsCode={false} />
                 )}
                 {!embedded && <p className="lg-note">אין עדיין חשבון? <Link href="/account">הרשמה באזור האישי</Link></p>}
               </>

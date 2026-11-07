@@ -210,7 +210,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   if (serveStatic) app.use(express.static(path.join(here, "..", "public")));
 
-  const signupOpen = () => !!config.signupCode || !!regSettings(db).code || !config.isProd;
+  // ההרשמה העצמית פתוחה לכולם (ללא תלות ב-SIGNUP_CODE)
+  const signupOpen = () => true;
 
   // ── לוגו השבט: מועלה על ידי האדמין, נשמר כקובץ ליד מסד הנתונים ──
   const logoFile = dbFile === ":memory:" ? null : path.join(path.dirname(path.resolve(dbFile)), "logo.bin");
@@ -236,7 +237,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), startedAt: bootedAt.toISOString(), maintenance: maintenanceMessage(db) }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
-    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: !!config.signupCode || !!regSettings(db).code, logoVersion: logo?.v ?? null }),
+    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: false, logoVersion: logo?.v ?? null }),
   );
 
   app.get("/api/logo", (req, res) => {

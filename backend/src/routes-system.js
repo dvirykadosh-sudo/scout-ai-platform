@@ -40,7 +40,7 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
     if (persistState.configured && !persistHealthy(Date.now(), startedAt.getTime())) warnings.push("שמירת הנתונים תקועה. בדקו את הטוקן של GitHub ב-Render.");
     if (persistState.lastError) warnings.push(`השמירה האחרונה נכשלה: ${persistState.lastError}`);
     if (integrity !== "ok") warnings.push(`בדיקת תקינות מסד הנתונים: ${integrity}`);
-    if (!config.signupCode) warnings.push("לא הוגדר SIGNUP_CODE, ההרשמה סגורה.");
+    if (!config.signupCode) warnings.push("לא הוגדר SIGNUP_CODE — ההרשמה פתוחה לכל.");
     res.json({
       startedAt: startedAt.toISOString(),
       uptimeSec: Math.round(process.uptime()),
