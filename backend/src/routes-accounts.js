@@ -135,8 +135,15 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   /** שולח הודעה בערוץ. מחזיר "sent" | "dev" (אין ספק, מצב פיתוח) | "none" (אין ספק, ייצור). זורק שגיאה אם השליחה בפועל נכשלה. */
   const deliver = async (channel, to, subject, message, htmlBody) => {
     if (channel === "email" && mailer?.hasTransport) {
-      await mailer.sendNow({ to, subject, html: emailHtml(subject, htmlBody ?? `<p style="font-size:16px">${escapeHtml(message)}</p>`) });
-      return "sent";
+      try {
+        await mailer.sendNow({ to, subject, html: emailHtml(subject, htmlBody ?? `<p style="font-size:16px">${escapeHtml(message)}</p>`) });
+        return "sent";
+      } catch (e) {
+        // רושמים את סיבת הכשל האמיתית (EAUTH, ECONNECTION, ETIMEDOUT...) ללוג של השרת, כדי שאפשר יהיה לאבחן
+        console.error(`[mail] שליחה נכשלה אל ${to}: ${e?.code || ""} ${e?.message || e}`);
+        audit(db, "system", "email.send_failed", { to, code: String(e?.code || ""), error: String(e?.message || e).slice(0, 200) });
+        throw e;
+      }
     }
     if (channel === "phone" && config.sms.webhook) {
       const r = await fetch(config.sms.webhook, {

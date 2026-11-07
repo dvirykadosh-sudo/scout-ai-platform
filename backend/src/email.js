@@ -20,8 +20,18 @@ ${row("משתתפים", a.groupSize)}${row("ערך מוביל", a.leadingValue)}
 }
 
 export function createMailer(db, smtp) {
+  // שליחה חוסמת (sendNow) נקראת בתוך בקשת ההתחברות, ולכן חייבים תקרות זמן: בלי זה חיבור SMTP תקוע
+  // (למשל חסימה של Gmail) משאיר את בקשת הכניסה תלויה עד אין קץ. secure=true נדרש לפורט 465 בלבד.
   const transporter = smtp.host
-    ? nodemailer.createTransport({ host: smtp.host, port: smtp.port, auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined })
+    ? nodemailer.createTransport({
+        host: smtp.host,
+        port: smtp.port,
+        secure: smtp.port === 465,
+        auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined,
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 20_000,
+      })
     : null;
 
   function enqueue(subject, html, toAddr) {
