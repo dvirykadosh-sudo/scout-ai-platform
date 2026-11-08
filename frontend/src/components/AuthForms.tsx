@@ -299,7 +299,7 @@ export function makePassphrase() {
   return `${[0, 1, 2, 3].map((i) => PW_WORDS[r[i] % PW_WORDS.length]).join("-")}-${10 + (r[4] % 90)}`;
 }
 
-export function RegisterForm({ needsCode, inviteCode = "" }: { needsCode: boolean; inviteCode?: string }) {
+export function RegisterForm({ needsCode = false, inviteCode = "" }: { needsCode?: boolean; inviteCode?: string }) {
   const { setSession } = useAuth();
   const toast = useToast();
   const [f, setF] = useState({ displayName: "", username: "", password: "", signupCode: "", email: "", phone: "" });
@@ -334,6 +334,7 @@ export function RegisterForm({ needsCode, inviteCode = "" }: { needsCode: boolea
     if (f.displayName.trim().length < 2) er.displayName = "יש להזין שם להצגה";
     if (f.username.trim().length < 3) er.username = "שם משתמש: לפחות 3 תווים";
     if (f.password.length < 8) er.password = "הסיסמה חייבת להכיל לפחות 8 תווים";
+    // כאן ווידאנו שדורש קוד אך ורק אם הוגדר במפורש שהשבט דורש ואין קוד הזמנה
     if (needsCode && !inviteCode && !f.signupCode.trim()) er.signupCode = "יש להזין את קוד ההרשמה של השבט";
     if (!terms) er.terms = "כדי להירשם יש לאשר את תנאי השימוש ומדיניות הפרטיות";
     setErrors(er);
@@ -357,7 +358,7 @@ export function RegisterForm({ needsCode, inviteCode = "" }: { needsCode: boolea
       setError(errorMessage(err));
     }
     setBusy(false);
-  };
+  }; 
 
   if (pending)
     return (

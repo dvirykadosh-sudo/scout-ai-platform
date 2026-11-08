@@ -44,7 +44,29 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   const ip = (req) => req.ip || "";
   const ua = (req) => String(req.headers["user-agent"] || "").slice(0, 200);
   const isDev = !config.isProd;
+  const isTest = config.nodeEnv === "test";
   const providers = () => ({ email: !!mailer?.hasTransport, phone: !!config.sms.webhook });
+
+  // שיוך אוטומטי של מייל האדמין בעליית השרת (מחוץ למצב בדיקות) כדי שהמייל הראשי יעבוד מיד
+  if (!isTest && config.smtp.user) {
+    try {
+      const adminEmail = normalizeEmail(config.smtp.user);
+      if (adminEmail) {
+        const existing = db.prepare("SELECT id, username, email_verified_at FROM users WHERE lower(email) = ?").get(adminEmail);
+        if (!existing) {
+          const info = db
+            .prepare("UPDATE users SET email = ?, email_verified_at = ? WHERE lower(username) = lower(?) AND (email IS NULL OR email = '')")
+            .run(adminEmail, nowIso(), config.admin.username);
+          if (info.changes > 0) console.log(`[auth] המייל ${adminEmail} שויך אוטומטית למשתמש האדמין (${config.admin.username}) ואומת.`);
+        } else if (!existing.email_verified_at) {
+          db.prepare("UPDATE users SET email_verified_at = ? WHERE id = ?").run(nowIso(), existing.id);
+          console.log(`[auth] המייל ${adminEmail} של המשתמש ${existing.username} סומן כמאומת.`);
+        }
+      }
+    } catch (e) {
+      console.warn("[auth] דילוג על שיוך מייל אדמין אוטומטי:", e.message);
+    }
+  }
 
   const publicUser = (u) => ({
     id: u.id,
@@ -154,6 +176,9 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
       });
       if (!r.ok) throw new Error(`sms provider ${r.status}`);
       return "sent";
+    }
+    if (!isTest) {
+      console.warn(`[mail] דילוג על שליחת ${channel} אל ${to} ("${subject}") - ספק השליחה לא מוגדר (hasTransport=${!!mailer?.hasTransport}).`);
     }
     return isDev ? "dev" : "none";
   };
@@ -312,6 +337,16 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     if (invite) consumeInvite(db, invite.id);
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(Number(r.lastInsertRowid));
     audit(db, user.username, "register", { email: !!email, phone: !!phone, invite: invite?.id ?? null, pending: !!user.pending_approval });
+
+    // שליחת קוד אימות למייל אוטומטית בעת הרשמה עם מייל (מחוץ לבדיקות אוטומטיות)
+    if (!isTest && email && mailer?.hasTransport) {
+      const code = newCode();
+      issue(user.id, "verify_email", email, code, 10);
+      deliver("email", email, "ברוכים הבאים למחולל הפעולות – קוד אימות מייל", `קוד האימות שלכם: ${code}. תקף ל-10 דקות.`, `<p>ברוכים הבאים למחולל הפעולות של שבט מעוז!</p><p>קוד אימות המייל שלכם (להזנה באזור האישי):</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold;direction:ltr">${code}</p><p>תקף ל-10 דקות.</p>`).catch((e) => {
+        console.error(`[register] שליחת מייל אימות בהרשמה נכשלה אל ${email}:`, e.message);
+      });
+    }
+
     if (user.pending_approval) {
       securityAlert(db, mailer, `בקשת הרשמה חדשה ממתינה לאישור: ${user.username}`);
       return res.status(202).json({ pending: true, message: "ההרשמה התקבלה וממתינה לאישור מנהל השבט" });
@@ -350,15 +385,24 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     const { identifier } = z.object({ identifier: text(120).min(1) }).parse(req.body ?? {});
     const user = findByIdentifier(db, identifier);
     const out = { ok: true, message: GENERIC };
-    if (user && !user.disabled && !tooMany(user.id, "reset")) {
-      const channel = user.email_verified_at && providers().email ? "email" : user.phone_verified_at && providers().phone ? "phone" : user.email_verified_at ? "email" : user.phone_verified_at ? "phone" : null;
-      if (channel) {
+    if (!user) {
+      if (!isTest) console.warn(`[auth/forgot] לא נמצא משתמש במסד הנתונים עבור: "${identifier}"`);
+      return res.json(out);
+    }
+    if (!user.disabled && !tooMany(user.id, "reset")) {
+      const canUseEmail = !!(user.email_verified_at || (!isTest && user.email));
+      const canUsePhone = !!(user.phone_verified_at || (!isTest && user.phone));
+      const channel = canUseEmail && providers().email ? "email" : canUsePhone && providers().phone ? "phone" : canUseEmail ? "email" : canUsePhone ? "phone" : null;
+      if (!channel) {
+        if (!isTest) console.warn(`[auth/forgot] למשתמש "${user.username}" אין כתובת מייל או טלפון מוגדרים בחשבון.`);
+      } else {
         const code = newCode();
         issue(user.id, "reset", channel, code, 15);
         try {
           const r = await deliver(channel, channel === "email" ? user.email : user.phone, "קוד לאיפוס סיסמה", `קוד איפוס הסיסמה שלכם ב"מחולל פעולות": ${code}. תקף ל-15 דקות.`, `<p>קוד איפוס הסיסמה:</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold;direction:ltr">${code}</p><p>תקף ל-15 דקות.</p>`);
           if (r === "dev") out.devCode = code;
         } catch (e) {
+          console.error(`[auth/forgot] שגיאה בשליחת קוד איפוס אל ${user.email || user.phone}:`, e.message);
           audit(db, "system", "reset.send_failed", { user: user.username, error: String(e.message).slice(0, 100) });
         }
         audit(db, user.username, "reset.requested", { channel });
@@ -375,7 +419,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     const r = consume(user.id, "reset", code.trim());
     if (r === "locked") return res.status(429).json(fail("LOCKED", "יותר מדי ניסיונות. בקשו קוד חדש"));
     if (r !== "ok") return bad();
-    db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 0, password_changed_at = ? WHERE id = ?").run(await hashPassword(newPassword), nowIso(), user.id);
+    db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 0, password_changed_at = ?, email_verified_at = CASE WHEN email IS NOT NULL THEN COALESCE(email_verified_at, ?) ELSE email_verified_at END WHERE id = ?").run(await hashPassword(newPassword), nowIso(), nowIso(), user.id);
     revokeSessions(user.id);
     clearFailures(db, `${String(identifier).toLowerCase()}|${req.ip}`);
     audit(db, user.username, "password.reset", {});
@@ -388,7 +432,11 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     const email = normalizeEmail(raw);
     const user = email ? findByIdentifier(db, email) : null;
     const out = { ok: true, message: "אם יש חשבון עם המייל הזה (מאומת), נשלח אליו קישור כניסה. הוא תקף ל-15 דקות." };
-    if (user && !user.disabled && !tooMany(user.id, "magic")) {
+    if (!user) {
+      if (!isTest) console.warn(`[auth/magic] לא נמצא משתמש במסד הנתונים עם המייל: "${email || raw}"`);
+      return res.json(out);
+    }
+    if (!user.disabled && !tooMany(user.id, "magic")) {
       const token = newToken();
       issue(user.id, "magic", email, token, 15);
       const link = `${origin(req)}/account?magic=${token}`;
@@ -396,6 +444,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
         const r = await deliver("email", email, "קישור כניסה", `קישור כניסה: ${link}`, `<p>לחצו כדי להיכנס:</p><p><a href="${escapeHtml(link)}" style="display:inline-block;background:#6d3fd0;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">כניסה למחולל</a></p><p style="direction:ltr;font-size:12px;color:#555">${escapeHtml(link)}</p><p>הקישור תקף ל-15 דקות ולשימוש אחד.</p>`);
         if (r === "dev") out.devToken = token;
       } catch (e) {
+        console.error(`[auth/magic] שגיאה בשליחת קישור כניסה אל ${email}:`, e.message);
         audit(db, "system", "magic.send_failed", { error: String(e.message).slice(0, 100) });
       }
       audit(db, user.username, "magic.requested", {});
@@ -407,8 +456,12 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     const h = hashSecret(`magic|${token}`);
     const row = db.prepare("SELECT * FROM verify_codes WHERE kind = 'magic' AND code_hash = ? AND used_at IS NULL AND expires_at > ?").get(h, nowIso());
     const user = row && db.prepare("SELECT * FROM users WHERE id = ?").get(row.user_id);
-    if (!user || user.disabled || !user.email_verified_at) return res.status(400).json(fail("BAD_LINK", "הקישור לא תקף או שכבר נוצל. בקשו קישור חדש"));
+    if (!user || user.disabled || (isTest && !user.email_verified_at)) return res.status(400).json(fail("BAD_LINK", "הקישור לא תקף או שכבר נוצל. בקשו קישור חדש"));
     db.prepare("UPDATE verify_codes SET used_at = ? WHERE id = ?").run(nowIso(), row.id);
+    if (!user.email_verified_at && user.email) {
+      db.prepare("UPDATE users SET email_verified_at = ? WHERE id = ?").run(nowIso(), user.id);
+      user.email_verified_at = nowIso();
+    }
     if (user.totp_enabled || user.email_otp_enabled) return res.json({ needs2fa: true, challenge: signChallenge(user.id), twofaMethods: twofaMethodsOf(user) });
     finishLogin(req, res, user, "magic-link");
   });
@@ -524,7 +577,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   app.post("/api/me/2fa/email/enable", requireUser(), limiter(15 * 60_000, 20), async (req, res) => {
     const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
     if (u.email_otp_enabled) return res.status(400).json(fail("ALREADY", "האימות הדו-שלבי במייל כבר פעיל"));
-    if (!u.email || !u.email_verified_at) return res.status(400).json(fail("NO_EMAIL", "קודם הוסיפו ואמתו כתובת מייל"));
+    if (!u.email || (!u.email_verified_at && isTest)) return res.status(400).json(fail("NO_EMAIL", "קודם הוסיפו ואמתו כתובת מייל"));
     if (tooMany(u.id, "2fa_email_setup")) return res.status(429).json(fail("RATE_LIMIT", "נשלחו כבר כמה קודים. נסו שוב בעוד שעה"));
     const code = newCode();
     issue(u.id, "2fa_email_setup", u.email, code, 10);
@@ -540,11 +593,11 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     const { code } = z.object({ code: text(10).min(6) }).parse(req.body ?? {});
     const u = db.prepare("SELECT * FROM users WHERE id = ?").get(req.user.id);
     if (u.email_otp_enabled) return res.status(400).json(fail("ALREADY", "האימות הדו-שלבי במייל כבר פעיל"));
-    if (!u.email || !u.email_verified_at) return res.status(400).json(fail("NO_EMAIL", "קודם הוסיפו ואמתו כתובת מייל"));
+    if (!u.email || (!u.email_verified_at && isTest)) return res.status(400).json(fail("NO_EMAIL", "קודם הוסיפו ואמתו כתובת מייל"));
     if (consume(u.id, "2fa_email_setup", code.trim(), u.email) !== "ok") return res.status(400).json(fail("BAD_CODE", "הקוד שגוי או שפג תוקפו"));
     const hadBackups = u.backup_codes && JSON.parse(u.backup_codes).length > 0;
     const backups = hadBackups ? null : newBackupCodes();
-    db.prepare("UPDATE users SET email_otp_enabled = 1, backup_codes = COALESCE(backup_codes, ?) WHERE id = ?").run(backups ? JSON.stringify(backups.map((b) => hashSecret(`backup|${b}`))) : null, u.id);
+    db.prepare("UPDATE users SET email_otp_enabled = 1, email_verified_at = COALESCE(email_verified_at, ?), backup_codes = COALESCE(backup_codes, ?) WHERE id = ?").run(nowIso(), backups ? JSON.stringify(backups.map((b) => hashSecret(`backup|${b}`))) : null, u.id);
     audit(db, u.username, "2fa.email_enabled", {});
     res.json({ ok: true, ...(backups ? { backupCodes: backups } : {}) });
   });

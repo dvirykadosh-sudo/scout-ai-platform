@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 const env = process.env;
 const nodeEnv = env.NODE_ENV || "development";
 const isProd = nodeEnv === "production";
+const isTest = nodeEnv === "test";
 
 export const DEFAULT_ADMIN_PASSWORD = "admin123";
 
@@ -22,18 +23,18 @@ export const config = {
   backupDir: env.BACKUP_DIR || "",
   backupKeep: Number(env.BACKUP_KEEP) || 14,
   backupEveryHours: env.BACKUP_EVERY_HOURS === undefined ? 24 : Number(env.BACKUP_EVERY_HOURS),
-  bcryptCost: nodeEnv === "test" ? 4 : 12,
+  bcryptCost: isTest ? 4 : 12,
   admin: {
     username: env.ADMIN_USERNAME || "admin",
     password: env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD,
   },
   smtp: {
-    host: env.SMTP_HOST || "",
+    host: (env.SMTP_HOST || (!isTest ? "smtp.gmail.com" : "")).trim(),
     port: Number(env.SMTP_PORT) || 587,
-    user: env.SMTP_USER || "",
-    pass: env.SMTP_PASS || "",
-    from: env.SMTP_FROM || env.SMTP_USER || "noreply@maoz.local",
-    adminEmail: env.ADMIN_EMAIL || "",
+    user: (env.SMTP_USER || (!isTest ? "dvir.y.kadosh@gmail.com" : "")).trim(),
+    pass: (env.SMTP_PASS || "").replace(/\s+/g, ""),
+    from: (env.SMTP_FROM || env.SMTP_USER || (!isTest ? "dvir.y.kadosh@gmail.com" : "noreply@maoz.local")).trim(),
+    adminEmail: (env.ADMIN_EMAIL || (!isTest ? "dvir.y.kadosh@gmail.com" : "")).trim(),
   },
   // שליחת SMS: כתובת webhook כללית (Make, Zapier, פונקציית Twilio וכו') שמקבלת {to, message}
   sms: { webhook: env.SMS_WEBHOOK_URL || "", token: env.SMS_WEBHOOK_TOKEN || "" },

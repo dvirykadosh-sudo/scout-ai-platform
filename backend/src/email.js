@@ -20,19 +20,30 @@ ${row("משתתפים", a.groupSize)}${row("ערך מוביל", a.leadingValue)}
 }
 
 export function createMailer(db, smtp) {
-  // שליחה חוסמת (sendNow) נקראת בתוך בקשת ההתחברות, ולכן חייבים תקרות זמן: בלי זה חיבור SMTP תקוע
-  // (למשל חסימה של Gmail) משאיר את בקשת הכניסה תלויה עד אין קץ. secure=true נדרש לפורט 465 בלבד.
-  const transporter = smtp.host
+  const isTest = process.env.NODE_ENV === "test";
+  const canCreate = Boolean(smtp.host && (smtp.pass || isTest));
+
+  const transporter = canCreate
     ? nodemailer.createTransport({
         host: smtp.host,
         port: smtp.port,
         secure: smtp.port === 465,
+        family: 4,
         auth: smtp.user ? { user: smtp.user, pass: smtp.pass } : undefined,
+        tls: { rejectUnauthorized: false },
         connectionTimeout: 10_000,
         greetingTimeout: 10_000,
         socketTimeout: 20_000,
       })
     : null;
+
+  if (!isTest) {
+    if (transporter) {
+      console.log(`[mail] חיבור SMTP הוגדר: host=${smtp.host}, port=${smtp.port}, user=${smtp.user}, from=${smtp.from}`);
+    } else {
+      console.warn(`[mail] אזהרה: חיבור SMTP אינו פעיל! ודאו שמוגדר SMTP_PASS במשתני הסביבה ב-Render.`);
+    }
+  }
 
   function enqueue(subject, html, toAddr) {
     const to = toAddr || smtp.adminEmail || "admin@maoz.local";
@@ -74,8 +85,13 @@ export function createMailer(db, smtp) {
 
   /** שליחה מיידית (עם קבצים מצורפים). מחזיר true רק אם נשלח בפועל. */
   async function sendNow({ to, subject, html, attachments }) {
-    if (!transporter) return false;
-    await transporter.sendMail({ from: smtp.from, to, subject, html, attachments });
+    if (!transporter) {
+      console.error(`[mail] לא ניתן לשלוח מייל אל ${to} ("${subject}") כי transporter=null (בדקו ש-SMTP_PASS מוגדר ב-Render).`);
+      return false;
+    }
+    if (!isTest) console.log(`[mail] שולח מייל אל ${to} | נושא: "${subject}"...`);
+    const info = await transporter.sendMail({ from: smtp.from, to, subject, html, attachments });
+    if (!isTest) console.log(`[mail] המייל נשלח בהצלחה אל ${to} | תשובת שרת: ${info?.response || info?.messageId || "OK"}`);
     return true;
   }
 
