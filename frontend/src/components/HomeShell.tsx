@@ -11,7 +11,6 @@ import { ThisWeek } from "./ThisWeek";
 import { TourButton } from "./WriteFinal";
 import { UpcomingCard } from "./WriteV36";
 import { NextStepCard } from "./PilotParts";
-import { HomeVideo } from "./HomeVideo";
 import { LastDocHero } from "./Polish";
 import { Skeleton } from "./ui";
 
@@ -21,7 +20,6 @@ export function HomeShell() {
   return (
     <>
       <HomeWelcome />
-      <HomeVideo />
       <LastDocHero />
       <HomeMenu
         onCreate={() => {

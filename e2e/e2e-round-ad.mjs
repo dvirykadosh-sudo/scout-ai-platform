@@ -1,4 +1,4 @@
-// בדיקות דפדפן לשלב 40 (סרטון הסבר).
+// בדיקות דפדפן לשלב 40 (סרטון הסבר). שלב 60: הסרטון הוסר, והבדיקה מוודאת שהוא באמת איננו.
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 const B = process.env.BASE_URL || "http://localhost:5055";
@@ -28,22 +28,15 @@ const A = await ctx.newPage();
 A.on("pageerror", (e) => console.log("PAGEERROR", e.message));
 
 
-await step("home video", async () => {
+await step("home without video", async () => {
+  // שלב 60: הסרטון הוסר לגמרי. בדף הבית אין וידאו, אין כפתור להצגתו, והקבצים כבר לא מוגשים
   await A.goto(B + "/", { waitUntil: "networkidle" });
-  // שלב 59: הסרטון (צולם בעיצוב הקודם) מוסתר כברירת מחדל, ומציגים אותו בלחיצה
-  ok((await A.locator("video").count()) === 0, "video hidden by default");
-  await A.getByRole("button", { name: /הצגת סרטון ההסבר/ }).click();
-  await A.getByRole("heading", { name: /סרטון של דקה/ }).waitFor({ timeout: 8000 });
-  const info = await A.locator("video").evaluate((v) => ({ tracks: v.querySelectorAll("track[kind=captions]").length, muted: v.muted, controls: v.controls }));
-  ok(info.tracks === 1 && info.muted && info.controls, "captions track + muted + controls");
+  ok((await A.locator("video").count()) === 0, "no video element");
+  ok((await A.getByRole("button", { name: /הצגת סרטון ההסבר/ }).count()) === 0, "no show-video button");
   const rg = await fetch(B + "/intro.mp4", { headers: { Range: "bytes=0-99" } });
-  ok(rg.status === 206, "range request " + rg.status);
+  ok(rg.status === 404, "intro.mp4 gone " + rg.status);
   const r = await axe(A);
-  ok(r.violations.length === 0, "axe home video " + axeMsg(r));
-  await A.getByRole("button", { name: "הסתרת הסרטון" }).click();
-  await A.getByRole("button", { name: /הצגת סרטון ההסבר/ }).waitFor();
-  await A.reload({ waitUntil: "networkidle" });
-  ok((await A.locator("video").count()) === 0, "hidden persists");
+  ok(r.violations.length === 0, "axe home " + axeMsg(r));
 });
 
 await browser.close();

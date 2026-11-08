@@ -21,5 +21,5 @@ app.listen(config.port, () => {
   if (seeded) console.log(`נטענו ${seeded} פעולות מוכנות למאגר`);
   if (adminCreated) console.log(`נוצר משתמש אדמין: ${config.admin.username}`);
   console.log(config.ai.key ? `יצירת פעולות: Claude (${config.ai.model})` : "יצירת פעולות: מחולל תבניות מובנה (אין ANTHROPIC_API_KEY)");
-  console.log(config.smtp.host ? "מייל: SMTP מוגדר" : "מייל: מצב בדיקה (נרשם בלוג בלבד)");
+  console.log(mailer.hasTransport ? `מייל: מוגדר (ערוץ ${mailer.mode})` : "מייל: לא מוגדר (מצב בדיקה, שום מייל לא יוצא)");
 });

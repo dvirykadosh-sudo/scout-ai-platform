@@ -2155,9 +2155,6 @@ html.hc .age-chip { border-inline-start-color: currentColor; }
 .sg-swatch { display: inline-block; width: 22px; height: 22px; border-radius: 6px; vertical-align: middle; border: 1px solid var(--line); }
 .sg-gap { margin-inline-end: 6px; }
 
-/* סרטון הסבר בדף הבית */
-.home-video video { width: 100%; max-height: 62vh; aspect-ratio: 16 / 9; border-radius: var(--r-md); background: #000; display: block; }
-.home-video details { margin-top: 10px; }
 
 /* ───────────── שלב 46: עומק ותלת-ממד (301–325) ───────────── */
 :root { --blur: 8px; --sh-dx: 0px; }
@@ -2398,7 +2395,7 @@ html.light .ruler-dim { background: rgba(20, 10, 40, 0.45); }
 .cost-panel summary { cursor: pointer; font-weight: 700; }
 #main.route-in { animation: routeIn 0.28s ease-out; }
 @keyframes routeIn { from { opacity: 0.4; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-html.saver .depth-layers, html.saver video, html.saver .home-video { display: none !important; }
+html.saver .depth-layers, html.saver video { display: none !important; }
 html.saver *, html.saver *::before, html.saver *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 @media (prefers-reduced-motion: reduce) { #main.route-in { animation: none; } }
 html.hc #main.route-in { animation: none; }
@@ -2492,3 +2489,298 @@ html.hc del.st-del { background: #fff; color: #000; border: 1px dashed #000; }
 input.ch-code { width: 100%; }
 .ch-done { text-decoration: line-through; opacity: 0.75; }
 html.hc .ch-bar > span { background: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   שלב 60: עמוד הבית, Dark Bento Glass (בסגנון "Vision Futures")
+   ─────────────────────────────────────────────────────────────────────────
+   הכל תחת .lux-home, ולכן שאר האתר לא משתנה.
+   • כהה (ברירת מחדל וכהה): רקע #130E26 / #1E1245, כרטיסי זכוכית עם טשטוש וגבול זוהר, הדגשות כתום-אדום וסגול עמוק.
+   • בהיר (html.light): אותו מבנה, בגוונים בהירים.
+   • ניגודיות גבוהה (html.hc): שחור-צהוב שטוח, בלי זכוכית, בלי גרדיאנטים ובלי תנועה.
+   • הצבע בא מערכות הצבעים (--pal-*), ולכן "צבעים" בכפתורי הנגישות ממשיך לעבוד.
+   • הפחתת תנועה וחיסכון בנתונים (html.saver) מכבים אנימציות וטשטוש.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── משתני העיצוב ───── */
+.lux-home {
+  --lx-a: var(--pal-a);
+  --lx-b: var(--pal-wc);
+  --lx-violet: #7c3aed;
+  --lx-violet-deep: #4c1d95;
+  --lx-ink: #f7f3ff;
+  --lx-ink-2: #cdc4ea;
+  --lx-edge: rgba(255, 255, 255, 0.14);
+  --lx-glow: color-mix(in srgb, var(--lx-a) 55%, transparent);
+  --lx-card: linear-gradient(155deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.035) 55%, rgba(124, 58, 237, 0.12));
+  --lx-tile: rgba(255, 255, 255, 0.05);
+  --lx-tile-hover: rgba(255, 255, 255, 0.09);
+  --lx-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11), 0 28px 60px -34px rgba(0, 0, 0, 0.85);
+  --lx-edge-line: linear-gradient(135deg, color-mix(in srgb, var(--lx-a) 75%, transparent), rgba(255, 255, 255, 0.1) 38%, rgba(124, 58, 237, 0.6));
+  --lx-hero-bg: radial-gradient(520px 260px at 92% 0%, color-mix(in srgb, var(--lx-a) 26%, transparent), transparent 70%), radial-gradient(520px 320px at 0% 100%, rgba(124, 58, 237, 0.36), transparent 70%), linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  --lx-title: linear-gradient(270deg, #ffffff 6%, #ffe2c7 46%, var(--lx-a) 100%);
+  position: relative;
+}
+
+/* מהמשתמש שבחר ערכת צבעים אחרת: כפתור ההדגשה נשאר בגוונים של הערכה (הניגודיות נבדקה בכל הערכות) */
+html:not(.light):not(.hc) .lux-home { --lx-btn: linear-gradient(135deg, #fb923c, var(--lx-a) 45%, var(--lx-b)); }
+html[data-palette="blue"] .lux-home,
+html[data-palette="green"] .lux-home,
+html[data-palette="fire"] .lux-home { --lx-btn: linear-gradient(135deg, var(--pal-a), var(--pal-b)); }
+
+/* הכהה: מחזירים בתוך עמוד הבית את סט הצבעים הכהה, גם כשמשטח העבודה של האתר בהיר */
+html:not(.light):not(.hc) .lux-home {
+  color-scheme: dark;
+  --bg: #130e26;
+  --panel: #1c1240;
+  --glass: rgba(30, 18, 69, 0.55);
+  --field: rgba(255, 255, 255, 0.075);
+  --field-line: rgba(255, 255, 255, 0.42);
+  --accent: var(--pal-a);
+  --accent-2: var(--pal-b);
+  --glow: var(--pal-glow);
+  --text: var(--lx-ink);
+  --muted: var(--lx-ink-2);
+  --link: #fed7aa;
+  --line: rgba(255, 255, 255, 0.2);
+  --focus: #fde047;
+  --danger: #fecdd3;
+  --danger-bg: rgba(159, 18, 57, 0.4);
+  --ok: #86efac;
+  --on-accent: var(--pal-ink);
+  --btn-bg: var(--lx-btn);
+  --metal: var(--lx-edge-line);
+  --glow-shadow: 0 0 26px var(--lx-glow);
+  --sh-1: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --sh-2: 0 8px 24px rgba(0, 0, 0, 0.38);
+  --sh-3: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --mint: #7be0b8;
+  --blue-violet: #60a5fa;
+  --tint-a: color-mix(in srgb, var(--pal-a) 30%, transparent);
+  --tint-b: rgba(96, 165, 250, 0.22);
+  --tint-c: rgba(123, 224, 184, 0.14);
+  color: var(--text);
+}
+
+/* ───── משטח העבודה נהיה לילה עמוק (רק כשבעמוד יש .lux-home) ───── */
+html:not(.light):not(.hc) main.page:has(.lux-home) {
+  background:
+    radial-gradient(900px 520px at 88% -8%, color-mix(in srgb, var(--pal-a) 24%, transparent), transparent 62%),
+    radial-gradient(760px 560px at -4% 104%, rgba(124, 58, 237, 0.34), transparent 64%),
+    radial-gradient(520px 360px at 50% 42%, rgba(76, 29, 149, 0.24), transparent 70%),
+    linear-gradient(165deg, #1e1245 0%, #130e26 58%, #0f0a1f 100%);
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* ───── Hero: כותרת הבית ───── */
+.lux-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 0 22px;
+  padding: clamp(24px, 4.2vw, 46px) clamp(18px, 3.6vw, 42px);
+  border-radius: 28px;
+  border: 1px solid var(--lx-edge);
+  background: var(--lx-hero-bg);
+  box-shadow: var(--lx-shadow);
+}
+html:not(.hc) .lux-hero { -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%); }
+.lux-orb { position: absolute; z-index: -1; border-radius: 50%; filter: blur(52px); opacity: 0.42; pointer-events: none; }
+.lux-orb-a { width: 280px; height: 280px; top: -110px; inset-inline-end: -70px; background: radial-gradient(circle, var(--lx-a), transparent 68%); }
+.lux-orb-b { width: 320px; height: 320px; bottom: -170px; inset-inline-start: -90px; background: radial-gradient(circle, var(--lx-violet), transparent 68%); }
+@media (prefers-reduced-motion: no-preference) {
+  .lux-orb-a { animation: lux-float 16s ease-in-out infinite; }
+  .lux-orb-b { animation: lux-float 20s ease-in-out infinite reverse; }
+  @keyframes lux-float { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(-18px, 14px, 0) scale(1.08); } }
+}
+.lux-eyebrow {
+  display: inline-flex; align-items: center; gap: 9px;
+  margin: 0 0 14px; padding: 5px 13px;
+  border-radius: 999px; border: 1px solid var(--lx-edge);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lx-ink-2); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em;
+}
+.lux-eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--lx-a); box-shadow: 0 0 12px 2px var(--lx-glow); }
+.lux-home .lux-title {
+  margin: 0 0 12px;
+  font-size: clamp(2.05rem, 5.4vw, 3.5rem);
+  font-weight: 800; line-height: 1.08; letter-spacing: -0.022em;
+  color: #fff;
+  background: var(--lx-title);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.lux-home .lux-lead { max-width: 58ch; font-size: clamp(1rem, 1.5vw, 1.12rem); color: var(--lx-ink-2); }
+.lux-chips { display: flex; flex-wrap: wrap; gap: 9px; margin: 20px 0 0; padding: 0; list-style: none; }
+.lux-chips li {
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--lx-edge); background: rgba(255, 255, 255, 0.06);
+  color: var(--lx-ink); font-size: 0.9rem; font-weight: 600;
+  transition: background 0.25s, border-color 0.25s, transform 0.25s;
+}
+.lux-chips li:hover { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 60%, transparent); transform: translateY(-2px); }
+
+/* ───── כרטיסי זכוכית (Bento) ───── */
+html:not(.light):not(.hc) .page .lux-home .card {
+  background: var(--lx-card);
+  border: 1px solid var(--lx-edge);
+  border-radius: 24px;
+  box-shadow: var(--lx-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+/* גבול דק וזוהר (כתום מצד אחד, סגול מהצד השני) */
+html:not(.light):not(.hc) .page .lux-home .glass { position: relative; }
+html:not(.light):not(.hc) .page .lux-home .glass::before {
+  display: block; content: "";
+  position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: var(--lx-edge-line);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0.55; pointer-events: none; transition: opacity 0.3s;
+}
+html:not(.light):not(.hc) .page .lux-home .glass:hover::before,
+html:not(.light):not(.hc) .page .lux-home .glass:focus-within::before { opacity: 1; }
+/* כרטיס בתוך כרטיס: שטוח, כדי שלא יהיה טשטוש כפול */
+html:not(.light):not(.hc) .page .lux-home .card .card {
+  background: rgba(255, 255, 255, 0.045); box-shadow: none; border-color: rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+html:not(.light):not(.hc) .page .lux-home .card .card::before { display: none; }
+
+.lux-home .section-title { letter-spacing: -0.01em; color: var(--text); }
+html:not(.light):not(.hc) .lux-home .section-title { background: linear-gradient(270deg, #fff, #f3e7ff 70%, #ffd8b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #fff; }
+.lux-home .hint { color: var(--muted); }
+
+/* ───── ברכה ראשונה: אריחי זכוכית עם אייקון ───── */
+.lux-welcome { position: relative; overflow: hidden; isolation: isolate; display: grid; gap: 18px; }
+.lux-welcome .lux-orb-a { top: -120px; inset-inline-end: -60px; opacity: 0.4; }
+.lux-welcome-head .lux-eyebrow { margin-bottom: 10px; }
+.lux-welcome-head .section-title { margin: 0; }
+.lux-welcome .hero-steps { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 0; }
+html:not(.light):not(.hc) .page .lux-home .hero-steps li {
+  position: relative; gap: 6px; padding: 18px 18px 16px;
+  border: 1px solid var(--lx-edge); border-radius: 20px; background: var(--lx-tile);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.25s, border-color 0.25s, box-shadow 0.3s;
+}
+html:not(.light):not(.hc) .page .lux-home .hero-steps li:hover {
+  transform: translateY(-4px); background: var(--lx-tile-hover);
+  border-color: color-mix(in srgb, var(--lx-a) 55%, transparent);
+  box-shadow: 0 22px 40px -26px var(--lx-glow);
+}
+.lux-ico { color: var(--lx-a); width: 44px; height: 44px; padding: 9px; border-radius: 14px; background: color-mix(in srgb, var(--lx-a) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lx-a) 35%, transparent); }
+.lux-home .hero-steps strong { font-size: 1.12rem; }
+.lux-home .hero-steps li > span:not(.lux-ico) { color: var(--lx-ink-2); }
+
+/* ───── תפריט ראשי: Bento (אריח ראשי גדול, שני אריחים לצדו) ───── */
+.lux-home .home-menu-main { grid-template-columns: 1.55fr 1fr 1fr; gap: 14px; }
+@media (max-width: 980px) { .lux-home .home-menu-main { grid-template-columns: 1fr 1fr; } .lux-home .home-menu-main li:first-child { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .lux-home .home-menu-main { grid-template-columns: 1fr; } }
+html:not(.light):not(.hc) .page .lux-home .home-menu-grid a {
+  position: relative; overflow: hidden; isolation: isolate;
+  min-height: 112px; padding: 62px 20px 18px; align-content: end; gap: 6px;
+  border: 1px solid var(--lx-edge); border-radius: 22px;
+  background: var(--lx-tile); color: var(--text); box-shadow: none;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.25s, border-color 0.25s, box-shadow 0.3s;
+}
+html:not(.light):not(.hc) .page .lux-home .home-menu-grid a strong { font-size: 1.12rem; color: #fff; }
+html:not(.light):not(.hc) .page .lux-home .home-menu-grid a .hint { color: var(--lx-ink-2); }
+html:not(.light):not(.hc) .page .lux-home .home-menu-grid a:hover,
+html:not(.light):not(.hc) .page .lux-home .home-menu-grid a:focus-visible {
+  transform: translateY(-5px); background: var(--lx-tile-hover);
+  border-color: color-mix(in srgb, var(--lx-a) 60%, transparent);
+  box-shadow: 0 26px 46px -28px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+/* חץ קטן שזז בריחוף (דקורטיבי) */
+html:not(.light):not(.hc) .page .lux-home .home-menu-grid a::after {
+  content: "←"; content: "←" / ""; position: absolute; top: 16px; inset-inline-end: 18px;
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  background: color-mix(in srgb, var(--lx-a) 18%, transparent); color: var(--lx-a); font-weight: 800;
+  transition: transform 0.28s, background 0.25s;
+}
+html:not(.light):not(.hc) .page .lux-home .home-menu-grid a:hover::after { transform: translateX(-4px); background: color-mix(in srgb, var(--lx-a) 30%, transparent); }
+/* האריח הראשי: זוהר כתום-אדום */
+html:not(.light):not(.hc) .page .lux-home .home-menu-main li:first-child a {
+  min-height: 150px;
+  background:
+    radial-gradient(260px 180px at 100% 0%, color-mix(in srgb, var(--lx-a) 42%, transparent), transparent 70%),
+    radial-gradient(240px 200px at 0% 110%, color-mix(in srgb, var(--lx-b) 30%, transparent), transparent 70%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+  border-color: color-mix(in srgb, var(--lx-a) 45%, transparent);
+}
+html:not(.light):not(.hc) .page .lux-home .home-menu-main li:first-child a strong { font-size: 1.35rem; }
+.lux-home .home-more summary { font-weight: 700; }
+
+/* ───── לשוניות ───── */
+html:not(.light):not(.hc) .page .lux-home .home-tabs { gap: 10px; margin: 20px 0 14px; }
+html:not(.light):not(.hc) .page .lux-home .home-tabs [role="tab"] {
+  border: 1px solid var(--lx-edge); border-radius: 999px; padding: 8px 20px; font-weight: 700;
+  background: rgba(255, 255, 255, 0.055); color: var(--text);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: background 0.25s, border-color 0.25s, transform 0.25s, box-shadow 0.3s;
+}
+html:not(.light):not(.hc) .page .lux-home .home-tabs [role="tab"]:hover:not([aria-selected="true"]) { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 55%, transparent); transform: translateY(-2px); }
+html:not(.light):not(.hc) .page .lux-home .home-tabs [role="tab"][aria-selected="true"] { background: var(--lx-btn); color: var(--pal-ink); border-color: transparent; box-shadow: 0 12px 28px -14px var(--lx-glow); }
+
+/* ───── כפתורים ושדות ───── */
+html:not(.light):not(.hc) .page .lux-home .btn { border: 1px solid var(--lx-edge); border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: var(--text); transition: background 0.25s, border-color 0.25s, transform 0.2s, box-shadow 0.3s; }
+html:not(.light):not(.hc) .page .lux-home .btn:hover:not(:disabled) { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 55%, transparent); }
+html:not(.light):not(.hc) .page .lux-home .btn.btn-primary,
+html:not(.light):not(.hc) .page .lux-home .btn[aria-pressed="true"] { background: var(--lx-btn); color: var(--pal-ink); border-color: transparent; box-shadow: 0 14px 30px -16px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+html:not(.light):not(.hc) .page .lux-home .btn.btn-primary:hover:not(:disabled) { background: var(--lx-btn); filter: brightness(1.07); box-shadow: 0 18px 36px -16px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+html:not(.light):not(.hc) .page .lux-home .btn.btn-danger { background: #9f1239; color: #fff; }
+html:not(.light):not(.hc) .page .lux-home input:not([type="checkbox"]):not([type="radio"]),
+html:not(.light):not(.hc) .page .lux-home select,
+html:not(.light):not(.hc) .page .lux-home textarea { background: var(--field); color: var(--text); border-color: var(--field-line); border-radius: 14px; }
+
+/* ───── השראה מהמאגר ───── */
+.lux-examples .section-title { margin-bottom: 14px; }
+
+/* ───── תצוגה בהירה: אותו מבנה, בגוונים בהירים ───── */
+html.light .lux-home {
+  --lx-ink: #1b1233;
+  --lx-ink-2: #4b4466;
+  --lx-edge: rgba(76, 29, 149, 0.16);
+  --lx-glow: color-mix(in srgb, var(--pal-wb) 40%, transparent);
+  --lx-card: linear-gradient(155deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.78));
+  --lx-tile: rgba(255, 255, 255, 0.8);
+  --lx-tile-hover: #ffffff;
+  --lx-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 22px 50px -30px rgba(76, 29, 149, 0.35);
+  --lx-hero-bg: radial-gradient(520px 260px at 92% 0%, color-mix(in srgb, var(--pal-wc) 18%, transparent), transparent 70%), radial-gradient(520px 320px at 0% 100%, rgba(124, 58, 237, 0.16), transparent 70%), linear-gradient(160deg, #ffffff, #f3edff);
+  --lx-title: linear-gradient(270deg, #2a1450 10%, #4c1d95 55%, var(--pal-wb) 100%);
+}
+html.light .lux-eyebrow, html.light .lux-chips li { background: rgba(255, 255, 255, 0.8); color: var(--lx-ink); }
+html.light .lux-hero { box-shadow: var(--lx-shadow); }
+html.light .lux-ico { color: var(--pal-wb); }
+html.light .lux-orb { opacity: 0.3; }
+
+/* ───── ניגודיות גבוהה: שחור-צהוב שטוח, בלי זכוכית, גרדיאנטים ותנועה ───── */
+/* גם כשהתצוגה הבהירה פעילה יחד עם ניגודיות גבוהה (שני המחלקות על html), הצבעים נשארים צהוב על שחור */
+html.hc .lux-home { --lx-ink: #ffeb00; --lx-ink-2: #ffeb00; --lx-edge: #ffeb00; --lx-glow: transparent; }
+html.hc .lux-home .home-menu-grid a, html.hc .lux-home .home-menu-grid a strong, html.hc .lux-home .home-menu-grid a .hint { color: #ffeb00; }
+html.hc .lux-hero { background: #000; border: 2px solid #ffeb00; box-shadow: none; border-radius: 12px; }
+html.hc .lux-orb { display: none; }
+html.hc .lux-home .lux-title { background: none; -webkit-text-fill-color: currentColor; color: #ffeb00; }
+html.hc .lux-eyebrow, html.hc .lux-chips li { background: #000; border: 1px solid #ffeb00; color: #ffeb00; }
+html.hc .lux-eyebrow::before { background: #ffeb00; box-shadow: none; }
+html.hc .lux-ico { color: #ffeb00; background: none; box-shadow: inset 0 0 0 1px #ffeb00; }
+html.hc .lux-home .home-menu-grid a { border: 2px solid #ffeb00; background: #000; }
+html.hc .lux-home .home-menu-grid a::after { display: none; }
+
+/* ───── נייד ───── */
+@media (max-width: 640px) {
+  .lux-hero { border-radius: 22px; padding: 22px 16px; margin-bottom: 16px; }
+  .lux-chips { gap: 7px; }
+  .lux-chips li { font-size: 0.84rem; padding: 6px 11px; }
+  html:not(.light):not(.hc) .page .lux-home .card { border-radius: 20px; }
+  html:not(.light):not(.hc) .page .lux-home .home-menu-grid a { min-height: 96px; padding: 58px 16px 16px; }
+  html:not(.light):not(.hc) .page .lux-home .home-menu-main li:first-child a { min-height: 120px; }
+}
+
+/* ───── פחות תנועה / חיסכון בנתונים: בלי טשטוש כבד ובלי אנימציה ───── */
+@media (prefers-reduced-motion: reduce) {
+  .lux-chips li, .lux-home .btn, .lux-home .home-menu-grid a, .lux-home .hero-steps li, .lux-home .home-tabs [role="tab"] { transition: none !important; }
+  .lux-home .home-menu-grid a:hover, .lux-home .hero-steps li:hover, .lux-chips li:hover { transform: none !important; }
+}
+html.saver .lux-orb { display: none; }
+html.saver .lux-hero, html.saver .lux-home .card, html.saver .lux-home .home-tabs [role="tab"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
