@@ -2841,3 +2841,478 @@ html.saver .lux-hero, html.saver .lux-home .card, html.saver .lux-home .home-tab
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+  /* ==========================================================================
+   VISUAL WORKFLOW CANVAS PRO (בסגנון Vision Futures)
+   ========================================================================== */
+
+.wf-canvas {
+  position: relative;
+  padding: 30px 24px;
+  border-radius: 26px;
+  background: 
+    radial-gradient(circle at 88% 12%, rgba(234, 88, 12, 0.18), transparent 45%),
+    radial-gradient(circle at 12% 88%, rgba(124, 58, 237, 0.25), transparent 50%),
+    linear-gradient(160deg, rgba(11, 8, 24, 0.95), rgba(22, 13, 48, 0.92)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.75), 0 28px 70px rgba(0, 0, 0, 0.65) !important;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+
+.wf-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.wf-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(65px);
+  pointer-events: none;
+  z-index: 0;
+}
+.wf-orb-1 { width: 260px; height: 260px; top: -80px; right: -60px; background: rgba(251, 146, 60, 0.22); }
+.wf-orb-2 { width: 300px; height: 300px; bottom: -100px; left: -80px; background: rgba(168, 85, 247, 0.22); }
+
+.wf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 26px;
+  position: relative;
+  z-index: 2;
+}
+
+.wf-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.wf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: rgba(234, 88, 12, 0.2);
+  border: 1px solid rgba(251, 146, 60, 0.5);
+  color: #fed7aa;
+}
+
+.wf-sub-pill {
+  font-size: 0.78rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #cdc4ea;
+}
+
+.wf-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fb923c;
+  box-shadow: 0 0 12px #fb923c;
+  animation: wfPulse 1.6s infinite;
+}
+
+@keyframes wfPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.4; }
+}
+
+.wf-main-title {
+  margin: 0 0 6px !important;
+  font-size: clamp(1.45rem, 3vw, 2rem) !important;
+}
+
+.wf-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wf-sim-btn {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 999px !important;
+  font-size: 0.9rem !important;
+}
+.wf-sim-btn.is-running {
+  border-color: #fb923c !important;
+  box-shadow: 0 0 18px rgba(251, 146, 60, 0.25);
+}
+
+/* אזור הצמתים וקו ה-SVG */
+.wf-nodes-wrapper {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 24px;
+}
+
+.wf-connector-svg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.wf-svg-flow {
+  animation: wfDash 18s linear infinite;
+}
+
+@keyframes wfDash {
+  to { stroke-dashoffset: -480; }
+}
+
+@media (max-width: 980px) {
+  .wf-connector-svg { display: none; }
+}
+
+.wf-nodes {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 980px) {
+  .wf-nodes { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .wf-nodes { grid-template-columns: 1fr; }
+}
+
+.wf-node {
+  position: relative;
+  padding: 16px 14px;
+  border-radius: 18px;
+  background: rgba(24, 15, 52, 0.82);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.wf-node:hover {
+  transform: translateY(-5px);
+  border-color: var(--node-color, #fb923c);
+}
+
+.wf-node.active {
+  transform: translateY(-6px) scale(1.02);
+  background: linear-gradient(160deg, rgba(42, 24, 88, 0.92), rgba(24, 14, 52, 0.92));
+  border-color: var(--node-color, #fb923c);
+  box-shadow: 0 16px 36px -8px color-mix(in srgb, var(--node-color, #fb923c) 45%, transparent);
+}
+
+.wf-node-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-family: ui-monospace, monospace;
+}
+
+.wf-node-code {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-weight: 700;
+}
+
+.wf-node-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #cdc4ea;
+}
+
+.wf-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--node-color, #fb923c);
+  box-shadow: 0 0 8px var(--node-color, #fb923c);
+}
+
+.wf-node-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--node-color, #fb923c);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.wf-node-title {
+  font-weight: 800;
+  font-size: 1.02rem;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.wf-node-desc {
+  font-size: 0.82rem;
+  color: #cdc4ea;
+  line-height: 1.42;
+  margin-bottom: 12px;
+}
+
+.wf-node-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.76rem;
+  color: #b9a6e6;
+}
+
+.wf-node-arrow {
+  font-weight: 700;
+  color: var(--node-color, #fb923c);
+}
+
+/* פאנל ה-Inspector והטרמינל בתחתית הקנבס */
+.wf-inspector {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(15, 10, 32, 0.78);
+  border: 1px solid color-mix(in srgb, var(--active-color, #fb923c) 45%, rgba(255, 255, 255, 0.12));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 900px) {
+  .wf-inspector { grid-template-columns: 1fr; }
+}
+
+.wf-ins-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.wf-ins-code {
+  font-family: ui-monospace, monospace;
+  font-weight: 800;
+  font-size: 0.82rem;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: var(--active-color, #fb923c);
+  color: #0b0818;
+}
+
+.wf-ins-title {
+  margin: 0 !important;
+  font-size: 1.25rem !important;
+}
+
+.wf-ins-badge {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #cdc4ea;
+}
+
+.wf-ins-desc {
+  font-size: 0.94rem;
+  color: #e2dcf5;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.wf-io-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 560px) {
+  .wf-io-grid { grid-template-columns: 1fr; }
+}
+
+.wf-io-box {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.wf-io-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #cdc4ea;
+  margin-bottom: 8px;
+}
+
+.wf-io-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wf-chip {
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.wf-chip-out {
+  border-color: color-mix(in srgb, var(--active-color, #fb923c) 60%, transparent);
+  background: color-mix(in srgb, var(--active-color, #fb923c) 16%, transparent);
+}
+
+.wf-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.wf-metric-card {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.wf-metric-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--active-color, #fb923c);
+}
+
+.wf-metric-lbl {
+  font-size: 0.75rem;
+  color: #cdc4ea;
+}
+
+/* הטרמינל החי */
+.wf-terminal {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 16px;
+  background: #090614;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.wf-term-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wf-term-dots {
+  display: flex;
+  gap: 6px;
+}
+.wf-term-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.wf-term-title {
+  font-size: 0.75rem;
+  color: #a39bbb;
+  direction: ltr;
+}
+
+.wf-term-body {
+  padding: 16px;
+  font-size: 0.84rem;
+  line-height: 1.75;
+  color: #e2e8f0;
+  min-height: 140px;
+}
+
+.wf-term-line {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  margin-bottom: 6px;
+}
+.wf-term-line.hidden {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.wf-term-line.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.wf-term-prompt {
+  color: var(--active-color, #fb923c);
+  font-weight: 800;
+  margin-left: 6px;
+}
+
+.wf-cursor-blink {
+  color: var(--active-color, #fb923c);
+  animation: wfBlink 1s step-end infinite;
+}
+
+@keyframes wfBlink {
+  50% { opacity: 0; }
+}
+
+.wf-term-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  color: #86efac;
+}
+
+.wf-term-link {
+  color: #fed7aa;
+  text-decoration: none;
+  font-weight: 700;
+}
+.wf-term-link:hover {
+  text-decoration: underline;
+}
