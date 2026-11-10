@@ -1,6 +1,17 @@
 "use client";
-import React, { useState, useEffect } from "react";
+
+// שלב 61: מפת "איך נבנית פעולה". התוכן כאן מתאר את מה שהמערכת באמת עושה (מספרים נשלפים מהשרת),
+// והתנועה האוטומטית מכבדת מצב תנועה רגועה / חיסכון / prefers-reduced-motion.
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { api } from "@/lib/api";
+import { calmMotion } from "@/lib/lux/motion";
+
+interface Metric {
+  label: string;
+  /** מספר אמיתי מהשרת (null = עדיין לא נטען, לא מציגים) או טקסט קבוע */
+  value: string | number | null;
+}
 
 interface AgentNode {
   id: number;
@@ -9,157 +20,187 @@ interface AgentNode {
   title: string;
   shortDesc: string;
   fullDesc: string;
-  time: string;
+  /** מי עושה את השלב */
+  who: string;
+  /** תווית קצרה בעברית בפינת הכרטיס */
   status: string;
   color: string;
-  metrics: { label: string; value: string }[];
+  /** גוון בהיר של אותו צבע לטקסט על רקע כהה (ניגודיות AA) */
+  text: string;
+  metrics: Metric[];
   terminalLogs: string[];
   inputs: string[];
   outputs: string[];
 }
 
-const WORKFLOW_NODES: AgentNode[] = [
+interface Counts {
+  values: number | null;
+  methods: number | null;
+  kinds: number | null;
+}
+
+const buildNodes = (c: Counts): AgentNode[] => [
   {
     id: 1,
-    code: "AGT-01",
-    tag: "INPUT & CONTEXT",
-    title: "1. ניתוח שכבה ומטרות",
-    shortDesc: "הגדרת שכבת גיל, ערך מרכזי ואופי הקבוצה בשבט מעוז.",
-    fullDesc:
-      "סוכן הקלט ממפה את מאפייני הקבוצה (גודל, שכבת גיל ד'–י\"ב, אנרגיה) ומצליב אותם עם מערך הערכים השבתי כדי לייצר תשתית פדגוגית מדויקת לפעולה.",
-    time: "15 שניות",
-    status: "ONLINE",
+    code: "01",
+    tag: "קלט והקשר",
+    title: "1. מתארים את הקבוצה והמטרה",
+    shortDesc: "שכבת גיל, ערך מרכזי, סוג פעולה ואורך.",
+    fullDesc: "ממלאים כמה פרטים: למי הפעולה, איזה ערך צופי היא מקדמת, כמה זמן יש ומה אופי הקבוצה. מכאן נבנית כל הפעולה.",
+    who: "אתם",
+    status: "קלט",
     color: "#fb923c",
+    text: "#fdba74",
     metrics: [
-      { label: "שכבות גיל תומכות", value: "ד' - י\"ב" },
-      { label: "ערכים במאגר", value: "45+" },
-      { label: "דיוק התאמה", value: "99.4%" },
+      { label: "שכבות גיל", value: "ג' עד יב'" },
+      { label: "ערכים צופיים", value: c.values },
+      { label: "סוגי פעולות", value: c.kinds },
     ],
-    terminalLogs: [
-      "[AGT-01] טוען פרופיל קבוצה משבט מעוז...",
-      "[AGT-01] מנתח דינמיקה קבוצתית ומטרות חינוכיות...",
-      "[AGT-01] וקטור מטרות נוצר בהצלחה -> מועבר ל-AGT-02",
-    ],
-    inputs: ["שכבת גיל", "נושא הפעולה", "אורך פעולה (דקות)", "אופי הקבוצה"],
-    outputs: ["פרופיל פדגוגי", "מגבלות זמן", "דגשים חינוכיים"],
+    terminalLogs: ["קולט שכבת גיל, נושא ואורך...", "מצליב עם הערך שבחרתם...", "מועבר לבחירת מתודות."],
+    inputs: ["שכבת גיל", "נושא וערך", "אורך הפעולה בדקות", "אופי הקבוצה"],
+    outputs: ["הגדרת הפעולה", "מגבלת זמן", "דגשים חינוכיים"],
   },
   {
     id: 2,
-    code: "AGT-02",
-    tag: "METHOD ENGINE",
-    title: "2. מנוע מתודות חכם",
-    shortDesc: "בחירה אוטומטית של משחקים, דיונים והפעלות מותאמות.",
-    fullDesc:
-      "סורק מאות מתודות צופיות ומסנן את אלו שמתאימות בדיוק למזג האוויר, למיקום (חדר/שטח) ולרמת הקשב של החניכים באותו שלב בפעולה.",
-    time: "25 שניות",
-    status: "READY",
+    code: "02",
+    tag: "בחירת מתודות",
+    title: "2. בוחרים מתודות לכל שלב",
+    shortDesc: "משחקים, דיונים והפעלות שמתאימים לגיל ולשלב.",
+    fullDesc: "המערכת מציעה מתודה מתאימה לכל שלב לפי הגיל והמטרה. אפשר להשאיר את ההצעה או להחליף ידנית.",
+    who: "אוטומטי, ואפשר לשנות",
+    status: "בחירה",
     color: "#a855f7",
+    text: "#d8b4fe",
     metrics: [
-      { label: "מתודות זמינות", value: "320+" },
-      { label: "סוגי הפעלות", value: "14" },
-      { label: "זמן סינון", value: "120ms" },
+      { label: "מתודות במאגר", value: c.methods },
+      { label: "בחירה לפי", value: "גיל ושלב" },
+      { label: "החלפה ידנית", value: "אפשרית" },
     ],
-    terminalLogs: [
-      "[AGT-02] מקבל וקטור מטרות מ-AGT-01...",
-      "[AGT-02] מסנן מתודות לפי אנרגיה ומיקום בשבט...",
-      "[AGT-02] נבחרו 4 מתודות ליבה + 2 מתודות גיבוי.",
-    ],
-    inputs: ["פרופיל פדגוגי", "מיקום (שטח/מבנה)", "ציוד זמין"],
-    outputs: ["רשימת משחקים", "שאלות לדיון", "מתודת שיא"],
+    terminalLogs: ["סורק את מאגר המתודות...", "מתאים מתודה לכל שלב בפעולה...", "ההצעה מוכנה להחלפה או לאישור."],
+    inputs: ["הגדרת הפעולה", "שכבת גיל", "שלב בפעולה"],
+    outputs: ["מתודה לכל שלב", "חלוקת זמן ראשונית"],
   },
   {
     id: 3,
-    code: "AGT-03",
-    tag: "AI CORE WRITER",
-    title: "3. מחולל 5 שלבי הפעולה",
-    shortDesc: "כתיבת פתיחה, גוף, שיא וסיכום עם חלוקת זמנים מדויקת.",
-    fullDesc:
-      "לב המערכת. מרכיב פעולה שלמה בת 5 שלבים מובנים, כולל הנחיות מדויקות למדריך, משפטי קישור, שאלות מנחות וחלוקת זמנים בדקות.",
-    time: "מיידי",
-    status: "ACTIVE CORE",
+    code: "03",
+    tag: "כתיבה",
+    title: "3. כותבים חמישה שלבי פעולה",
+    shortDesc: "פתיחה, ציר, זמן צופיות, דיון וסיכום, עם זמנים.",
+    fullDesc: "נכתבת פעולה בחמישה שלבים עם הנחיות למדריך, שאלות לדיון וחלוקת זמנים. כשבינה מלאכותית מופעלת היא כותבת את הטיוטה, ובלעדיה נבנית טיוטה מתבניות מובנות. בשני המקרים אפשר לערוך כל שלב.",
+    who: "אוטומטי, ואתם עורכים",
+    status: "כתיבה",
     color: "#ec4899",
+    text: "#f9a8d4",
     metrics: [
-      { label: "מבנה שלבים", value: "5 שלבים" },
-      { label: "סגנונות כתיבה", value: "8" },
-      { label: "מהירות יצירה", value: "2.1s" },
+      { label: "שלבים בפעולה", value: 5 },
+      { label: "טון הכתיבה", value: "לבחירתכם" },
+      { label: "חלוקת זמנים", value: "אוטומטית" },
     ],
-    terminalLogs: [
-      "[AGT-03] בונה ציר זמן: פתיחה (10 דק') -> גוף -> שיא...",
-      "[AGT-03] מנסח הוראות הפעלה ושאלות רפלקציה למדריך...",
-      "[AGT-03] טיוטת פעולה מלאה הורכבה בהצלחה.",
-    ],
-    inputs: ["מתודות נבחרות", "סגנון כתיבה אישי", "מגבלת זמן"],
-    outputs: ["מערך פעולה מלא (5 שלבים)", "ציר זמנים דקה-אחר-דקה"],
+    terminalLogs: ["בונה ציר זמן: פתיחה, ציר, זמן צופיות, דיון, סיכום...", "מנסח הנחיות ושאלות לדיון...", "הטיוטה מוכנה לעריכה."],
+    inputs: ["מתודות שנבחרו", "טון כתיבה", "מגבלת זמן"],
+    outputs: ["פעולה מלאה בחמישה שלבים", "זמנים לכל שלב"],
   },
   {
     id: 4,
-    code: "AGT-04",
-    tag: "SAFETY & GEAR",
-    title: "4. בקרת בטיחות וציוד",
-    shortDesc: "גזירת רשימת ציוד מלאה לארון ובדיקת דגשי בטיחות.",
-    fullDesc:
-      "עובר אוטומטית על כל שלבי הפעולה כדי לחלץ כל פריט ציוד נדרש ומוסיף אזהרות בטיחות רלוונטיות לפעילות שטח, לילה או יצירה.",
-    time: "אוטומטי",
-    status: "GUARDING",
+    code: "04",
+    tag: "ציוד ובטיחות",
+    title: "4. מכינים ציוד ובטיחות",
+    shortDesc: "רשימת ציוד להכנה והערות בטיחות לכל פעולה.",
+    fullDesc: "לכל פעולה יש רשימת ציוד והערות בטיחות. במאגר אפשר לסנן פעולות שדורשות מעט ציוד, כדי למצוא פעולה שאפשר להפעיל גם ברגע האחרון.",
+    who: "אוטומטי",
+    status: "הכנה",
     color: "#38bdf8",
+    text: "#7dd3fc",
     metrics: [
-      { label: "בדיקות בטיחות", value: "100%" },
-      { label: "זיהוי ציוד אוטומטי", value: "פעיל" },
-      { label: "תקן חוזר מנכ\"ל", value: "מותאם" },
+      { label: "רשימת ציוד", value: "בכל פעולה" },
+      { label: "הערות בטיחות", value: "בכל פעולה" },
+      { label: "סינון במאגר", value: "ציוד מועט" },
     ],
-    terminalLogs: [
-      "[AGT-04] סורק טקסט לאיתור פריטי ציוד וחומרים...",
-      "[AGT-04] מצליב פעילות עם נהלי בטיחות בשטח...",
-      "[AGT-04] אושר: צורפה רשימת ציוד ודגשי בטיחות.",
-    ],
-    inputs: ["מערך פעולה מלא"],
-    outputs: ["צ'ק-ליסט ציוד למחסן", "אזהרות ודגשי בטיחות"],
+    terminalLogs: ["עובר על שלבי הפעולה...", "אוסף את הציוד הנדרש לרשימה...", "מצרף הערות בטיחות."],
+    inputs: ["הפעולה המלאה"],
+    outputs: ["רשימת ציוד להכנה", "הערות בטיחות"],
   },
   {
     id: 5,
-    code: "AGT-05",
-    tag: "EXPORT & FIELD",
-    title: "5. ייצוא ל-Word ומצב שטח",
-    shortDesc: "הורדת דף פעולה רשמי עם לוגו השבט או הפעלת טיימר חי.",
-    fullDesc:
-      "אורז את הפעולה לקובץ Word מעוצב להדפסה עם סמל שבט מעוז, או מעביר את המדריך ל'מצב שטח' בנייד עם טיימר ענק שמלווה את הפעולה בזמן אמת.",
-    time: "בלחיצה",
-    status: "READY",
+    code: "05",
+    tag: "ייצוא ושטח",
+    title: "5. מייצאים ומפעילים בשטח",
+    shortDesc: "קובץ Word מעוצב, או מצב במה עם טיימר.",
+    fullDesc: "מורידים את הפעולה כקובץ Word או PDF עם סמל השבט, או עוברים למצב במה בנייד: שלב אחד על המסך וטיימר גדול שמלווה את הפעולה.",
+    who: "בלחיצה",
+    status: "הפקה",
     color: "#4ade80",
+    text: "#86efac",
     metrics: [
-      { label: "פורמטים לייצוא", value: "DOCX / PDF" },
-      { label: "מצב שטח נייד", value: "כולל טיימר" },
-      { label: "שיתוף לצוות", value: "מיידי" },
+      { label: "ייצוא", value: "Word / PDF" },
+      { label: "מצב במה", value: "עם טיימר" },
+      { label: "שיתוף", value: "קישור לצוות" },
     ],
-    terminalLogs: [
-      "[AGT-05] מטמיע לוגו שבט מעוז ועיצוב הדפסה...",
-      "[AGT-05] מסנכרן שלבים עם שעון העצר של מצב שטח...",
-      "[AGT-05] הפעולה מוכנה להורדה ולהרצה מול החניכים!",
-    ],
+    terminalLogs: ["מטמיע את סמל השבט בעיצוב להדפסה...", "מסנכרן את השלבים עם הטיימר של מצב במה...", "הפעולה מוכנה להורדה ולהפעלה."],
     inputs: ["פעולה מאושרת", "רשימת ציוד"],
-    outputs: ["קובץ Word מעוצב", "ממשק מצב שטח חי", "קישור שיתוף"],
+    outputs: ["קובץ Word או PDF", "מצב במה עם טיימר", "קישור שיתוף"],
   },
 ];
 
 export default function WorkflowCanvas() {
   const [activeId, setActiveId] = useState<number>(3);
-  const [isSimulating, setIsSimulating] = useState<boolean>(true);
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [logIndex, setLogIndex] = useState<number>(0);
+  const [counts, setCounts] = useState<Counts>({ values: null, methods: null, kinds: null });
+  const [calm, setCalm] = useState<boolean>(true);
+  const [visible, setVisible] = useState<boolean>(false);
+  const root = useRef<HTMLElement>(null);
 
-  const activeNode =
-    WORKFLOW_NODES.find((n) => n.id === activeId) || WORKFLOW_NODES[2];
+  const nodes = buildNodes(counts);
+  const activeNode = nodes.find((n) => n.id === activeId) || nodes[2];
 
-  // סימולציה אוטומטית שעוברת בין הסוכנים (כמו בווידאו)
+  // מספרים אמיתיים מהשרת (נקודות קצה ציבוריות). אם נכשל, מדלגים על המספר ולא ממציאים.
   useEffect(() => {
-    if (!isSimulating) return;
+    let live = true;
+    const len = (p: Promise<unknown>) => p.then((r) => (Array.isArray(r) ? r.length : null)).catch(() => null);
+    Promise.all([len(api("/api/values")), len(api("/api/methods")), len(api("/api/kinds"))]).then(([values, methods, kinds]) => {
+      if (live) setCounts({ values, methods, kinds });
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // ההדגמה רצה רק כשהקנבס על המסך
+  useEffect(() => {
+    const c = calmMotion();
+    setCalm(c);
+    const el = root.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.1 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!calm) setIsSimulating(true);
+  }, [calm]);
+
+  // התחלה אוטומטית רק בלי מצב רגוע; לחיצה מפורשת על הכפתור מפעילה גם במצב רגוע (בלי אנימציות, רק החלפת שלב)
+  const running = isSimulating && visible;
+
+  useEffect(() => {
+    if (!running) return;
     const interval = setInterval(() => {
-      setActiveId((prev) => (prev >= WORKFLOW_NODES.length ? 1 : prev + 1));
+      setActiveId((prev) => (prev >= 5 ? 1 : prev + 1));
     }, 4200);
     return () => clearInterval(interval);
-  }, [isSimulating]);
+  }, [running]);
 
-  // אנימציית שורות הטרמינל של הסוכן הפעיל
+  // שורות ה"טרמינל" של השלב הפעיל. במצב רגוע מוצגות כולן מיד.
   useEffect(() => {
+    if (calm) {
+      setLogIndex(2);
+      return;
+    }
     setLogIndex(0);
     const t1 = setTimeout(() => setLogIndex(1), 500);
     const t2 = setTimeout(() => setLogIndex(2), 1200);
@@ -167,60 +208,45 @@ export default function WorkflowCanvas() {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [activeId]);
+  }, [activeId, calm]);
 
-  const handleSelectNode = (id: number) => {
+  const handleSelectNode = useCallback((id: number) => {
     setIsSimulating(false);
     setActiveId(id);
-  };
+  }, []);
 
   return (
-    <section className="wf-canvas" aria-label="מפת זרימת סוכני בינה מלאכותית">
-      {/* אלמנטים של תאורת עומק ברקע הקנבס */}
-      <div className="wf-glow-orb wf-orb-1" />
-      <div className="wf-glow-orb wf-orb-2" />
+    <section className="wf-canvas" ref={root} aria-label="איך נבנית פעולה: חמישה שלבים">
+      <div className="wf-glow-orb wf-orb-1" aria-hidden="true" />
+      <div className="wf-glow-orb wf-orb-2" aria-hidden="true" />
 
-      {/* כותרת עליונה ופקדי שליטה */}
       <div className="wf-header">
         <div>
           <div className="wf-badge-row">
             <span className="wf-badge">
-              <span className="wf-pulse" />
-              VISION ENGINE • 5 AI AGENTS
+              <span className="wf-pulse" aria-hidden="true" />
+              חמישה שלבים
             </span>
-            <span className="wf-sub-pill">שבט מעוז • ארכיטקטורה חיה</span>
+            <span className="wf-sub-pill">מהרעיון ועד הפעולה בשטח</span>
           </div>
-          <h2 className="section-title wf-main-title">
-            רשת הסוכנים לבניית פעולה מושלמת
-          </h2>
+          <h2 className="section-title wf-main-title">איך נבנית פעולה במחולל</h2>
           <p className="hint" style={{ margin: 0 }}>
-            לחץ על כל סוכן במפה כדי לבחון את קלט/פלט המערכת או הפעל הדמיה חיה של הזרימה:
+            לחצו על שלב כדי לראות מה נכנס אליו ומה יוצא ממנו, או הפעילו הדגמה שעוברת בין השלבים.
           </p>
         </div>
 
         <div className="wf-controls">
-          <button
-            type="button"
-            onClick={() => setIsSimulating((s) => !s)}
-            className={`btn wf-sim-btn ${isSimulating ? "is-running" : ""}`}
-          >
-            {isSimulating ? "⏸ השהה סימולציה" : "▶ הפעל הדמיית זרימה"}
+          <button type="button" onClick={() => setIsSimulating((s) => !s)} aria-pressed={running} className={`btn wf-sim-btn ${running ? "is-running" : ""}`}>
+            {running ? "⏸ השהיית ההדגמה" : "▶ הפעלת הדגמה"}
           </button>
-          <Link href="/generator" className="btn btn-primary">
-            בנה פעולה עכשיו ←
+          <Link href="/" className="btn btn-primary">
+            בונים פעולה עכשיו ←
           </Link>
         </div>
       </div>
 
-      {/* קו הזרימה הראשי עם כרטיסיות הסוכנים */}
       <div className="wf-nodes-wrapper">
-        {/* קו אנרגיה מונפש ברקע שמחבר את כל הסוכנים */}
-        <svg
-          className="wf-connector-svg"
-          viewBox="0 0 1000 60"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
+        <svg className="wf-connector-svg" viewBox="0 0 1000 60" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="wfGrad" x1="100%" y1="0%" x2="0%" y2="0%">
               <stop offset="0%" stopColor="#fb923c" />
@@ -228,28 +254,12 @@ export default function WorkflowCanvas() {
               <stop offset="100%" stopColor="#38bdf8" />
             </linearGradient>
           </defs>
-          <line
-            x1="40"
-            y1="30"
-            x2="960"
-            y2="30"
-            stroke="rgba(255,255,255,0.12)"
-            strokeWidth="3"
-          />
-          <line
-            x1="40"
-            y1="30"
-            x2="960"
-            y2="30"
-            stroke="url(#wfGrad)"
-            strokeWidth="3"
-            strokeDasharray="14 10"
-            className="wf-svg-flow"
-          />
+          <line x1="40" y1="30" x2="960" y2="30" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
+          <line x1="40" y1="30" x2="960" y2="30" stroke="url(#wfGrad)" strokeWidth="3" strokeDasharray="14 10" className="wf-svg-flow" />
         </svg>
 
         <div className="wf-nodes">
-          {WORKFLOW_NODES.map((node) => {
+          {nodes.map((node) => {
             const isActive = activeId === node.id;
             const isPassed = node.id < activeId;
             return (
@@ -257,6 +267,8 @@ export default function WorkflowCanvas() {
                 key={node.id}
                 role="button"
                 tabIndex={0}
+                aria-pressed={isActive}
+                aria-label={`שלב ${node.id}: ${node.title.replace(/^\d+\.\s*/, "")}`}
                 onClick={() => handleSelectNode(node.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -264,15 +276,13 @@ export default function WorkflowCanvas() {
                     handleSelectNode(node.id);
                   }
                 }}
-                style={{ "--node-color": node.color } as React.CSSProperties}
-                className={`wf-node ${isActive ? "active" : ""} ${
-                  isPassed ? "passed" : ""
-                }`}
+                style={{ "--node-color": node.color, "--node-text": node.text } as React.CSSProperties}
+                className={`wf-node ${isActive ? "active" : ""} ${isPassed ? "passed" : ""}`}
               >
                 <div className="wf-node-top">
                   <span className="wf-node-code">{node.code}</span>
                   <span className="wf-node-status">
-                    <span className="wf-status-dot" />
+                    <span className="wf-status-dot" aria-hidden="true" />
                     {node.status}
                   </span>
                 </div>
@@ -282,10 +292,8 @@ export default function WorkflowCanvas() {
                 <div className="wf-node-desc">{node.shortDesc}</div>
 
                 <div className="wf-node-footer">
-                  <span>⏱ {node.time}</span>
-                  <span className="wf-node-arrow">
-                    {isActive ? "פעיל כעת ●" : "בחר סוכן ←"}
-                  </span>
+                  <span>מי עושה: {node.who}</span>
+                  <span className="wf-node-arrow">{isActive ? "השלב הנבחר ●" : "לפרטים ←"}</span>
                 </div>
               </div>
             );
@@ -293,11 +301,7 @@ export default function WorkflowCanvas() {
         </div>
       </div>
 
-      {/* פאנל Inspector מתקדם + טרמינל חי של הסוכן שנבחר */}
-      <div
-        className="wf-inspector"
-        style={{ "--active-color": activeNode.color } as React.CSSProperties}
-      >
+      <div className="wf-inspector" style={{ "--active-color": activeNode.color, "--active-text": activeNode.text } as React.CSSProperties}>
         <div className="wf-inspector-info">
           <div className="wf-ins-header">
             <span className="wf-ins-code">{activeNode.code}</span>
@@ -309,10 +313,10 @@ export default function WorkflowCanvas() {
 
           <div className="wf-io-grid">
             <div className="wf-io-box">
-              <div className="wf-io-label">📥 קלט סוכן (Inputs)</div>
+              <div className="wf-io-label">📥 מה נכנס</div>
               <div className="wf-io-chips">
-                {activeNode.inputs.map((inp, i) => (
-                  <span key={i} className="wf-chip">
+                {activeNode.inputs.map((inp) => (
+                  <span key={inp} className="wf-chip">
                     {inp}
                   </span>
                 ))}
@@ -320,10 +324,10 @@ export default function WorkflowCanvas() {
             </div>
 
             <div className="wf-io-box">
-              <div className="wf-io-label">📤 פלט סוכן (Outputs)</div>
+              <div className="wf-io-label">📤 מה יוצא</div>
               <div className="wf-io-chips">
-                {activeNode.outputs.map((out, i) => (
-                  <span key={i} className="wf-chip wf-chip-out">
+                {activeNode.outputs.map((out) => (
+                  <span key={out} className="wf-chip wf-chip-out">
                     {out}
                   </span>
                 ))}
@@ -332,49 +336,44 @@ export default function WorkflowCanvas() {
           </div>
 
           <div className="wf-metrics-row">
-            {activeNode.metrics.map((m, idx) => (
-              <div key={idx} className="wf-metric-card">
-                <div className="wf-metric-val">{m.value}</div>
-                <div className="wf-metric-lbl">{m.label}</div>
-              </div>
-            ))}
+            {activeNode.metrics
+              .filter((m) => m.value !== null)
+              .map((m) => (
+                <div key={m.label} className="wf-metric-card">
+                  <div className="wf-metric-val">{m.value}</div>
+                  <div className="wf-metric-lbl">{m.label}</div>
+                </div>
+              ))}
           </div>
         </div>
 
-        {/* חלונית טרמינל חיה בסגנון סוכני AI */}
         <div className="wf-terminal">
           <div className="wf-term-bar">
-            <div className="wf-term-dots">
+            <div className="wf-term-dots" aria-hidden="true">
               <span style={{ background: "#ef4444" }} />
               <span style={{ background: "#f59e0b" }} />
               <span style={{ background: "#22c55e" }} />
             </div>
-            <span className="wf-term-title">
-              agent-stream://{activeNode.code.toLowerCase()}.maoz
-            </span>
+            <span className="wf-term-title">הדגמה להמחשה בלבד</span>
           </div>
 
-          <div className="wf-term-body" dir="rtl">
+          <div className="wf-term-body" dir="rtl" aria-hidden="true">
             {activeNode.terminalLogs.map((log, index) => (
-              <div
-                key={index}
-                className={`wf-term-line ${
-                  index <= logIndex ? "visible" : "hidden"
-                }`}
-              >
+              <div key={log} className={`wf-term-line ${index <= logIndex ? "visible" : "hidden"}`}>
                 <span className="wf-term-prompt">❯</span> {log}
               </div>
             ))}
             <div className="wf-term-cursor-line">
-              <span className="wf-term-prompt">❯</span>{" "}
-              <span className="wf-cursor-blink">_</span>
+              <span className="wf-term-prompt">❯</span> <span className="wf-cursor-blink">_</span>
             </div>
           </div>
 
           <div className="wf-term-footer">
-            <span>STATUS: {activeNode.status}</span>
+            <span>
+              שלב {activeNode.id} מתוך 5 · {activeNode.who}
+            </span>
             <Link href="/library" className="wf-term-link">
-              פתח מאגר פעולות מוכן ↗
+              למאגר פעולות מוכן ↗
             </Link>
           </div>
         </div>

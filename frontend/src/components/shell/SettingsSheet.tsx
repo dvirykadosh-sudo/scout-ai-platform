@@ -3,7 +3,9 @@
 // "הגדרות מראה": חלון עם טיוטה. שינויים לא מוחלים מיד; פס "שינויים ממתינים" מציג כמה יש,
 // כפתור "סקירת שינויים" מראה מה ישתנה (מ-ל), ורק "שמירה והחלה" מחיל. אפשר גם לבטל הכל.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { X } from "lucide-react";
+import { replayIntro } from "@/lib/lux/intro";
 import { useA11y, useToast } from "../Providers";
 import { PALETTE_CHOICES, PANEL_CHOICES, THEME_CHOICES, applyAppearance, diffAppearance, readAppearance, type Appearance } from "./appearance";
 import { getPrefs } from "./shell-prefs";
@@ -114,13 +116,20 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
             </section>
           ) : (
             <>
+              <p className="sh-wizard-link">
+                רוצים שנעזור לכם לבחור? <Link href="/comfort" onClick={close}>פתחו את אשף הנוחות</Link>
+                {" · "}
+                <button type="button" className="link-btn" onClick={() => { close(); window.setTimeout(replayIntro, 250); }}>
+                  הצגת סיור הנשר שוב
+                </button>
+              </p>
               <Group title="ערכת נושא" hint="כהה, בהירה, או לפי הגדרת המכשיר." changed={was("theme")}>
                 <Choice name="ערכת נושא" value={draft.theme} options={THEME_CHOICES} onChange={(v) => set("theme", v)} changed={was("theme")} />
               </Group>
               <Group title="צבעי האתר" changed={was("palette")}>
                 <Choice name="צבעי האתר" value={draft.palette} options={PALETTE_CHOICES} onChange={(v) => set("palette", v)} changed={was("palette")} />
               </Group>
-              <Group title="משטח התוכן" hint="בהיר (ברירת מחדל) או כהה, לשעות הערב. בתצוגה בהירה ובניגודיות גבוהה ההגדרה הזו לא משפיעה." changed={was("panel")}>
+              <Group title="משטח התוכן" hint="כהה בסגנון זכוכית (ברירת מחדל) או בהיר. בתצוגה בהירה ובניגודיות גבוהה ההגדרה הזו לא משפיעה." changed={was("panel")}>
                 <Choice name="משטח התוכן" value={draft.panel} options={PANEL_CHOICES} onChange={(v) => set("panel", v)} changed={was("panel")} />
               </Group>
               <Group title="ניגודיות גבוהה" hint="שחור וצהוב, בלי זכוכית ובלי גרדיאנטים." changed={was("contrast")}>

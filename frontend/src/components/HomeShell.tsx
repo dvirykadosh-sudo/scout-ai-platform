@@ -12,6 +12,8 @@ import { TourButton } from "./WriteFinal";
 import { UpcomingCard } from "./WriteV36";
 import { NextStepCard } from "./PilotParts";
 import { LastDocHero } from "./Polish";
+import { HomeHow } from "./lux/HomeHow";
+import { TodayCard } from "./lux/TodayCard";
 import { Skeleton } from "./ui";
 
 /** מבנה דף הבית: ברכה, שלוש פעולות עיקריות, ולשוניות שמפרידות בין האזורים. */
@@ -21,6 +23,7 @@ export function HomeShell() {
     <>
       <HomeWelcome />
       <LastDocHero />
+      <TodayCard />
       <HomeMenu
         onCreate={() => {
           setTab("create");
@@ -54,6 +57,7 @@ export function HomeShell() {
           </>
         }
       />
+      <HomeHow />
     </>
   );
 }

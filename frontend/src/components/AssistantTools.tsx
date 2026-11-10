@@ -10,6 +10,8 @@ import { useAuth, useToast } from "./Providers";
 import { CloseBtn, todayPlus, useJson, type Profile, type ToolId, type ToolRequest, type ToolsProps } from "./AssistantShared";
 import { BoardAddTool, BookletTool, GrowthTool, HistoryTool, InclusionTool, ParentsTool, StationsTool, StyleTool } from "./AssistantTools2";
 import { Field, Modal } from "./ui";
+import { PresenceBar } from "./lux/PresenceBar";
+import { usePresence } from "@/lib/lux/presence";
 
 export type { Profile, ToolId, ToolRequest, ToolsProps };
 
@@ -587,6 +589,8 @@ function ShareTool({ text, setText, ageGroup, cloudId, setCloudId, onClose }: To
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  // רעיון 18: רואים מי קורא את הטיוטה עכשיו, והתגובות מתרעננות לבד כשמישהו מגיב
+  const pres = usePresence({ url: cloudId && full?.shareToken ? `/api/lux/presence/draft/${cloudId}` : null, token, onChange: () => void refresh() });
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -668,6 +672,7 @@ function ShareTool({ text, setText, ageGroup, cloudId, setCloudId, onClose }: To
               </button>
             )}
           </div>
+          {full?.shareToken && <PresenceBar people={pres.people} label="קוראים את הטיוטה עכשיו" />}
           {full?.shareToken && (
             <div>
               <label htmlFor="share-link">קישור לשיתוף (כל מי שיש לו אותו יכול לקרוא ולהגיב, לא לערוך)</label>

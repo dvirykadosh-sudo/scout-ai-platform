@@ -1,0 +1,89 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   שלב 61: תנועה. כל הכללים כאן נכבים בהפחתת תנועה, במצב חיסכון (html.saver), בניגודיות גבוהה ובהדפסה.
+   רעיונות: 6 (מעבר כרטיס), 7 (בנייה לנגד העיניים + שלדים), 8 (זוהר עכבר), 9 (רקע לפי שעה)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── 9. רקע לפי שעה: אפור-חם בערב, תכלת בבוקר, עמוק בלילה. רק CSS, ה-data-tod נקבע בסקריפט ההפעלה ───── */
+html[data-tod="morning"]:not(.light):not(.hc) {
+  --page-bg: radial-gradient(1000px 520px at 88% -10%, rgba(56, 189, 248, 0.2) 0%, transparent 62%), radial-gradient(800px 480px at 0% 108%, rgba(250, 204, 21, 0.1) 0%, transparent 60%), #0a1020;
+}
+html[data-tod="evening"]:not(.light):not(.hc) {
+  --page-bg: radial-gradient(1000px 520px at 88% -10%, rgba(249, 115, 22, 0.3) 0%, transparent 62%), radial-gradient(800px 480px at 0% 108%, rgba(190, 24, 93, 0.2) 0%, transparent 60%), #120a14;
+}
+html[data-tod="night"]:not(.light):not(.hc) {
+  --page-bg: radial-gradient(1000px 520px at 88% -10%, rgba(99, 102, 241, 0.22) 0%, transparent 62%), radial-gradient(800px 480px at 0% 108%, rgba(124, 58, 237, 0.16) 0%, transparent 60%), #070812;
+}
+html[data-tod="morning"]:not(.light):not(.hc) .lux { --lx-violet: #0ea5e9; --lx-violet-deep: #0c4a6e; }
+html[data-tod="evening"]:not(.light):not(.hc) .lux { --lx-violet: #be185d; --lx-violet-deep: #831843; }
+html[data-tod="night"]:not(.light):not(.hc) .lux { --lx-violet: #6366f1; --lx-violet-deep: #312e81; }
+body { transition: background-color 0.8s; }
+
+/* ───── 6. View Transitions: כרטיס ← עמוד ───── */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(lux-morph) { animation-duration: 0.46s; animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1); border-radius: 24px; overflow: hidden; }
+  ::view-transition-old(lux-morph), ::view-transition-new(lux-morph) { animation-duration: 0.46s; height: 100%; width: 100%; object-fit: cover; }
+  ::view-transition-old(root) { animation: lux-vt-out 0.22s ease both; }
+  ::view-transition-new(root) { animation: lux-vt-in 0.3s ease both; }
+}
+@keyframes lux-vt-out { to { opacity: 0; } }
+@keyframes lux-vt-in { from { opacity: 0; } }
+
+/* ───── 7. הפעולה נבנית לנגד העיניים: שלבים, כרטיסים ותגיות נכנסים בזה אחר זה ───── */
+@keyframes lux-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes lux-pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.saver):not(.hc) .lux .stage-table tbody tr,
+  html:not(.saver):not(.hc) .lux .flip-grid > li,
+  html:not(.saver):not(.hc) .lux .facts > div { animation: lux-rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  html:not(.saver):not(.hc) .lux .chips > li { animation: lux-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  html:not(.saver):not(.hc) .lux .stage-table tbody tr:nth-child(1), html:not(.saver):not(.hc) .lux .flip-grid > li:nth-child(1) { animation-delay: 0.12s; }
+  html:not(.saver):not(.hc) .lux .stage-table tbody tr:nth-child(2), html:not(.saver):not(.hc) .lux .flip-grid > li:nth-child(2) { animation-delay: 0.22s; }
+  html:not(.saver):not(.hc) .lux .stage-table tbody tr:nth-child(3), html:not(.saver):not(.hc) .lux .flip-grid > li:nth-child(3) { animation-delay: 0.32s; }
+  html:not(.saver):not(.hc) .lux .stage-table tbody tr:nth-child(4), html:not(.saver):not(.hc) .lux .flip-grid > li:nth-child(4) { animation-delay: 0.42s; }
+  html:not(.saver):not(.hc) .lux .stage-table tbody tr:nth-child(5), html:not(.saver):not(.hc) .lux .flip-grid > li:nth-child(5) { animation-delay: 0.52s; }
+  html:not(.saver):not(.hc) .lux .stage-table tbody tr:nth-child(n + 6), html:not(.saver):not(.hc) .lux .flip-grid > li:nth-child(n + 6) { animation-delay: 0.62s; }
+  html:not(.saver):not(.hc) .lux .chips > li:nth-child(2) { animation-delay: 0.04s; }
+  html:not(.saver):not(.hc) .lux .chips > li:nth-child(3) { animation-delay: 0.08s; }
+  html:not(.saver):not(.hc) .lux .chips > li:nth-child(4) { animation-delay: 0.12s; }
+  html:not(.saver):not(.hc) .lux .chips > li:nth-child(n + 5) { animation-delay: 0.16s; }
+}
+
+/* שלד טעינה בצורת הפעולה */
+.lux-skel { padding: 22px; }
+.lux-sk { display: block; border-radius: 10px; background: linear-gradient(90deg, rgba(128, 128, 150, 0.16), rgba(128, 128, 150, 0.3), rgba(128, 128, 150, 0.16)); background-size: 220% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.saver) .lux-sk { animation: lux-shimmer 1.5s linear infinite; }
+  html:not(.saver) .lux-sk-stage { animation: lux-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: calc(var(--i, 0) * 0.12s); }
+}
+@keyframes lux-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.lux-sk-title { height: 34px; width: min(70%, 420px); margin-bottom: 16px; }
+.lux-sk-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.lux-sk-chip { height: 30px; border-radius: 999px; }
+.lux-sk-stages { display: grid; gap: 12px; }
+.lux-sk-stage { display: grid; grid-template-columns: 44px 1fr 56px; gap: 14px; align-items: center; padding: 14px; border-radius: 16px; border: 1px solid var(--line, rgba(255, 255, 255, 0.14)); }
+.lux-sk-num { width: 40px; height: 40px; border-radius: 50%; }
+.lux-sk-lines { display: grid; gap: 8px; }
+.lux-sk-lines .lux-sk { height: 11px; }
+.lux-sk-min { width: 52px; height: 24px; border-radius: 999px; }
+
+/* ───── 8. זוהר שעוקב אחרי העכבר ───── */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  html:not(.saver):not(.hc) .lux .glass::after,
+  html:not(.saver):not(.hc) .lux .lux-glow::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+    background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--lx-a, var(--pal-a)) 20%, transparent), transparent 62%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  html:not(.saver):not(.hc) .lux .glass[style*="--glow: 1"]::after,
+  html:not(.saver):not(.hc) .lux .lux-glow[style*="--glow: 1"]::after { opacity: 1; }
+}
+
+/* ───── הדפסה ומצבים שקטים: בלי אנימציה ───── */
+@media print {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .lux-mascot, .lux-tour { display: none !important; }
+}
+html.hc .lux-sk, html.hc .lux-sk-stage { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .lux-sk, .lux-sk-stage { animation: none !important; }
+}

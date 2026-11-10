@@ -44,20 +44,18 @@ const lines = (text, o = {}) =>
 const line = { style: BorderStyle.SINGLE, size: 4, color: "8E6BD1" };
 const borders = { top: line, bottom: line, left: line, right: line };
 
-function cell(children, width, { head = false } = {}) {
+function cell(children, width, { head = false, fill = PURPLE } = {}) {
   return new TableCell({
     width: { size: width, type: WidthType.DXA },
     borders,
     verticalAlign: head ? VerticalAlign.CENTER : VerticalAlign.TOP,
-    shading: head ? { type: ShadingType.CLEAR, fill: PURPLE, color: "auto" } : undefined,
+    shading: head ? { type: ShadingType.CLEAR, fill, color: "auto" } : undefined,
     margins: { top: 80, bottom: 80, left: 120, right: 120 },
     children,
   });
 }
 
-const meta = (k, v) => para([run(`${k}: `, { bold: true, color: PURPLE }), run(v)], { spacing: { after: 60 } });
-
-const heading = (text) => bar(text);
+const meta = (k, v, color = PURPLE) => para([run(`${k}: `, { bold: true, color }), run(v)], { spacing: { after: 60 } });
 
 /** Exact header format required: [מדריך] . [פעולה] + [שבט] ו-[גדוד] */
 export function docTitle(a) {
@@ -66,13 +64,27 @@ export function docTitle(a) {
   return `${instructor} . ${a.title} + ${tail}`;
 }
 
-function activityBlocks(a) {
+/** אפשרויות עיצוב (סטודיו הייצוא): theme, eco, wm, logoAlign, accent (צבע שבט בהקס, למשל "5B21B6") */
+export function exportOpts(q = {}) {
+  const num = (x) => (x === undefined || x === "" || !Number.isFinite(Number(x)) ? undefined : Math.min(1, Math.max(0, Number(x))));
+  return {
+    theme: ["classic", "purple", "blue"].includes(q.theme) ? q.theme : undefined,
+    eco: q.eco === "1" || q.eco === true,
+    wm: num(q.wm),
+    logoAlign: ["left", "center", "right"].includes(q.logo) ? q.logo : "center",
+    accent: /^[0-9a-fA-F]{6}$/.test(String(q.accent ?? "")) ? String(q.accent).toUpperCase() : undefined,
+  };
+}
+
+function activityBlocks(a, o = {}) {
+  const accent = o.accent || PURPLE;
+  const heading = (text) => bar(text, { o, color: o.accent });
   const W = [1900, 2000, 6006]; // sum = A4 width (11906) - 2 x 1000 margin
   const head = new TableRow({
     tableHeader: true,
     cantSplit: true,
     children: ["זמן / שלב", "שכבה חינוכית", "תוכן"].map((t, i) =>
-      cell([para([run(t, { bold: true, color: "FFFFFF" })], { spacing: { after: 0 } })], W[i], { head: true }),
+      cell([para([run(t, { bold: true, color: "FFFFFF" })], { spacing: { after: 0 } })], W[i], { head: true, fill: accent }),
     ),
   });
   const body = a.stages.map(
@@ -88,13 +100,13 @@ function activityBlocks(a) {
   );
   return [
     para([run(docTitle(a), { bold: true, size: 34, color: DARK })], { alignment: AlignmentType.CENTER, spacing: { after: 240 } }),
-    meta("תאריך", new Date().toLocaleDateString("he-IL")),
-    meta("שכבת גיל", a.ageGroup),
-    meta("גודל קבוצה", String(a.groupSize)),
-    meta("משך הפעולה", `${a.durationMin} דקות`),
-    meta("ערך מוביל", a.leadingValue),
-    meta("ציוד", a.equipment),
-    meta("בטיחות ורגישות", a.safetyNotes),
+    meta("תאריך", new Date().toLocaleDateString("he-IL"), accent),
+    meta("שכבת גיל", a.ageGroup, accent),
+    meta("גודל קבוצה", String(a.groupSize), accent),
+    meta("משך הפעולה", `${a.durationMin} דקות`, accent),
+    meta("ערך מוביל", a.leadingValue, accent),
+    meta("ציוד", a.equipment, accent),
+    meta("בטיחות ורגישות", a.safetyNotes, accent),
     heading("מבנה הפעולה"),
     new Table({
       visuallyRightToLeft: true,
@@ -104,25 +116,25 @@ function activityBlocks(a) {
     }),
     heading("סיכום וקישור למידות הצופה"),
     para(a.conclusionNote || ""),
-    para([run(`${MIDOT.d.label}: `, { bold: true, color: PURPLE }), run(MIDOT.d.text)]),
-    para([run(`${MIDOT.h.label}: `, { bold: true, color: PURPLE }), run(MIDOT.h.text)]),
+    para([run(`${MIDOT.d.label}: `, { bold: true, color: accent }), run(MIDOT.d.text)]),
+    para([run(`${MIDOT.h.label}: `, { bold: true, color: accent }), run(MIDOT.h.text)]),
   ];
 }
 
-const pageProps = { page: designPage() };
-const headerFor = () => designHeader(null);
-const footerFor = (a) => designFooter(a?.tribe || "שבט מעוז");
+const pageProps = (o = {}) => ({ page: designPage(o) });
+const headerFor = (o = {}) => designHeader(null, o);
+const footerFor = (a, o = {}) => designFooter(a?.tribe || "שבט מעוז", o);
 const docStyles = { default: { document: { run: { font: FONT, size: 22, rightToLeft: true } } } };
 
-export async function buildDocx(a) {
-  return fadeWatermark(await buildDocxRaw(a));
+export async function buildDocx(a, o = {}) {
+  return fadeWatermark(await buildDocxRaw(a, o));
 }
-async function buildDocxRaw(a) {
+async function buildDocxRaw(a, o = {}) {
   const doc = new Document({
     creator: "מחולל פעולות - שבט מעוז",
     title: a.title,
     styles: docStyles,
-    sections: [{ properties: pageProps, headers: headerFor(a), footers: footerFor(a), children: activityBlocks(a) }],
+    sections: [{ properties: pageProps(o), headers: headerFor(o), footers: footerFor(a, o), children: activityBlocks(a, o) }],
   });
   return Packer.toBuffer(doc);
 }
@@ -139,7 +151,7 @@ export async function buildBookletDocx(activities, title = "") {
     para([run(new Date().toLocaleDateString("he-IL"), { size: 24, color: "7A6AA8" })], { alignment: AlignmentType.CENTER }),
   ];
   const contents = [
-    heading("תוכן העניינים"),
+    bar("תוכן העניינים"),
     ...activities.map((a, i) => para([run(`${i + 1}. ${a.title}`, { bold: true }), run(`  |  ${a.ageGroup}  |  ${a.durationMin} דקות  |  ערך: ${a.leadingValue}`)], { spacing: { after: 100 } })),
   ];
   const doc = new Document({
@@ -147,9 +159,9 @@ export async function buildBookletDocx(activities, title = "") {
     title: name,
     styles: docStyles,
     sections: [
-      { properties: pageProps, headers: headerFor({ tribe }), footers: footerFor({ tribe }), children: [...cover] },
-      { properties: pageProps, headers: headerFor({ tribe }), footers: footerFor({ tribe }), children: contents },
-      ...activities.map((a) => ({ properties: pageProps, headers: headerFor(a), footers: footerFor(a), children: activityBlocks(a) })),
+      { properties: pageProps(), headers: headerFor(), footers: footerFor({ tribe }), children: [...cover] },
+      { properties: pageProps(), headers: headerFor(), footers: footerFor({ tribe }), children: contents },
+      ...activities.map((a) => ({ properties: pageProps(), headers: headerFor(), footers: footerFor(a), children: activityBlocks(a) })),
     ],
   });
   return fadeWatermark(await Packer.toBuffer(doc));

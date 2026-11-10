@@ -198,6 +198,7 @@ describe("שלב 58: מפת הנתיבים", () => {
   "POST /api/assist/save",
   "POST /api/assist/script",
   "POST /api/assist/shared/:token/comments",
+  "POST /api/lux/presence/shared/:token", // נוכחות באורחים בטיוטה משותפת. ההרשאה היא טוקן השיתוף, כמו GET /api/assist/shared/:token
   "POST /api/assist/stations",
   "POST /api/assist/swap",
   "POST /api/auth/2fa",

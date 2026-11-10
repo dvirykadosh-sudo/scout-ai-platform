@@ -80,7 +80,8 @@ export function designHeader(fallbackLogo, o = {}) {
       );
     }
   }
-  return { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: eco ? 0 : 380, after: 0 }, children: kids })] }) };
+  const align = o.logoAlign === "left" ? AlignmentType.LEFT : o.logoAlign === "right" ? AlignmentType.RIGHT : AlignmentType.CENTER;
+  return { default: new Header({ children: [new Paragraph({ alignment: align, spacing: { before: eco ? 0 : 380, after: 0 }, children: kids })] }) };
 }
 
 export function designFooter(tribe = "שבט מעוז", o = {}) {

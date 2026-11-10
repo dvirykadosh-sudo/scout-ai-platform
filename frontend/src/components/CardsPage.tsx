@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
 import { Field, Skeleton } from "./ui";
+import { PosterGlyph } from "./lux/Poster";
 
 const clean = (l: string) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, "").trim();
 const lines = (t: string) => t.split(/\n+/).map(clean).filter((l) => l.length > 3);
@@ -86,7 +87,9 @@ export function CardsPage() {
               {heading} {i + 1}
             </span>
             <span className="print-card-text">{t}</span>
-            <span className="print-card-foot">{a.title}</span>
+            <span className="print-card-foot">
+              <PosterGlyph a={a} size={22} /> {a.title}
+            </span>
           </li>
         ))}
       </ul>

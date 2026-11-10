@@ -6,6 +6,7 @@ import { CommandPalette, StatusBanners } from "@/components/SystemParts";
 import { SiteMonitor } from "@/components/Monitor54";
 import { NpsPrompt } from "@/components/Discover54";
 import { SiteShell } from "@/components/shell/SiteShell";
+import { LuxRoot } from "@/components/lux/LuxRoot";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -32,11 +33,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             <DepthLayers />
             <SiteHeader />
             <SiteShell />
+            <LuxRoot />
             <ServerWake />
             <StatusBanners />
             <CommandPalette />
             <SiteMonitor />
-            <main id="main" tabIndex={-1} className="page">
+            <main id="main" tabIndex={-1} className="page lux">
               {children}
             </main>
             <NpsPrompt />

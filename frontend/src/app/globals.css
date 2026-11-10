@@ -70,6 +70,7 @@ html.light .card, html.light .glass { box-shadow: 0 6px 24px rgba(17, 24, 39, 0.
 /* ערכות צבעים: מחליפות רק את הגוונים. ברירת המחדל (כתום) מוגדרת למעלה */
 html[data-palette="blue"] { --pal-a: #3b82f6; --pal-b: #38bdf8; --pal-ink: #04122b; --pal-glow: #93c5fd; --pal-wa: #1e3a8a; --pal-wb: #1d4ed8; --pal-wc: #2563eb; }
 html[data-palette="green"] { --pal-a: #22c55e; --pal-b: #86efac; --pal-ink: #04170b; --pal-glow: #86efac; --pal-wa: #14532d; --pal-wb: #15803d; --pal-wc: #16a34a; }
+html[data-palette="tribe"] { --pal-a: #a78bfa; --pal-b: #c4b5fd; --pal-ink: #150a33; --pal-glow: #c4b5fd; --pal-wa: #2e1065; --pal-wb: #5b21b6; --pal-wc: #6d28d9; }
 html[data-palette="fire"] { --pal-a: #ef4444; --pal-b: #f97316; --pal-ink: #1f0505; --pal-glow: #fca5a5; --pal-wa: #7f1d1d; --pal-wb: #b91c1c; --pal-wc: #dc2626; }
 
 /* ערכות צבעים: מחליפות רק את הגוונים. ברירת המחדל (כתום) מוגדרת למעלה */
@@ -2502,7 +2503,7 @@ html.hc .ch-bar > span { background: var(--accent); }
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ───── משתני העיצוב ───── */
-.lux-home {
+.lux {
   --lx-a: var(--pal-a);
   --lx-b: var(--pal-wc);
   --lx-violet: #7c3aed;
@@ -2522,13 +2523,18 @@ html.hc .ch-bar > span { background: var(--accent); }
 }
 
 /* מהמשתמש שבחר ערכת צבעים אחרת: כפתור ההדגשה נשאר בגוונים של הערכה (הניגודיות נבדקה בכל הערכות) */
-html:not(.light):not(.hc) .lux-home { --lx-btn: linear-gradient(135deg, #fb923c, var(--lx-a) 45%, var(--lx-b)); }
-html[data-palette="blue"] .lux-home,
-html[data-palette="green"] .lux-home,
-html[data-palette="fire"] .lux-home { --lx-btn: linear-gradient(135deg, var(--pal-a), var(--pal-b)); }
+html:not(.light):not(.hc):not([data-panel="light"]) .lux { --lx-btn: linear-gradient(135deg, #fb923c, var(--lx-a) 45%, var(--lx-b)); }
+html[data-palette="blue"] .lux,
+html[data-palette="green"] .lux,
+html[data-palette="tribe"] .lux,
+html[data-palette="fire"] .lux,
+html[data-palette="blue"]:not(.light):not(.hc):not([data-panel="light"]) .lux,
+html[data-palette="green"]:not(.light):not(.hc):not([data-panel="light"]) .lux,
+html[data-palette="tribe"]:not(.light):not(.hc):not([data-panel="light"]) .lux,
+html[data-palette="fire"]:not(.light):not(.hc):not([data-panel="light"]) .lux { --lx-btn: linear-gradient(135deg, var(--pal-a), var(--pal-b)); }
 
 /* הכהה: מחזירים בתוך עמוד הבית את סט הצבעים הכהה, גם כשמשטח העבודה של האתר בהיר */
-html:not(.light):not(.hc) .lux-home {
+html:not(.light):not(.hc):not([data-panel="light"]) main.page.lux {
   color-scheme: dark;
   --bg: #130e26;
   --panel: #1c1240;
@@ -2562,7 +2568,7 @@ html:not(.light):not(.hc) .lux-home {
 }
 
 /* ───── משטח העבודה נהיה לילה עמוק (רק כשבעמוד יש .lux-home) ───── */
-html:not(.light):not(.hc) main.page:has(.lux-home) {
+html:not(.light):not(.hc):not([data-panel="light"]) main.page.lux {
   background:
     radial-gradient(900px 520px at 88% -8%, color-mix(in srgb, var(--pal-a) 24%, transparent), transparent 62%),
     radial-gradient(760px 560px at -4% 104%, rgba(124, 58, 237, 0.34), transparent 64%),
@@ -2620,7 +2626,7 @@ html:not(.hc) .lux-hero { -webkit-backdrop-filter: blur(16px) saturate(140%); ba
 .lux-chips li:hover { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 60%, transparent); transform: translateY(-2px); }
 
 /* ───── כרטיסי זכוכית (Bento) ───── */
-html:not(.light):not(.hc) .page .lux-home .card {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .card {
   background: var(--lx-card);
   border: 1px solid var(--lx-edge);
   border-radius: 24px;
@@ -2629,8 +2635,8 @@ html:not(.light):not(.hc) .page .lux-home .card {
   backdrop-filter: blur(18px) saturate(150%);
 }
 /* גבול דק וזוהר (כתום מצד אחד, סגול מהצד השני) */
-html:not(.light):not(.hc) .page .lux-home .glass { position: relative; }
-html:not(.light):not(.hc) .page .lux-home .glass::before {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .glass { position: relative; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .glass::before {
   display: block; content: "";
   position: absolute; inset: 0; border-radius: inherit; padding: 1px;
   background: var(--lx-edge-line);
@@ -2639,18 +2645,18 @@ html:not(.light):not(.hc) .page .lux-home .glass::before {
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   opacity: 0.55; pointer-events: none; transition: opacity 0.3s;
 }
-html:not(.light):not(.hc) .page .lux-home .glass:hover::before,
-html:not(.light):not(.hc) .page .lux-home .glass:focus-within::before { opacity: 1; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .glass:hover::before,
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .glass:focus-within::before { opacity: 1; }
 /* כרטיס בתוך כרטיס: שטוח, כדי שלא יהיה טשטוש כפול */
-html:not(.light):not(.hc) .page .lux-home .card .card {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .card .card {
   background: rgba(255, 255, 255, 0.045); box-shadow: none; border-color: rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
-html:not(.light):not(.hc) .page .lux-home .card .card::before { display: none; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .card .card::before { display: none; }
 
-.lux-home .section-title { letter-spacing: -0.01em; color: var(--text); }
-html:not(.light):not(.hc) .lux-home .section-title { background: linear-gradient(270deg, #fff, #f3e7ff 70%, #ffd8b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #fff; }
-.lux-home .hint { color: var(--muted); }
+.lux .section-title { letter-spacing: -0.01em; color: var(--text); }
+html:not(.light):not(.hc):not([data-panel="light"]) .lux .section-title { background: linear-gradient(270deg, #fff, #f3e7ff 70%, #ffd8b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: #fff; }
+.lux .hint { color: var(--muted); }
 
 /* ───── ברכה ראשונה: אריחי זכוכית עם אייקון ───── */
 .lux-welcome { position: relative; overflow: hidden; isolation: isolate; display: grid; gap: 18px; }
@@ -2658,12 +2664,12 @@ html:not(.light):not(.hc) .lux-home .section-title { background: linear-gradient
 .lux-welcome-head .lux-eyebrow { margin-bottom: 10px; }
 .lux-welcome-head .section-title { margin: 0; }
 .lux-welcome .hero-steps { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 0; }
-html:not(.light):not(.hc) .page .lux-home .hero-steps li {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .hero-steps li {
   position: relative; gap: 6px; padding: 18px 18px 16px;
   border: 1px solid var(--lx-edge); border-radius: 20px; background: var(--lx-tile);
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.25s, border-color 0.25s, box-shadow 0.3s;
 }
-html:not(.light):not(.hc) .page .lux-home .hero-steps li:hover {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .hero-steps li:hover {
   transform: translateY(-4px); background: var(--lx-tile-hover);
   border-color: color-mix(in srgb, var(--lx-a) 55%, transparent);
   box-shadow: 0 22px 40px -26px var(--lx-glow);
@@ -2676,31 +2682,31 @@ html:not(.light):not(.hc) .page .lux-home .hero-steps li:hover {
 .lux-home .home-menu-main { grid-template-columns: 1.55fr 1fr 1fr; gap: 14px; }
 @media (max-width: 980px) { .lux-home .home-menu-main { grid-template-columns: 1fr 1fr; } .lux-home .home-menu-main li:first-child { grid-column: 1 / -1; } }
 @media (max-width: 560px) { .lux-home .home-menu-main { grid-template-columns: 1fr; } }
-html:not(.light):not(.hc) .page .lux-home .home-menu-grid a {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a {
   position: relative; overflow: hidden; isolation: isolate;
   min-height: 112px; padding: 62px 20px 18px; align-content: end; gap: 6px;
   border: 1px solid var(--lx-edge); border-radius: 22px;
   background: var(--lx-tile); color: var(--text); box-shadow: none;
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.25s, border-color 0.25s, box-shadow 0.3s;
 }
-html:not(.light):not(.hc) .page .lux-home .home-menu-grid a strong { font-size: 1.12rem; color: #fff; }
-html:not(.light):not(.hc) .page .lux-home .home-menu-grid a .hint { color: var(--lx-ink-2); }
-html:not(.light):not(.hc) .page .lux-home .home-menu-grid a:hover,
-html:not(.light):not(.hc) .page .lux-home .home-menu-grid a:focus-visible {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a strong { font-size: 1.12rem; color: #fff; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a .hint { color: var(--lx-ink-2); }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a:hover,
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a:focus-visible {
   transform: translateY(-5px); background: var(--lx-tile-hover);
   border-color: color-mix(in srgb, var(--lx-a) 60%, transparent);
   box-shadow: 0 26px 46px -28px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 /* חץ קטן שזז בריחוף (דקורטיבי) */
-html:not(.light):not(.hc) .page .lux-home .home-menu-grid a::after {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a::after {
   content: "←"; content: "←" / ""; position: absolute; top: 16px; inset-inline-end: 18px;
   display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
   background: color-mix(in srgb, var(--lx-a) 18%, transparent); color: var(--lx-a); font-weight: 800;
   transition: transform 0.28s, background 0.25s;
 }
-html:not(.light):not(.hc) .page .lux-home .home-menu-grid a:hover::after { transform: translateX(-4px); background: color-mix(in srgb, var(--lx-a) 30%, transparent); }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a:hover::after { transform: translateX(-4px); background: color-mix(in srgb, var(--lx-a) 30%, transparent); }
 /* האריח הראשי: זוהר כתום-אדום */
-html:not(.light):not(.hc) .page .lux-home .home-menu-main li:first-child a {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-main li:first-child a {
   min-height: 150px;
   background:
     radial-gradient(260px 180px at 100% 0%, color-mix(in srgb, var(--lx-a) 42%, transparent), transparent 70%),
@@ -2708,36 +2714,36 @@ html:not(.light):not(.hc) .page .lux-home .home-menu-main li:first-child a {
     linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
   border-color: color-mix(in srgb, var(--lx-a) 45%, transparent);
 }
-html:not(.light):not(.hc) .page .lux-home .home-menu-main li:first-child a strong { font-size: 1.35rem; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-main li:first-child a strong { font-size: 1.35rem; }
 .lux-home .home-more summary { font-weight: 700; }
 
 /* ───── לשוניות ───── */
-html:not(.light):not(.hc) .page .lux-home .home-tabs { gap: 10px; margin: 20px 0 14px; }
-html:not(.light):not(.hc) .page .lux-home .home-tabs [role="tab"] {
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-tabs { gap: 10px; margin: 20px 0 14px; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-tabs [role="tab"] {
   border: 1px solid var(--lx-edge); border-radius: 999px; padding: 8px 20px; font-weight: 700;
   background: rgba(255, 255, 255, 0.055); color: var(--text);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   transition: background 0.25s, border-color 0.25s, transform 0.25s, box-shadow 0.3s;
 }
-html:not(.light):not(.hc) .page .lux-home .home-tabs [role="tab"]:hover:not([aria-selected="true"]) { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 55%, transparent); transform: translateY(-2px); }
-html:not(.light):not(.hc) .page .lux-home .home-tabs [role="tab"][aria-selected="true"] { background: var(--lx-btn); color: var(--pal-ink); border-color: transparent; box-shadow: 0 12px 28px -14px var(--lx-glow); }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-tabs [role="tab"]:hover:not([aria-selected="true"]) { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 55%, transparent); transform: translateY(-2px); }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-tabs [role="tab"][aria-selected="true"] { background: var(--lx-btn); color: var(--pal-ink); border-color: transparent; box-shadow: 0 12px 28px -14px var(--lx-glow); }
 
 /* ───── כפתורים ושדות ───── */
-html:not(.light):not(.hc) .page .lux-home .btn { border: 1px solid var(--lx-edge); border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: var(--text); transition: background 0.25s, border-color 0.25s, transform 0.2s, box-shadow 0.3s; }
-html:not(.light):not(.hc) .page .lux-home .btn:hover:not(:disabled) { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 55%, transparent); }
-html:not(.light):not(.hc) .page .lux-home .btn.btn-primary,
-html:not(.light):not(.hc) .page .lux-home .btn[aria-pressed="true"] { background: var(--lx-btn); color: var(--pal-ink); border-color: transparent; box-shadow: 0 14px 30px -16px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-html:not(.light):not(.hc) .page .lux-home .btn.btn-primary:hover:not(:disabled) { background: var(--lx-btn); filter: brightness(1.07); box-shadow: 0 18px 36px -16px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-html:not(.light):not(.hc) .page .lux-home .btn.btn-danger { background: #9f1239; color: #fff; }
-html:not(.light):not(.hc) .page .lux-home input:not([type="checkbox"]):not([type="radio"]),
-html:not(.light):not(.hc) .page .lux-home select,
-html:not(.light):not(.hc) .page .lux-home textarea { background: var(--field); color: var(--text); border-color: var(--field-line); border-radius: 14px; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .btn { border: 1px solid var(--lx-edge); border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: var(--text); transition: background 0.25s, border-color 0.25s, transform 0.2s, box-shadow 0.3s; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .btn:hover:not(:disabled) { background: var(--lx-tile-hover); border-color: color-mix(in srgb, var(--lx-a) 55%, transparent); }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .btn.btn-primary,
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .btn[aria-pressed="true"] { background: var(--lx-btn); color: var(--pal-ink); border-color: transparent; box-shadow: 0 14px 30px -16px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .btn.btn-primary:hover:not(:disabled) { background: var(--lx-btn); filter: brightness(1.07); box-shadow: 0 18px 36px -16px var(--lx-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .btn.btn-danger { background: #9f1239; color: #fff; }
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux input:not([type="checkbox"]):not([type="radio"]),
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux select,
+html:not(.light):not(.hc):not([data-panel="light"]) .page.lux textarea { background: var(--field); color: var(--text); border-color: var(--field-line); border-radius: 14px; }
 
 /* ───── השראה מהמאגר ───── */
 .lux-examples .section-title { margin-bottom: 14px; }
 
 /* ───── תצוגה בהירה: אותו מבנה, בגוונים בהירים ───── */
-html.light .lux-home {
+html.light .lux {
   --lx-ink: #1b1233;
   --lx-ink-2: #4b4466;
   --lx-edge: rgba(76, 29, 149, 0.16);
@@ -2756,7 +2762,7 @@ html.light .lux-orb { opacity: 0.3; }
 
 /* ───── ניגודיות גבוהה: שחור-צהוב שטוח, בלי זכוכית, גרדיאנטים ותנועה ───── */
 /* גם כשהתצוגה הבהירה פעילה יחד עם ניגודיות גבוהה (שני המחלקות על html), הצבעים נשארים צהוב על שחור */
-html.hc .lux-home { --lx-ink: #ffeb00; --lx-ink-2: #ffeb00; --lx-edge: #ffeb00; --lx-glow: transparent; }
+html.hc .lux { --lx-ink: #ffeb00; --lx-ink-2: #ffeb00; --lx-edge: #ffeb00; --lx-glow: transparent; }
 html.hc .lux-home .home-menu-grid a, html.hc .lux-home .home-menu-grid a strong, html.hc .lux-home .home-menu-grid a .hint { color: #ffeb00; }
 html.hc .lux-hero { background: #000; border: 2px solid #ffeb00; box-shadow: none; border-radius: 12px; }
 html.hc .lux-orb { display: none; }
@@ -2772,9 +2778,9 @@ html.hc .lux-home .home-menu-grid a::after { display: none; }
   .lux-hero { border-radius: 22px; padding: 22px 16px; margin-bottom: 16px; }
   .lux-chips { gap: 7px; }
   .lux-chips li { font-size: 0.84rem; padding: 6px 11px; }
-  html:not(.light):not(.hc) .page .lux-home .card { border-radius: 20px; }
-  html:not(.light):not(.hc) .page .lux-home .home-menu-grid a { min-height: 96px; padding: 58px 16px 16px; }
-  html:not(.light):not(.hc) .page .lux-home .home-menu-main li:first-child a { min-height: 120px; }
+  html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .card { border-radius: 20px; }
+  html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-grid a { min-height: 96px; padding: 58px 16px 16px; }
+  html:not(.light):not(.hc):not([data-panel="light"]) .page.lux .home-menu-main li:first-child a { min-height: 120px; }
 }
 
 /* ───── פחות תנועה / חיסכון בנתונים: בלי טשטוש כבד ובלי אנימציה ───── */
@@ -2783,64 +2789,7 @@ html.hc .lux-home .home-menu-grid a::after { display: none; }
   .lux-home .home-menu-grid a:hover, .lux-home .hero-steps li:hover, .lux-chips li:hover { transform: none !important; }
 }
 html.saver .lux-orb { display: none; }
-html.saver .lux-hero, html.saver .lux-home .card, html.saver .lux-home .home-tabs [role="tab"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-/* ==========================================================================
-   OVERRIDE: BENTO GLASSMORPHISM FOR ENTIRE SITE (Safe Mode)
-   ========================================================================== */
-
-   :root {
-    --bg-deep: #130E26;
-    --bg-card: rgba(30, 18, 69, 0.65);
-    --border-glass: rgba(139, 92, 246, 0.22);
-    --border-glass-hover: rgba(234, 88, 12, 0.5);
-    --accent-glow: rgba(234, 88, 12, 0.15);
-    
-    /* דורס את משתני הצבע המקוריים שלך כך שיחולו על כל האתר אוטומטית */
-    --bg: var(--bg-deep);
-    --panel: var(--bg-card);
-    --glass: var(--bg-card);
-    --field: rgba(19, 14, 38, 0.8);
-    --line: var(--border-glass);
-  }
-  
-  body {
-    background-color: var(--bg-deep) !important;
-    background-image: none !important; /* מעלים רקעים ישנים */
-  }
-  
-  /* החלת זכוכית על כל הכרטיסיות, בלי לפגוע במבנה */
-  .card, .glass, .glass-card, .modal-content {
-    background: var(--bg-card) !important;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--border-glass) !important;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
-    border-radius: 20px !important;
-  }
-  
-  .card:hover, .glass:hover, .glass-card:hover {
-    border-color: var(--border-glass-hover) !important;
-    box-shadow: 0 12px 40px 0 var(--accent-glow) !important;
-  }
-  
-  /* שדות טקסט כהים */
-  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
-    background: var(--field) !important;
-    border: 1px solid var(--border-glass) !important;
-    border-radius: 12px !important;
-  }
-  
-  input:focus, select:focus, textarea:focus {
-    border-color: #c9a8ff !important;
-    box-shadow: 0 0 0 2px rgba(201, 168, 255, 0.2) !important;
-  }
-  
-  /* כותרות יוקרתיות */
-  .section-title, h1, h2 {
-    background: linear-gradient(135deg, #ffffff 0%, #c9a8ff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+html.saver .lux-hero, html.saver .lux .card, html.saver .lux-home .home-tabs [role="tab"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   /* ==========================================================================
    VISUAL WORKFLOW CANVAS PRO (בסגנון Vision Futures)
    ========================================================================== */

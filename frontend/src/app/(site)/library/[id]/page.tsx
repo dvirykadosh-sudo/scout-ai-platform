@@ -14,8 +14,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: a.title,
     description,
-    openGraph: { type: "article", locale: "he_IL", siteName: "מחולל פעולות | שבט מעוז", title: a.title, description, images: [{ url: "/logo-maoz.png", width: 512, height: 512, alt: "לוגו שבט מעוז" }] },
-    twitter: { card: "summary", title: a.title, description, images: ["/logo-maoz.png"] },
+    openGraph: { type: "article", locale: "he_IL", siteName: "מחולל פעולות | שבט מעוז", title: a.title, description },
+    twitter: { card: "summary_large_image", title: a.title, description },
     robots: INDEXING && ok ? { index: true, follow: true } : { index: false, follow: false },
   };
 }

@@ -6,7 +6,7 @@ import { storageSet } from "@/lib/api";
 import { setPrefs, type ShellPrefs } from "./shell-prefs";
 
 export type ThemeMode = "auto" | "light" | "dark";
-export type Palette = "purple" | "blue" | "green" | "fire"; // "purple" הוא שם פנימי של ברירת המחדל (כתום)
+export type Palette = "purple" | "blue" | "green" | "fire" | "tribe"; // "purple" הוא שם פנימי של ברירת המחדל (כתום)
 export type Panel = "light" | "dark";
 
 export interface Appearance {
@@ -32,7 +32,7 @@ export interface A11yApi {
 
 const THEME_ORDER: ThemeMode[] = ["auto", "light", "dark"];
 const THEME_LABEL: Record<ThemeMode, string> = { auto: "לפי המכשיר", light: "בהירה", dark: "כהה" };
-const PALETTE_LABEL: Record<Palette, string> = { purple: "כתום", blue: "כחול", green: "ירוק", fire: "אדום" };
+const PALETTE_LABEL: Record<Palette, string> = { purple: "כתום", blue: "כחול", green: "ירוק", fire: "אדום", tribe: "צבעי הלוגו" };
 const PANEL_LABEL: Record<Panel, string> = { light: "בהיר", dark: "כהה" };
 const onOff = (v: boolean) => (v ? "פעיל" : "כבוי");
 
@@ -46,8 +46,8 @@ export function readAppearance(a: Pick<A11yApi, "theme" | "highContrast" | "larg
   const p = d.dataset.palette;
   return {
     theme: a.theme,
-    palette: p === "blue" || p === "green" || p === "fire" ? p : "purple",
-    panel: d.dataset.panel === "dark" ? "dark" : "light",
+    palette: p === "blue" || p === "green" || p === "fire" || p === "tribe" ? p : "purple",
+    panel: d.dataset.panel === "light" ? "light" : "dark",
     contrast: a.highContrast,
     large: a.largeText,
     compact: d.classList.contains("compact"),
@@ -108,8 +108,7 @@ export function applyAppearance(next: Appearance, cur: Appearance, a: A11yApi): 
     storageSet("scout.palette", next.palette);
   }
   if (next.panel !== cur.panel) {
-    if (next.panel === "dark") document.documentElement.dataset.panel = "dark";
-    else delete document.documentElement.dataset.panel;
+    document.documentElement.dataset.panel = next.panel;
     storageSet("scout.panel", next.panel);
   }
   if (next.dock !== cur.dock) setPrefs({ dock: next.dock });

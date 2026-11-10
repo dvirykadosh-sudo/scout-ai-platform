@@ -8,6 +8,7 @@ import type { Activity } from "@/lib/types";
 import { ActivityActions } from "./ActivityActions";
 import { DiscussionQuestions, ReviewPanel, SummaryBox } from "./ActivityInsights";
 import { ActivityBody, ActivityMeta } from "./ActivityView";
+import { PosterPanel } from "./lux/Poster";
 import { FeedbackPanel } from "./FeedbackPanel";
 import { TagsPanel } from "./CommunityParts";
 import { SafetyPanel, SimilarActivities } from "./CareParts";
@@ -17,7 +18,7 @@ import { PrepChecklist } from "./PrepChecklist";
 import { RatingBadge, Ratings } from "./Ratings";
 import { RunsLog } from "./RunsLog";
 import { isAdminUser, useAuth } from "./Providers";
-import { Skeleton } from "./ui";
+import { ActivitySkeleton } from "./lux/ActivitySkeleton";
 import { PageToc } from "./Comfort54";
 import { CostPanel, Reactions, VerifiedBadge, pushRecent } from "./Discover54";
 
@@ -66,7 +67,7 @@ export function ActivityPage({ initial = null }: { initial?: Activity | null }) 
         </button>
       </div>
     );
-  if (!a) return <Skeleton lines={6} />;
+  if (!a) return <ActivitySkeleton />;
 
   const rating = summary ?? a.rating ?? { count: 0, average: 0 };
 
@@ -85,6 +86,7 @@ export function ActivityPage({ initial = null }: { initial?: Activity | null }) 
         <ActivityMeta a={a} />
         <ActivityBody a={a} />
         <ActivityActions activity={a} onChanged={load} onDeleted={() => router.push("/library")} />
+        <PosterPanel a={a} />
       </article>
       {a.status === "PENDING" && (
         <p className="card warn-box no-print" role="status">

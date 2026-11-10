@@ -1,5 +1,5 @@
 // פריטי הסרגל והדוק. הפריט הראשון תמיד מוביל ללוח הבקרה.
-import { BookOpen, Bot, CalendarDays, CalendarRange, LayoutDashboard, LifeBuoy, MessageCircle, MessagesSquare, PenLine, Shapes, ShieldCheck, Sparkles, UserRound, Users, Wrench, type LucideIcon } from "lucide-react";
+import { Accessibility, Activity, BookOpen, Bot, CalendarDays, CalendarRange, Gift, LayoutDashboard, LifeBuoy, MessageCircle, MessagesSquare, PenLine, Route, Shapes, ShieldCheck, Sparkles, UserRound, Users, Wrench, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -23,10 +23,14 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/methods", label: "ספריית המתודות", icon: BookOpen, group: "מאגר" },
   { href: "/plan", label: "תכנון תקופתי", icon: CalendarRange, group: "תכנון" },
   { href: "/calendar", label: "יומן הפעולות", icon: CalendarDays, group: "תכנון" },
+  { href: "/trail", label: "מפת שביל השנה", icon: Route, group: "תכנון" },
+  { href: "/insights", label: "תובנות ומגמות", icon: Activity, group: "תכנון" },
   { href: "/chat", label: "עוזר שיחות", icon: MessagesSquare, group: "תכנון" },
   { href: "/team", label: "צוות השבט", icon: Users, group: "תכנון" },
   { href: "/whatsapp", label: "מרכז וואטסאפ", icon: MessageCircle, group: "ניהול", adminOnly: true, badge: "whatsapp" },
   { href: "/admin", label: "לוח בקרה לאדמין", icon: ShieldCheck, group: "ניהול", adminOnly: true },
+  { href: "/wrapped", label: "סיכום השנה שלי", icon: Gift, group: "חשבון" },
+  { href: "/comfort", label: "אשף נוחות", icon: Accessibility, group: "חשבון" },
   { href: "/account", label: "האזור האישי", icon: UserRound, group: "חשבון", badge: "notifications" },
   { href: "/help", label: "עזרה ותמיכה", icon: LifeBuoy, group: "חשבון" },
 ];

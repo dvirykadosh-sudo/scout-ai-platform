@@ -1,0 +1,80 @@
+/* שלב 61: התאמות לקנבס "איך נבנית פעולה" (WorkflowCanvas). הבלוק המקורי ב-globals.css נשאר כמו שהוא,
+   כאן רק מה שצריך כדי שיעבוד בכל ערכות הנושא, בלי תנועה מיותרת ובהדפסה. */
+
+/* הקנבס הוא משטח כהה בכל ערכות הנושא, לכן הטקסט בתוכו תמיד בהיר (גם כשהאתר בהיר) */
+.wf-canvas { --text: #f5f2ff; --muted: #cdc4ea; --line: rgba(255, 255, 255, 0.16); color: #f5f2ff; }
+.wf-canvas .section-title { color: #f5f2ff; }
+.wf-canvas .hint { color: #cdc4ea; }
+.wf-canvas .wf-sim-btn { color: #f5f2ff !important; }
+.wf-canvas .btn-primary { color: #1a0f00; }
+
+/* צבעי טקסט בהירים של כל שלב: ניגודיות AA מול הרקע הכהה (הצבע המקורי נשאר לנקודות וקווים) */
+.wf-canvas .wf-node-tag,
+.wf-canvas .wf-node-arrow { color: var(--node-text, var(--node-color, #fdba74)); }
+.wf-canvas .wf-metric-val,
+.wf-canvas .wf-term-prompt,
+.wf-canvas .wf-cursor-blink { color: var(--active-text, var(--active-color, #fdba74)); }
+.wf-canvas .wf-node-footer { color: #cfc2f2; }
+
+.wf-node:focus-visible { outline: 3px solid var(--node-text, #fff); outline-offset: 3px; }
+.wf-sim-btn:focus-visible, .wf-term-link:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+html.light .wf-canvas { box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.6), 0 18px 44px rgba(30, 16, 70, 0.28) !important; }
+
+/* פריסה לפי רוחב הקנבס עצמו (ולא המסך): בדף הבית הקנבס צר יותר בגלל הסרגל הצדדי */
+.wf-canvas { container: wfc / inline-size; }
+@container wfc (max-width: 940px) {
+  .wf-connector-svg { display: none; }
+  .wf-nodes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wf-node:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .wf-inspector { grid-template-columns: 1fr; }
+}
+@container wfc (max-width: 560px) {
+  .wf-nodes { grid-template-columns: minmax(0, 1fr); }
+  .wf-io-grid, .wf-metrics-row { grid-template-columns: 1fr; }
+}
+/* הטרמינל: הטקסט צמוד להתחלה (לא מוצדק), והגוף ממלא את החלון */
+.wf-term-body { flex: 1 1 auto; text-align: start; }
+.wf-term-line, .wf-term-cursor-line { text-align: start; }
+
+/* תנועה: מצב רגוע, חיסכון וההעדפה של המערכת מכבים את כל האנימציות והמעברים */
+html[data-motion] .wf-canvas *, html[data-motion] .wf-canvas *::before,
+html.saver .wf-canvas *, html.saver .wf-canvas *::before { animation: none !important; transition: none !important; }
+html[data-motion] .wf-node:hover, html[data-motion] .wf-node.active,
+html.saver .wf-node:hover, html.saver .wf-node.active { transform: none; }
+html.saver .wf-glow-orb { display: none; }
+html.saver .wf-node { -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) {
+  .wf-canvas *, .wf-canvas *::before { animation: none !important; transition: none !important; }
+  .wf-node:hover, .wf-node.active { transform: none; }
+}
+
+/* ניגודיות גבוהה: שחור וצהוב, בלי זוהר ושקיפויות */
+html.hc .wf-canvas { --text: #ffeb00; --muted: #ffeb00; --line: #ffeb00; color: #ffeb00; background: #000 !important; border: 2px solid #ffeb00 !important; box-shadow: none !important; }
+html.hc .wf-canvas::before, html.hc .wf-glow-orb { display: none; }
+html.hc .wf-canvas .section-title, html.hc .wf-canvas .hint,
+html.hc .wf-node-title, html.hc .wf-node-desc, html.hc .wf-node-footer, html.hc .wf-node-code, html.hc .wf-node-status,
+html.hc .wf-node-tag, html.hc .wf-node-arrow, html.hc .wf-ins-desc, html.hc .wf-ins-title, html.hc .wf-ins-badge, html.hc .wf-io-label,
+html.hc .wf-chip, html.hc .wf-metric-val, html.hc .wf-metric-lbl, html.hc .wf-badge, html.hc .wf-sub-pill,
+html.hc .wf-term-title, html.hc .wf-term-body, html.hc .wf-term-footer, html.hc .wf-term-link, html.hc .wf-term-prompt, html.hc .wf-cursor-blink,
+html.hc .wf-canvas .wf-sim-btn { color: #ffeb00 !important; }
+html.hc .wf-node, html.hc .wf-inspector, html.hc .wf-terminal, html.hc .wf-io-box, html.hc .wf-metric-card, html.hc .wf-chip, html.hc .wf-chip-out,
+html.hc .wf-badge, html.hc .wf-sub-pill, html.hc .wf-ins-badge, html.hc .wf-term-bar, html.hc .wf-term-footer, html.hc .wf-node-code { background: #000 !important; border-color: #ffeb00 !important; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+html.hc .wf-node { border-width: 2px; }
+html.hc .wf-node.active { border-width: 4px; }
+html.hc .wf-ins-code { background: #ffeb00; color: #000; }
+html.hc .wf-canvas .wf-sim-btn { background: #000 !important; border: 2px solid #ffeb00 !important; box-shadow: none !important; }
+
+/* בדף הבית: פתיח מקופל */
+.home-how { margin: 26px 0 8px; }
+.home-how > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-radius: 16px; font-weight: 800; }
+.home-how > summary::-webkit-details-marker { display: none; }
+.home-how > summary::after { content: "▾"; transition: transform 0.2s ease; }
+.home-how[open] > summary::after { transform: rotate(180deg); }
+.home-how > summary:focus-visible { outline: 3px solid var(--accent, #f97316); outline-offset: 3px; }
+.home-how .wf-canvas { margin: 14px 0 0; }
+.wl-flow { margin: 0 0 64px; }
+.wl-flow .wf-canvas { margin-bottom: 0; }
+html[data-motion] .home-how > summary::after { transition: none; }
+
+@media print { .wf-canvas, .home-how { display: none !important; } }

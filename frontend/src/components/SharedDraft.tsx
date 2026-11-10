@@ -5,6 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useToast } from "./Providers";
 import { Field } from "./ui";
+import { MarkedText } from "./lux/MarkedText";
+import { PresenceBar } from "./lux/PresenceBar";
+import { usePresence } from "@/lib/lux/presence";
 
 interface Shared {
   title: string;
@@ -24,6 +27,8 @@ export function SharedDraft() {
   const [quote, setQuote] = useState("");
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const [typing, setTyping] = useState(false);
+  const typingTimer = useRef(0);
 
   const load = useCallback(async (t: string) => {
     try {
@@ -45,6 +50,22 @@ export function SharedDraft() {
     }
   }, [load]);
 
+  // נוכחות חיה (רעיון 18): מי קורא עכשיו, מי מקליד, ורענון אוטומטי כשמגיעה הערה חדשה או שהכותב/ת עדכנו
+  const pres = usePresence({ url: token ? `/api/lux/presence/shared/${encodeURIComponent(token)}` : null, name, typing, onChange: () => token && void load(token) });
+  const onType = (v: string) => {
+    setBody(v);
+    setTyping(v.length > 0);
+    window.clearTimeout(typingTimer.current);
+    typingTimer.current = window.setTimeout(() => setTyping(false), 3000);
+  };
+  const openComment = (id: number) => {
+    const el = document.getElementById(`comment-${id}`);
+    el?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    el?.focus({ preventScroll: true });
+    el?.classList.add("flash");
+    window.setTimeout(() => el?.classList.remove("flash"), 1600);
+  };
+
   // שומרים את הטקסט שסומן בתוך הטיוטה, כדי לצטט אותו בתגובה
   const captureSelection = () => {
     const sel = window.getSelection();
@@ -64,6 +85,7 @@ export function SharedDraft() {
         /* ללא אחסון */
       }
       setBody("");
+      setTyping(false);
       setQuote("");
       toast("התגובה נשלחה", { kind: "success" });
       await load(token);
@@ -91,8 +113,9 @@ export function SharedDraft() {
       <p className="lead">
         טיוטה של {d.ownerName}. אפשר לקרוא ולהגיב, לא לערוך. כדי להגיב על קטע, סמנו אותו בטקסט.
       </p>
+      {!pres.ended && <PresenceBar people={pres.people} />}
       <div ref={box} className="assist-shared-text card glass" tabIndex={0} role="region" aria-label="טקסט הטיוטה" onMouseUp={captureSelection} onKeyUp={captureSelection}>
-        {d.text}
+        <MarkedText text={d.text} comments={d.comments} onOpen={openComment} />
       </div>
 
       <section className="card glass" aria-labelledby="shared-comment-title">
@@ -112,7 +135,7 @@ export function SharedDraft() {
             <input id="sh-name" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           </Field>
           <Field label="התגובה" htmlFor="sh-body">
-            <textarea id="sh-body" rows={4} maxLength={500} value={body} onChange={(e) => setBody(e.target.value)} />
+            <textarea id="sh-body" rows={4} maxLength={500} value={body} onChange={(e) => onType(e.target.value)} />
           </Field>
           <button type="submit" className="btn btn-primary" disabled={busy || body.trim().length < 2}>
             {busy ? "שולח..." : "שליחת תגובה"}
@@ -126,7 +149,7 @@ export function SharedDraft() {
         </h2>
         {d.comments.length === 0 && <p className="hint">עוד אין תגובות.</p>}
         {d.comments.map((c) => (
-          <div key={c.id} className="assist-comment">
+          <div key={c.id} id={`comment-${c.id}`} tabIndex={-1} className="assist-comment">
             <strong>{c.authorName}</strong>
             {c.quote && (
               <>

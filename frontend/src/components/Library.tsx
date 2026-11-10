@@ -14,6 +14,7 @@ import { ActivityGlance } from "./ActivityView";
 import { useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
 import { RecentlyViewed, SmartFallback, VoiceSearchButton } from "./Discover54";
+import { PosterThumb } from "./lux/Poster";
 
 const PAGE_SIZE = 6;
 const SAVED_KEY = "scout.savedSearches";
@@ -421,6 +422,7 @@ export function Library() {
                 <span className="chip chip-accent"><KindIcon kind={a.kind} /> {KIND_LABELS[a.kind]}</span>
               </p>
             )}
+            <PosterThumb a={a} />
             <h2 className="card-title">
               <Link href={`/library/${a.id}`}>{a.title}</Link>
             </h2>

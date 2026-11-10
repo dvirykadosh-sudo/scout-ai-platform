@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 // כל הדפים הציבוריים. דפי עבודה (הדפסה, ייבוא, שיתוף מהטלפון) וקישורים סודיים לא נכללים.
 const PAGES: [string, number, MetadataRoute.Sitemap[number]["changeFrequency"]][] = [
-  ["/", 1, "weekly"], ["/library", 0.9, "daily"], ["/types", 0.7, "monthly"], ["/values", 0.7, "monthly"], ["/methods", 0.7, "monthly"],
+  ["/", 1, "weekly"], ["/welcome", 0.8, "monthly"], ["/library", 0.9, "daily"], ["/types", 0.7, "monthly"], ["/values", 0.7, "monthly"], ["/methods", 0.7, "monthly"],
   ["/tools", 0.6, "monthly"], ["/ideas", 0.6, "monthly"], ["/warmups", 0.6, "monthly"], ["/icebreakers", 0.6, "monthly"], ["/stories", 0.6, "monthly"],
   ["/challenges", 0.6, "monthly"], ["/quick", 0.6, "monthly"], ["/plan", 0.5, "monthly"], ["/calendar", 0.4, "monthly"], ["/cupboard", 0.5, "monthly"],
   ["/write", 0.6, "monthly"], ["/story", 0.5, "monthly"], ["/chat", 0.4, "monthly"], ["/assistant", 0.5, "monthly"], ["/coverage", 0.5, "weekly"], ["/hall", 0.5, "weekly"], ["/team", 0.4, "monthly"],

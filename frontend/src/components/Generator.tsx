@@ -11,7 +11,8 @@ import { useAuth, useToast } from "./Providers";
 import { LivePreview } from "./LivePreview";
 import { useKinds } from "@/lib/kinds";
 import { StylePicker } from "./StylePicker";
-import { Field, Skeleton } from "./ui";
+import { Field } from "./ui";
+import { ActivitySkeleton } from "./lux/ActivitySkeleton";
 
 const STEPS = ["פרטי הפעולה", "מצבים פדגוגיים", "שיטות וזמנים", "סגנון כתיבה", "סקירה ויצירה"];
 const LAST = STEPS.length - 1;
@@ -447,7 +448,7 @@ export function Generator() {
     return (
       <div aria-live="polite">
         <h2 className="section-title">יוצר את הפעולה...</h2>
-        <Skeleton lines={6} label="הפעולה נוצרת, זה לוקח כמה שניות" />
+        <ActivitySkeleton stages={5} label="הפעולה נוצרת, זה לוקח כמה שניות" />
       </div>
     );
   }

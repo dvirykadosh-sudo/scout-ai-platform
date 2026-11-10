@@ -144,6 +144,9 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
         <Link className="btn" href={`/field/${activity.id}`}>
           מצב הדרכה בשטח
         </Link>
+        <Link className="btn lux-btn-stage" href={`/stage/${activity.id}`}>
+          מצב במה
+        </Link>
         <button
           type="button"
           className="btn"
@@ -174,6 +177,9 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
               הוספה לאוסף
             </button>
             <KindTools activity={activity} />
+            <Link className="btn" href={`/library/${activity.id}/studio`}>
+              סטודיו ייצוא
+            </Link>
             <Link className="btn" href={`/library/${activity.id}/cards`}>
               כרטיסים להדפסה
             </Link>
@@ -186,6 +192,9 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
             </button>
             <Link className="btn" href={`/present/${activity.id}`}>
               מצגת
+            </Link>
+            <Link className="btn" href={`/projector/${activity.id}`}>
+              מצב מקרן
             </Link>
             <button type="button" className="btn" onClick={() => setSchedOpen(true)}>
               שיבוץ ביומן

@@ -4,7 +4,7 @@ import type { Activity } from "./types";
 export const INDEXING = process.env.ALLOW_INDEXING !== "0";
 export const siteUrl = (): string => (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:3000").replace(/\/+$/, "");
 /** כתובות שנשארות מחוץ לחיפוש: קישורים סודיים (הזמנה, צפייה בטיוטה) ולוח הבקרה. */
-export const PRIVATE_PATHS = ["/api/", "/admin", "/join/", "/write/view/", "/assistant/shared"];
+export const PRIVATE_PATHS = ["/api/", "/admin", "/join/", "/write/view/", "/assistant/shared", "/stage/", "/projector/", "/trail", "/insights", "/wrapped", "/comfort"];
 
 const apiBase = () => process.env.INTERNAL_API_URL || `http://127.0.0.1:${process.env.PORT || 4000}`;
 

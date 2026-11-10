@@ -34,6 +34,7 @@ import { registerWriteV53Routes } from "./routes-write-v53.js";
 import { registerV54Routes } from "./routes-v54.js";
 import { registerWaRoutes } from "./wa/index.js";
 import { registerV57Routes } from "./routes-v57.js";
+import { registerLuxRoutes } from "./routes-lux.js";
 import { registerV56Routes } from "./routes-v56.js";
 import { cleanDict } from "./human-voice.js";
 import compression from "compression";
@@ -51,7 +52,7 @@ import { styleSchema } from "./style.js";
 import { config } from "./config.js";
 import { audit, nowIso } from "./db.js";
 import { notifyAdmins } from "./notify.js";
-import { buildBookletDocx, buildDocx } from "./docx.js";
+import { buildBookletDocx, buildDocx, exportOpts } from "./docx.js";
 import { setWatermarkSource } from "./watermark.js";
 import { registerSystemRoutes, startedAt as bootedAt } from "./routes-system.js";
 import { activityEmailHtml } from "./email.js";
@@ -296,7 +297,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   app.get("/api/activities/:id/export/docx", async (req, res) => {
     const a = getActivity(db, Number(req.params.id));
     if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
-    const buf = await buildDocx(a);
+    const buf = await buildDocx(a, exportOpts(req.query));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     res.setHeader("Content-Disposition", `attachment; filename="activity-${a.id}.docx"; filename*=UTF-8''${encodeURIComponent(a.title)}.docx`);
     res.send(buf);
@@ -660,6 +661,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerV54Routes(app, { db, dbFile, limiter, fail, requireUser, requireAdmin, audit, mailer, config, bootedAt });
   registerV56Routes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion, audit, config });
   registerV57Routes(app, { db, limiter, fail, requireUser, audit, config });
+  registerLuxRoutes(app, { db, limiter, fail, requireUser, optionalAuth });
   // שלב 58: מנוע הוואטסאפ (תור, תבניות, בוט, גשר מקומי). בבדיקות אין טיימרים.
   registerWaRoutes(app, { db, limiter, fail, requireAdmin, audit, notifyAdmins, publicUrl: config.publicUrl }, { startScheduler: config.nodeEnv !== "test" });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });

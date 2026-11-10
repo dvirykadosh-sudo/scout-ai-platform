@@ -183,7 +183,7 @@ export function Splash() {
   useEffect(() => {
     try {
       const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (calm || localStorage.getItem("scout.hero.seen") || localStorage.getItem("scout.splash")) return;
+      if (calm || document.documentElement.dataset.intro || localStorage.getItem("scout.hero.seen") || localStorage.getItem("scout.splash")) return;
       localStorage.setItem("scout.splash", "1");
       setShow(true);
       const t = window.setTimeout(() => setShow(false), 1600);
@@ -200,7 +200,7 @@ export function Splash() {
   );
 }
 
-const PALETTES = [["purple", "כתום"], ["blue", "כחול"], ["green", "ירוק"], ["fire", "אדום"]] as const;
+const PALETTES = [["purple", "כתום"], ["blue", "כחול"], ["green", "ירוק"], ["fire", "אדום"], ["tribe", "צבעי הלוגו"]] as const;
 /** 296: ערכת צבעים לבחירה. */
 export function PaletteToggle() {
   const [p, setP] = useState("purple");
@@ -216,6 +216,7 @@ export function PaletteToggle() {
     setP(n);
     document.documentElement.dataset.palette = n;
     try { localStorage.setItem("scout.palette", n); } catch {}
+    window.dispatchEvent(new Event("scout:appearance"));
   };
   return <button type="button" className="a11y-btn" onClick={next}>צבעים: {PALETTES.find((x) => x[0] === p)?.[1]}</button>;
 }
