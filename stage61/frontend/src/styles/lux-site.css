@@ -1,0 +1,64 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   שלב 61: העיצוב הכהה (Dark Bento Glass) בכל האתר
+   הטוקנים והכרטיסים מוגדרים בבלוק "עמוד הבית" ב-globals.css ומופעלים כאן על כל עמוד (main.page.lux).
+   • כהה (ברירת מחדל): משטח כהה בסגנון זכוכית.   • "משטח התוכן: בהיר" בהגדרות (data-panel="light") ותצוגה בהירה: המשטח הבהיר הקודם.
+   • ניגודיות גבוהה (html.hc): שחור-צהוב שטוח.      • הדפסה: תמיד לבן.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── דשבורד ווואטסאפ: אותם טוקנים בגוון כהה ───── */
+html:not(.light):not(.hc):not([data-panel="light"]) main.page.lux {
+  --db-outer: transparent;
+  --db-work: transparent;
+  --db-card: rgba(255, 255, 255, 0.07);
+  --db-ink: #f7f3ff;
+  --db-ink-2: #cdc4ea;
+  --db-line: rgba(255, 255, 255, 0.16);
+  --wa-ink: #f7f3ff;
+  --wa-ink-2: #cdc4ea;
+  --wa-bg-1: rgba(76, 29, 149, 0.34);
+  --wa-bg-2: rgba(131, 24, 67, 0.28);
+  --wa-card: rgba(255, 255, 255, 0.07);
+  --wa-line: rgba(255, 255, 255, 0.18);
+  --wa-ok: #86efac;
+  --wa-warn: #fcd34d;
+  --wa-bad: #fda4af;
+}
+
+/* ───── כותרת עמוד (PageTitle) בכל עמוד שאינו הבית: Hero מוקטן ───── */
+html:not(.light):not(.hc):not([data-panel="light"]) main.page.lux .page-title:not(.lux-hero) {
+  position: relative;
+  margin: 0 0 20px;
+  padding: clamp(16px, 2.6vw, 28px) clamp(16px, 3vw, 32px);
+  border-radius: 24px;
+  border: 1px solid var(--lx-edge);
+  background: var(--lx-hero-bg);
+  box-shadow: var(--lx-shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+}
+html:not(.light):not(.hc):not([data-panel="light"]) main.page.lux .page-title:not(.lux-hero) h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3.6vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -0.018em;
+  color: #fff;
+  background: var(--lx-title);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+html:not(.light):not(.hc):not([data-panel="light"]) main.page.lux .page-title:not(.lux-hero) .lead { margin: 8px 0 0; color: var(--lx-ink-2); max-width: 70ch; }
+
+/* ───── הדפסה: תמיד לבן ושחור, בלי זכוכית, בלי גרדיאנטים ───── */
+@media print {
+  html main.page.lux { background: #fff !important; color: #000 !important; box-shadow: none !important; border: 0 !important; }
+  html main.page.lux *, html main.page.lux *::before, html main.page.lux *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; text-shadow: none !important; }
+  html main.page.lux .card, html main.page.lux .glass, html main.page.lux .page-title { background: #fff !important; color: #000 !important; border-color: #999 !important; box-shadow: none !important; }
+  html main.page.lux .lux-title, html main.page.lux h1, html main.page.lux h2, html main.page.lux .section-title { background: none !important; -webkit-text-fill-color: #000 !important; color: #000 !important; }
+  .lux-orb, .lux-chips { display: none !important; }
+}
+
+/* ניגודיות גבוהה: תגי מצב קריאים על שחור */
+html.hc .pill-ok { color: #6df09a; }
+html.hc .pill-bad, html.hc .pill-warn { color: #ffeb00; }
+html:not(.light):not(.hc) main.page.lux .pill-ok { color: #86efac; }
