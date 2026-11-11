@@ -30,7 +30,13 @@ export function HelpCenter() {
         <input id="help-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} />
       </Field>
       <p className="count" role="status">
-        {rows.length === 0 ? "לא נמצאו תשובות. אפשר להוסיף בקשה." : `${rows.length} תשובות`}
+        {rows.length === 0 ? "לא נמצאו תשובות. אפשר להוסיף בקשה, או לשאול את מעוז." : `${rows.length} תשובות`}
+      </p>
+      <p>
+        לא מצאתם?{" "}
+        <button type="button" className="link-btn" onClick={() => window.dispatchEvent(new CustomEvent("scout:eagle", { detail: term.length >= 2 ? { q: term } : {} }))}>
+          שאלו את מעוז
+        </button>
       </p>
       {rows.map((f) => (
         <details key={f.q} className="card glass insight">

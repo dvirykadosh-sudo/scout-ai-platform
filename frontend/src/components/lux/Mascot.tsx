@@ -1,10 +1,13 @@
 "use client";
 
 // שלב 61 (רעיון 10): הנשר "מעוז". כפתור קטן בפינה: טיפ לפי העמוד, חגיגה כשמשהו הצליח, וסיור מודרך עם זרקור.
+// שלב 62: אפשר גם לשאול אותו שאלות ("שאלו אותי"), והוא עונה מתוך מה שבאמת קיים באתר (ראו EagleChat).
 // לא קופץ מעצמו ולא חוסם. אפשר להסתיר (נשמר), ולהחזיר מההגדרות או מ"נוחות קריאה".
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { storageGet, storageSet } from "@/lib/api";
+import { useAuth } from "../Providers";
+import { EagleChat, useEagleChat } from "./EagleChat";
 import { Eagle, type EagleMood } from "./illus";
 
 export const MASCOT_KEY = "scout.mascot"; // "off" = מוסתר
@@ -43,6 +46,9 @@ const visible = (el: Element | null): el is HTMLElement => {
 export function Mascot() {
   const pathname = usePathname() || "/";
   const router = useRouter();
+  const { token } = useAuth();
+  const chat = useEagleChat(token ?? null);
+  const [view, setView] = useState<"tip" | "chat">("tip");
   const [off, setOff] = useState(true); // מתחילים מוסתר, כדי לא להבהב לפני שנקרא ההעדפה
   const [open, setOpen] = useState(false);
   const [mood, setMood] = useState<EagleMood>("idle");
@@ -65,6 +71,42 @@ export function Mascot() {
     return () => window.removeEventListener("scout:mascot", sync);
   }, []);
 
+  // פתיחת השיחה מכל מקום באתר: window.dispatchEvent(new CustomEvent("scout:eagle", { detail: { q: "..." } }))
+  const askRef = useRef(chat.ask);
+  askRef.current = chat.ask;
+  useEffect(() => {
+    const openChat = (e: Event) => {
+      if (storageGet(MASCOT_KEY) === "off") {
+        storageSet(MASCOT_KEY, "on");
+        setOff(false);
+      }
+      setView("chat");
+      setOpen(true);
+      const q = (e as CustomEvent<{ q?: string }>).detail?.q;
+      if (q) void askRef.current(q);
+    };
+    window.addEventListener("scout:eagle", openChat);
+    return () => window.removeEventListener("scout:eagle", openChat);
+  }, []);
+
+  // המצב הרוחני של הנשר: חושב בזמן שהוא מחפש תשובה
+  useEffect(() => {
+    if (chat.busy) setMood("think");
+    else setMood((m) => (m === "think" ? "idle" : m));
+  }, [chat.busy]);
+
+  // Esc סוגר את החלון ומחזיר את המיקוד לנשר
+  useEffect(() => {
+    if (!open || tour !== null) return;
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      btn.current?.focus();
+    };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [open, tour]);
+
   // חגיגה
   useEffect(() => {
     let t: number | undefined;
@@ -84,7 +126,10 @@ export function Mascot() {
     };
   }, []);
 
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    setOpen(false);
+    setView("tip");
+  }, [pathname]);
 
   const tip = TIPS.find((t) => t.match.test(pathname));
   const fresh = !!tip && !seen.includes(tip.id);
@@ -149,40 +194,13 @@ export function Mascot() {
   return (
     <>
       <div className="lux-mascot no-print">
-        {flash && (
-          <p className="lux-mascot-flash" role="status">
-            {flash}
-          </p>
-        )}
-        {open && tour === null && (
-          <div className="lux-mascot-panel" role="dialog" aria-label="מעוז, העוזר שלכם" aria-modal="false">
-            <p>{tip?.text ?? "אני מעוז. אפשר לשאול אותי על כל מסך באתר דרך הסיור."}</p>
-            <div className="actions">
-              <button type="button" className="btn btn-small btn-primary" onClick={startTour}>
-                סיור באתר
-              </button>
-              <button
-                type="button"
-                className="btn btn-small"
-                onClick={() => {
-                  storageSet(MASCOT_KEY, "off");
-                  setOff(true);
-                }}
-              >
-                הסתרת הנשר
-              </button>
-              <button type="button" className="btn btn-small" onClick={() => setOpen(false)}>
-                סגירה
-              </button>
-            </div>
-          </div>
-        )}
+        {/* סדר ה-DOM: כפתור, חלון, הודעה. כך Tab עובר מהנשר אל החלון שנפתח; התצוגה נשארת הפוכה (column-reverse) */}
         <button
           ref={btn}
           type="button"
           className={`lux-mascot-btn ${fresh ? "has-tip" : ""}`}
           aria-expanded={open}
-          aria-label={fresh ? "מעוז, העוזר שלכם. יש טיפ חדש" : "מעוז, העוזר שלכם"}
+          aria-label={fresh ? "מעוז, העוזר שלכם. אפשר לשאול אותו שאלות. יש טיפ חדש" : "מעוז, העוזר שלכם. אפשר לשאול אותו שאלות"}
           onClick={() => {
             setOpen((o) => !o);
             markSeen();
@@ -192,6 +210,51 @@ export function Mascot() {
         >
           <Eagle mood={mood} size={52} />
         </button>
+        {open && tour === null && (
+          <div className={`lux-mascot-panel ${view === "chat" ? "is-chat" : ""}`} role="dialog" aria-label={view === "chat" ? "שיחה עם מעוז" : "מעוז, העוזר שלכם"} aria-modal="false">
+            {view === "chat" ? (
+              <EagleChat
+                chat={chat}
+                loggedIn={!!token}
+                onBack={() => setView("tip")}
+                onClose={() => {
+                  setOpen(false);
+                  btn.current?.focus();
+                }}
+              />
+            ) : (
+              <>
+                <p>{tip?.text ?? "אני מעוז. אפשר לשאול אותי על האתר, על מתודות ועל ערכים, או לצאת לסיור קצר."}</p>
+                <div className="actions">
+                  <button type="button" className="btn btn-small btn-primary" onClick={() => setView("chat")}>
+                    שאלו אותי
+                  </button>
+                  <button type="button" className="btn btn-small" onClick={startTour}>
+                    סיור באתר
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-small"
+                    onClick={() => {
+                      storageSet(MASCOT_KEY, "off");
+                      setOff(true);
+                    }}
+                  >
+                    הסתרת הנשר
+                  </button>
+                  <button type="button" className="btn btn-small" onClick={() => setOpen(false)}>
+                    סגירה
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {flash && (
+          <p className="lux-mascot-flash" role="status">
+            {flash}
+          </p>
+        )}
       </div>
 
       {step && (

@@ -1,17 +1,22 @@
 // שלב 61: נתיבים לעיצוב החדש. היום (הפעולה הבאה) ומזג אוויר למקום המפגש.
 import { z } from "zod";
-import { metaDefaults } from "./routes-write.js";
+import { TEMPLATES, metaDefaults } from "./routes-write.js";
+import { apportion } from "./ai.js";
+import { nowIso } from "./db.js";
+import { AGE_GROUPS } from "./shared/constants.js";
 import { gearItems } from "./gear.js";
 import { daysBetween, israelToday } from "./organizer.js";
 import { classify, holidayStations, scoutYear } from "./lux-trail.js";
 import { KIND_LABEL, adviceFor, forecast, geocode, kindOf, pickHour, ttlCache } from "./lux-weather.js";
 import { buildInsights, buildTribeWrapped, buildWrapped } from "./lux-insights.js";
 import { createPresence } from "./lux-presence.js";
+import { STARTERS, createEagle } from "./lux-eagle.js";
+import { config } from "./config.js";
 
 const todayStr = () => israelToday();
 const addDays = (d, n) => new Date(Date.parse(d) + n * 86400000).toISOString().slice(0, 10);
 
-export function registerLuxRoutes(app, { db, limiter, fail, requireUser }) {
+export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optionalAuth }) {
   const lim = limiter(60_000, 40);
   const geoCache = ttlCache(300);
   const fcCache = ttlCache(300);
@@ -222,5 +227,57 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser }) {
   app.delete("/api/lux/comfort", requireUser(), lim, (req, res) => {
     db.prepare("DELETE FROM user_comfort WHERE user_id = ?").run(req.user.id);
     res.json({ saved: false });
+  });
+
+  // ── שלב 62: "שאל את מעוז" ──
+  // פתוח גם לאורחים (עונה על שאלות על האתר והמאגר). שום שאלה או תשובה לא נשמרות. ניסוח בעזרת מודל רק כשמוגדר מפתח,
+  // רק למשתמש מחובר ובמכסה יומית. פרטי היומן האישי מחושבים מקומית ולא נשלחים למודל.
+  const eagle = createEagle({
+    db,
+    ai: config.ai,
+    fetchImpl: (...a) => fx()(...a),
+    today: todayStr,
+    aiDaily: Number(process.env.EAGLE_AI_DAILY) || 20,
+    aiGlobal: Number(process.env.EAGLE_AI_GLOBAL_DAILY) || 300,
+  });
+  const eagleLim = limiter(60_000, 20);
+  const askSchema = z.object({ q: z.string().trim().min(2).max(400) }).strict();
+  app.get("/api/lux/eagle/info", lim, (req, res) => {
+    const user = optionalAuth(req);
+    res.set("Cache-Control", "no-store");
+    res.json({ starters: STARTERS, ai: !!config.ai.key, aiLeft: user && config.ai.key ? eagle.aiLeft(user.id) : null });
+  });
+  app.post("/api/lux/eagle/ask", eagleLim, async (req, res) => {
+    const v = askSchema.safeParse(req.body ?? {});
+    if (!v.success) return res.status(400).json(fail("BAD_REQUEST", "אפשר לשאול עד 400 תווים, ולפחות שתי אותיות"));
+    res.set("Cache-Control", "no-store");
+    res.json(await eagle.ask({ question: v.data.q, user: optionalAuth(req) }));
+  });
+
+  // "צרו טיוטה בעורך": מעוז מכין מסמך חדש מתבנית "פעולה קלאסית" עם הכותרת, הגיל, הערך והזמן שהבנתם, ומחלק את הדקות בין השלבים.
+  // התוכן עצמו נשאר לכם לכתוב (או להשלים במחולל). מסמך אחד לכל לחיצה, ורק למחובר.
+  const draftZ = z
+    .object({
+      title: z.string().trim().min(2).max(120),
+      ageGroup: z.enum(AGE_GROUPS).or(z.literal("")).default(""),
+      minutes: z.number().int().min(5).max(180).nullable().default(null),
+      value: z.string().trim().max(40).default(""),
+    })
+    .strict();
+  app.post("/api/lux/eagle/draft", requireUser(), limiter(15 * 60_000, 30), (req, res) => {
+    const v = draftZ.safeParse(req.body ?? {});
+    if (!v.success) return res.status(400).json(fail("BAD_REQUEST", "פרטי הטיוטה אינם תקינים"));
+    if (db.prepare("SELECT COUNT(*) AS c FROM write_docs WHERE owner_id = ?").get(req.user.id).c >= 100) return res.status(409).json(fail("LIMIT", "אפשר לשמור עד 100 מסמכים. אפשר למחוק או לארכב ישנים."));
+    const t = TEMPLATES.find((x) => x.id === "classic");
+    let blocks = t.blocks();
+    if (v.data.minutes) {
+      const parts = apportion(blocks.map((b) => b.minutes || 1), v.data.minutes);
+      blocks = blocks.map((b, i) => ({ ...b, minutes: parts[i] }));
+    }
+    const meta = metaDefaults({ ageGroup: v.data.ageGroup, minutes: v.data.minutes ?? t.minutes, value: v.data.value });
+    const at = nowIso();
+    const r = db.prepare("INSERT INTO write_docs (owner_id, title, meta_json, blocks_json, rev, words, created_at, updated_at) VALUES (?,?,?,?,1,0,?,?)").run(req.user.id, v.data.title, JSON.stringify(meta), JSON.stringify(blocks), at, at);
+    const id = Number(r.lastInsertRowid);
+    res.status(201).json({ id, href: `/write/${id}` });
   });
 }

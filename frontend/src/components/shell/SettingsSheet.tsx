@@ -119,6 +119,10 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
               <p className="sh-wizard-link">
                 רוצים שנעזור לכם לבחור? <Link href="/comfort" onClick={close}>פתחו את אשף הנוחות</Link>
                 {" · "}
+                <button type="button" className="link-btn" onClick={() => { close(); window.setTimeout(() => window.dispatchEvent(new CustomEvent("scout:eagle")), 250); }}>
+                  שאלו את מעוז
+                </button>
+                {" · "}
                 <button type="button" className="link-btn" onClick={() => { close(); window.setTimeout(replayIntro, 250); }}>
                   הצגת סיור הנשר שוב
                 </button>

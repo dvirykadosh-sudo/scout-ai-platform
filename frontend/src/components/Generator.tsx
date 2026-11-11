@@ -133,6 +133,9 @@ export function Generator() {
     if (m && METHODS.some((x) => x.name === m)) setSel({ [m]: "10" });
     const k = params.get("kind");
     if (k) setForm((f) => ({ ...f, kind: k }));
+    // שלב 62ב: מעוז מעביר גם שכבת גיל ("כיתה ו' - מעורב")
+    const a = params.get("age");
+    if (a && /^כיתה [א-י]{1,2}' - (בנים|בנות|מעורב)$/.test(a)) setForm((f) => ({ ...f, ageGroup: a }));
   }, [params]);
 
   // a kind chosen through the link fills the methods and modes once the kinds arrive

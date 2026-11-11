@@ -198,6 +198,8 @@ describe("שלב 58: מפת הנתיבים", () => {
   "POST /api/assist/save",
   "POST /api/assist/script",
   "POST /api/assist/shared/:token/comments",
+  "GET /api/lux/eagle/info", // רשימת שאלות פתיחה לנשר: תוכן קבוע, בלי נתונים אישיים
+  "POST /api/lux/eagle/ask", // הנשר עונה גם לאורחים על האתר והמאגר הציבורי בלבד; בלי שמירה, עם הגבלת קצב. מודל וניתוח היומן רק למחוברים
   "POST /api/lux/presence/shared/:token", // נוכחות באורחים בטיוטה משותפת. ההרשאה היא טוקן השיתוף, כמו GET /api/assist/shared/:token
   "POST /api/assist/stations",
   "POST /api/assist/swap",

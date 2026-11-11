@@ -1,0 +1,81 @@
+/* שלב 62: חלון השיחה של הנשר ("שאלו את מעוז"). נשען על משתני העיצוב הקיימים, כך שכהה/בהירה עובדים לבד; ניגודיות גבוהה מפורשת. */
+.lux-mascot-panel.is-chat { width: min(390px, calc(100vw - 28px)); max-width: none; padding: 0; overflow: hidden; border-radius: 20px 20px 6px 20px; }
+.eg { display: flex; flex-direction: column; max-height: min(74vh, 580px); }
+@supports (height: 1dvh) { .eg { max-height: min(74dvh, 580px); } }
+.eg-head { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.2)); }
+.eg-head strong { flex: 1; font-size: 1rem; text-align: center; }
+.eg-link, .eg-x { min-height: 40px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 0.88rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.eg-x { min-width: 40px; padding: 0; text-decoration: none; font-size: 1.05rem; }
+.eg-link:hover, .eg-x:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.eg-link:focus-visible, .eg-x:focus-visible, .eg-chip:focus-visible, .eg-open:focus-visible, .eg-card:focus-visible, .eg-input:focus-visible, .eg-list:focus-visible { outline: 3px solid var(--focus, #fcd34d); outline-offset: 2px; }
+
+.eg-list { flex: 1 1 auto; min-height: 150px; overflow-y: auto; overscroll-behavior: contain; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.eg-hello p { margin: 0 0 8px; line-height: 1.6; }
+.eg-msg { margin: 0; padding: 9px 12px; border-radius: 14px; line-height: 1.6; font-size: 0.96rem; overflow-wrap: anywhere; }
+.eg-msg.is-me { align-self: flex-start; max-width: 88%; background: color-mix(in srgb, var(--lx-a, #f97316) 24%, transparent); border: 1px solid color-mix(in srgb, var(--lx-a, #f97316) 55%, transparent); }
+.eg-msg.is-eagle { align-self: stretch; background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid var(--line, rgba(255, 255, 255, 0.16)); }
+.eg-msg.is-error { border-style: dashed; }
+.eg-text { margin: 0; white-space: pre-line; }
+.eg-note { margin: 6px 0 0; font-size: 0.8rem; opacity: 0.85; }
+
+.eg-cards { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.eg-card { display: block; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line, rgba(255, 255, 255, 0.2)); color: inherit; text-decoration: none; background: color-mix(in srgb, currentColor 5%, transparent); }
+.eg-card:hover { border-color: var(--lx-a, #f97316); }
+.eg-card strong { display: block; font-size: 0.95rem; }
+.eg-card span { display: block; font-size: 0.82rem; opacity: 0.88; margin-top: 2px; }
+.eg-links, .eg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.eg-open { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--lx-a, #f97316); color: inherit; text-decoration: none; font-weight: 800; font-size: 0.9rem; }
+.eg-open:hover { background: color-mix(in srgb, var(--lx-a, #f97316) 20%, transparent); }
+.eg-chip { min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line, rgba(255, 255, 255, 0.3)); background: transparent; color: inherit; font: inherit; font-size: 0.88rem; cursor: pointer; }
+.eg-chip:hover { border-color: var(--lx-a, #f97316); background: color-mix(in srgb, var(--lx-a, #f97316) 14%, transparent); }
+
+.eg-form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line, rgba(255, 255, 255, 0.2)); }
+.lux-mascot-panel .eg-input.eg-input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line, rgba(255, 255, 255, 0.35)); background: color-mix(in srgb, currentColor 8%, transparent); color: inherit; font: inherit; font-size: 16px; }
+.eg-form .btn { min-height: 44px; }
+.eg-privacy { margin: 0; padding: 0 12px 10px; font-size: 0.76rem; line-height: 1.45; opacity: 0.88; }
+
+.eg-typing { display: flex; align-items: center; gap: 6px; }
+.eg-dots { display: inline-flex; gap: 3px; }
+.eg-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.saver):not([data-motion="calm"]):not([data-motion="off"]) .eg-dots i { animation: eg-dot 1s ease-in-out infinite; }
+  html:not(.saver):not([data-motion="calm"]):not([data-motion="off"]) .eg-dots i:nth-child(2) { animation-delay: 0.15s; }
+  html:not(.saver):not([data-motion="calm"]):not([data-motion="off"]) .eg-dots i:nth-child(3) { animation-delay: 0.3s; }
+}
+@keyframes eg-dot { 0%, 100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+@media (max-width: 520px) {
+  .lux-mascot-panel.is-chat { width: calc(100vw - 28px); }
+  .eg { max-height: min(68vh, 520px); }
+  @supports (height: 1dvh) { .eg { max-height: min(68dvh, 520px); } }
+}
+
+/* ניגודיות גבוהה: שחור, צהוב ולבן, בלי שקיפויות */
+html.hc .lux-mascot-panel.is-chat { background: #000; color: #fff; border: 2px solid #ffeb00; box-shadow: none; }
+html.hc .eg-head, html.hc .eg-form { border-color: #ffeb00; }
+html.hc .eg-msg.is-me { background: #000; border: 2px solid #ffeb00; }
+html.hc .eg-msg.is-eagle { background: #000; border: 1px solid #fff; }
+html.hc .eg-card, html.hc .eg-chip, html.hc .eg-input { background: #000; color: #fff; border: 2px solid #fff; }
+html.hc .eg-open { background: #000; color: #ffeb00; border: 2px solid #ffeb00; }
+html.hc .eg-open:hover, html.hc .eg-chip:hover, html.hc .eg-card:hover { background: #ffeb00; color: #000; border-color: #ffeb00; }
+html.hc .eg-card:hover strong, html.hc .eg-card:hover span { color: #000; }
+html.hc .eg-link, html.hc .eg-x { color: #ffeb00; }
+html.hc .eg-note, html.hc .eg-privacy { opacity: 1; }
+html.hc .eg-dots i { background: #fff; }
+
+/* תצוגה בהירה: רקעים נקיים במקום גוון אפור שקוף */
+.eg-msg, .eg-card { box-shadow: none; }
+html.light .eg-msg.is-eagle { background: #fff; border-color: #d9d4e6; }
+html.light .eg-card { background: #faf8ff; border-color: #cfc8e2; }
+html.light .lux-mascot-panel .eg-input.eg-input { background: #fff; border-color: #a9a2c0; }
+
+/* שלב 62ב: רשימות להעתקה וכפתורי פעולה */
+.eg-items { margin: 8px 0 0; padding-inline-start: 1.3em; display: grid; gap: 6px; line-height: 1.55; font-size: 0.93rem; }
+.eg-items li { overflow-wrap: anywhere; padding-inline-start: 2px; }
+.eg-copy { margin-top: 8px; }
+.eg-open.is-primary { background: var(--lx-a, #f97316); border-color: var(--lx-a, #f97316); color: #1a0f05; }
+.eg-open.is-primary:hover { filter: brightness(1.08); background: var(--lx-a, #f97316); }
+.eg-open:disabled { opacity: 0.6; cursor: progress; }
+html.light .eg-open.is-primary { color: #fff; background: #a33a00; border-color: #a33a00; }
+html.hc .eg-open.is-primary { background: #ffeb00; color: #000; border-color: #ffeb00; }
+html.hc .eg-open.is-primary:hover { background: #fff; border-color: #fff; color: #000; }
