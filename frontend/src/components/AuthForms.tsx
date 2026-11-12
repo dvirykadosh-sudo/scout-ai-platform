@@ -310,9 +310,17 @@ export function RegisterForm({ needsCode = false, inviteCode = "" }: { needsCode
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState("");
   const [opened] = useState(() => Date.now());
+  const [formToken, setFormToken] = useState("");
   const [trap, setTrap] = useState("");
   const [showPw, setShowPw] = useState(false);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
+
+  // שלב 63: את שעת פתיחת הטופס קובע השרת (אסימון חתום), לא רק הדפדפן
+  useEffect(() => {
+    api<{ token: string }>("/api/auth/form-token")
+      .then((r) => setFormToken(r.token))
+      .catch(() => {});
+  }, []);
 
   // בדיקת חוזק סיסמה מול השרת (רשימת סיסמאות נפוצות ועוד), אחרי שהמשתמש מפסיק להקליד
   useEffect(() => {
@@ -342,7 +350,7 @@ export function RegisterForm({ needsCode = false, inviteCode = "" }: { needsCode
     if (Object.keys(er).length) return;
     setBusy(true);
     try {
-      const r = await api<AuthResponse & { pending?: boolean; message?: string }>("/api/auth/register", { method: "POST", body: { ...f, acceptTerms: true, displayName: f.displayName.trim(), username: f.username.trim(), signupCode: f.signupCode.trim(), ...(inviteCode ? { inviteCode } : {}), website: trap, formAge: Date.now() - opened } });
+      const r = await api<AuthResponse & { pending?: boolean; message?: string }>("/api/auth/register", { method: "POST", body: { ...f, acceptTerms: true, displayName: f.displayName.trim(), username: f.username.trim(), signupCode: f.signupCode.trim(), ...(inviteCode ? { inviteCode } : {}), website: trap, formAge: Date.now() - opened, ...(formToken ? { formToken } : {}) } });
       if (r.pending) {
         setPending(r.message ?? "ההרשמה התקבלה וממתינה לאישור.");
       } else {

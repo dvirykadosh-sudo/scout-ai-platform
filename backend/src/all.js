@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp } from "./app.js";
-import { ensureAdmin } from "./auth.js";
+import { ensureAdmin, timingDummyRounds } from "./auth.js";
 import { backupDirFor, startBackupSchedule } from "./backup.js";
 import { getActivity } from "./activities.js";
 import { assertProductionSafe, config } from "./config.js";
@@ -25,6 +25,7 @@ await restoreIfMissing(config.dbPath);
 const db = openDb();
 seedIfEmpty(db);
 ensureAdmin(db);
+timingDummyRounds(); // מחשבים מראש את ההשוואה לחשבון לא קיים, כדי שהכניסה הראשונה אחרי עלייה לא תהיה איטית יותר
 const mailer = createMailer(db, config.smtp);
 mailer.start();
 startBackupSchedule(db, backupDirFor());

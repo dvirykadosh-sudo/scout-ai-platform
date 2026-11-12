@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import jwt from "jsonwebtoken";
-import { config } from "./config.js";
+import { config, deriveKey } from "./config.js";
 import { deviceLabel, hashSecret, safeEqual } from "./accounts.js";
 import { notify } from "./notify.js";
 import { nowIso } from "./db.js";
@@ -23,7 +23,8 @@ export const TERMS_VERSION = "2026-10";
 export const SETTING_DEFAULTS = {
   ipRetentionDays: 90, // כמה ימים נשמרים יומן כניסות, מבקרים וחיבורים
   visitorIpMode: "raw", // raw: IP מלא | hashed: רק גיבוב, בלי הכתובת
-  strictPasswords: 0, // 1: סיסמאות נפוצות נחסמות לכולם (לצוות הניהול תמיד)
+  // 1: סיסמאות נפוצות נחסמות לכולם (שלב 63: ברירת המחדל הפכה ל-1; לצוות הניהול תמיד). בבדיקות האוטומטיות נשארת 0 כי הן משתמשות בסיסמאות פשוטות.
+  strictPasswords: config.nodeEnv === "test" ? 0 : 1,
   passwordMaxAgeDays: 0, // 0: בלי תפוגה
   autoBlockAfter: 0, // 0: כבוי. מספר כשלונות מאותו IP ב-15 דקות לחסימה אוטומטית של שעה
 };
@@ -176,6 +177,9 @@ export function purgeOld(db, days = readSettings(db).ipRetentionDays) {
 
 // ───────────── קפצ'ה פשוטה ─────────────
 
+// שלב 63: אסימון השאלה חתום במפתח נפרד (HKDF), חד-פעמי (אי אפשר לפתור פעם אחת ולנחש סיסמאות עם אותו אסימון),
+// ולא מתקבל אם נענה תוך פחות משנייה מרגע ההצגה (בסביבת בדיקות אין הגבלת זמן).
+const usedCaptcha = new Map();
 export function makeCaptcha() {
   const a = crypto.randomInt(2, 10);
   const b = crypto.randomInt(2, 10);
@@ -183,15 +187,35 @@ export function makeCaptcha() {
   const answer = plus ? a + b : Math.max(a, b) - Math.min(a, b);
   const x = plus ? a : Math.max(a, b);
   const y = plus ? b : Math.min(a, b);
-  const token = jwt.sign({ purpose: "captcha", h: hashSecret(`captcha|${answer}`) }, config.jwtSecret, { expiresIn: "10m" });
+  const token = jwt.sign({ purpose: "captcha", jti: crypto.randomBytes(8).toString("hex"), h: hashSecret(`captcha|${answer}`) }, deriveKey("captcha"), { expiresIn: "10m" });
   return { token, question: `כמה זה ${x} ${plus ? "ועוד" : "פחות"} ${y}?` };
 }
 export function checkCaptcha(token, answer) {
   try {
-    const p = jwt.verify(String(token), config.jwtSecret, { algorithms: ["HS256"] });
-    return p.purpose === "captcha" && safeEqual(p.h, hashSecret(`captcha|${String(answer).trim()}`));
+    const p = jwt.verify(String(token), deriveKey("captcha"), { algorithms: ["HS256"] });
+    if (p.purpose !== "captcha" || !p.jti) return false;
+    const now = Date.now();
+    for (const [k, exp] of usedCaptcha) if (exp < now) usedCaptcha.delete(k);
+    if (usedCaptcha.has(p.jti)) return false;
+    usedCaptcha.set(p.jti, now + 11 * 60_000);
+    if (usedCaptcha.size > 20000) usedCaptcha.clear();
+    if (config.strictTiming && now - p.iat * 1000 < 1000) return false;
+    return safeEqual(p.h, hashSecret(`captcha|${String(answer).trim()}`));
   } catch {
     return false;
+  }
+}
+
+// ───────────── אסימון טופס (שלב 63) ─────────────
+// השרת קובע מתי הטופס נפתח (במקום שדה formAge שהלקוח כותב בעצמו). בוט שמדלג על הטעינה לא מקבל אסימון.
+export const makeFormToken = () => jwt.sign({ purpose: "form" }, deriveKey("form"), { expiresIn: "2h" });
+/** גיל האסימון באלפיות שנייה, או null אם הוא לא תקף. */
+export function formTokenAgeMs(token) {
+  try {
+    const p = jwt.verify(String(token), deriveKey("form"), { algorithms: ["HS256"] });
+    return p.purpose === "form" ? Date.now() - p.iat * 1000 : null;
+  } catch {
+    return null;
   }
 }
 

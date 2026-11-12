@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
 import { backupDirFor, startBackupSchedule } from "./backup.js";
-import { ensureAdmin } from "./auth.js";
+import { ensureAdmin, timingDummyRounds } from "./auth.js";
 import { assertProductionSafe, config } from "./config.js";
 import { openDb } from "./db.js";
 import { createMailer } from "./email.js";
@@ -11,6 +11,7 @@ assertProductionSafe();
 const db = openDb();
 const seeded = seedIfEmpty(db);
 const adminCreated = ensureAdmin(db);
+timingDummyRounds(); // מחשבים מראש את ההשוואה לחשבון לא קיים, כדי שהכניסה הראשונה אחרי עלייה לא תהיה איטית יותר
 const mailer = createMailer(db, config.smtp);
 mailer.start();
 startBackupSchedule(db, backupDirFor());

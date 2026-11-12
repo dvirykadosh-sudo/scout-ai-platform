@@ -115,22 +115,29 @@ export const otpauthUrl = (secret, username) =>
   `otpauth://totp/${encodeURIComponent(`מחולל פעולות:${username}`)}?secret=${secret}&issuer=${encodeURIComponent("מחולל פעולות")}&algorithm=SHA1&digits=6&period=30`;
 
 // הסוד נשמר מוצפן במסד הנתונים (AES-256-GCM), כך שגיבוי שדלף לא חושף את מפתחות ה-2FA
-const key = () => crypto.createHash("sha256").update(`totp:${config.jwtSecret}`).digest();
+const keyOf = (secret) => crypto.createHash("sha256").update(`totp:${secret}`).digest();
+// שלב 63: ההצפנה במפתח TOTP_KEY אם הוגדר (אחרת JWT_SECRET כמו קודם). לפתיחה מנסים גם את המפתחות הקודמים,
+// כך שהחלפת JWT_SECRET (עם JWT_SECRET_PREVIOUS) או הוספת TOTP_KEY לא מאבדת את סודות ה-2FA הקיימים.
+const sealKey = () => keyOf(config.totpKey || config.jwtSecret);
+const openKeys = () => [config.totpKey, config.jwtSecret, config.jwtSecretPrevious].filter(Boolean).map(keyOf);
 export function sealSecret(plain) {
   const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv("aes-256-gcm", key(), iv);
+  const c = crypto.createCipheriv("aes-256-gcm", sealKey(), iv);
   const enc = Buffer.concat([c.update(plain, "utf8"), c.final()]);
   return [iv, c.getAuthTag(), enc].map((b) => b.toString("base64")).join(".");
 }
 export function openSecret(sealed) {
-  try {
-    const [iv, tag, enc] = String(sealed).split(".").map((x) => Buffer.from(x, "base64"));
-    const d = crypto.createDecipheriv("aes-256-gcm", key(), iv);
-    d.setAuthTag(tag);
-    return Buffer.concat([d.update(enc), d.final()]).toString("utf8");
-  } catch {
-    return null;
+  const [iv, tag, enc] = String(sealed).split(".").map((x) => Buffer.from(x, "base64"));
+  for (const k of openKeys()) {
+    try {
+      const d = crypto.createDecipheriv("aes-256-gcm", k, iv);
+      d.setAuthTag(tag);
+      return Buffer.concat([d.update(enc), d.final()]).toString("utf8");
+    } catch {
+      /* מנסים את המפתח הבא */
+    }
   }
+  return null;
 }
 
 export const newBackupCodes = (n = 10) => Array.from({ length: n }, () => `${crypto.randomBytes(2).toString("hex")}-${crypto.randomBytes(2).toString("hex")}`);

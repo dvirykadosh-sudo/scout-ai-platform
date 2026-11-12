@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,8 +75,17 @@ export const isInternal = (req) => {
 export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPath }) {
   const app = express();
   app.disable("x-powered-by");
-  // behind a hosting proxy (Render, Fly...) req.ip must be the visitor, not the proxy
-  if (config.isProd) app.set("trust proxy", 1);
+  // behind a hosting proxy (Render, Fly...) req.ip must be the visitor, not the proxy.
+  // שלב 63: מספר הקפיצות ניתן להגדרה (TRUST_PROXY), ואפשר גם לקבוע כותרת שהפלטפורמה מציבה עם כתובת המבקר (CLIENT_IP_HEADER).
+  // אימות מול האתר החי: אדמין ← מערכת ← "איזו כתובת השרת רואה אצלי" (או GET /api/admin/ip-check).
+  if (config.isProd) app.set("trust proxy", config.trustProxy);
+  if (config.clientIpHeader) {
+    app.use((req, res, next) => {
+      const v = String(req.headers[config.clientIpHeader] || "").split(",")[0].trim();
+      if (v && net.isIP(v)) Object.defineProperty(req, "ip", { value: v, configurable: true, enumerable: true });
+      next();
+    });
+  }
   // strict headers for the API; pages (Next.js) need inline scripts, so no CSP there
   const apiHelmet = helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"], formAction: ["'none'"] } }, hsts: config.isProd ? { maxAge: 63072000, includeSubDomains: true } : false });
   // pages: Next.js needs inline scripts/styles, everything else is locked to this origin
@@ -187,23 +197,54 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
 
   // ── מעקב מבקרים (ללוח האדמין): חיבור לפי כתובת ודפדפן, ורישום "ביקור" אחד בכל 30 דקות ──
+  // שלב 63: כתיבה למסד לכל היותר פעם בדקה לכל מבקר; לכל כתובת עד 4 דפדפנים שונים ביום (מעבר לכך נספרים כ"אחר"),
+  // ותקרה לגודל הטבלה, כדי שכותרת User-Agent מזויפת בכל בקשה לא תנפח את המסד.
   const visitSeen = new Map();
+  const visitWrote = new Map();
+  const uaPerIp = new Map();
+  let visitWrites = 0;
+  app.locals.resetVisitThrottle = () => visitWrote.clear(); // אחרי שינוי מצב הצגת כתובות ה-IP, הרישום הבא כותב מיד
   app.use((req, res, next) => {
     if (req.path.startsWith("/api") && !req.path.startsWith("/api/health") && !isInternal(req)) {
-      const ua = String(req.headers["user-agent"] || "").slice(0, 200);
       const hash = ipHash(req.ip);
-      const shown = readSettings(db).visitorIpMode === "hashed" ? `h:${hash.slice(0, 10)}` : req.ip || "";
+      const day = nowIso().slice(0, 10);
+      let rec = uaPerIp.get(hash);
+      if (!rec || rec.day !== day) {
+        if (uaPerIp.size > 20000) uaPerIp.clear();
+        rec = { day, set: new Set() };
+        uaPerIp.set(hash, rec);
+      }
+      let ua = String(req.headers["user-agent"] || "").slice(0, 200);
+      if (!rec.set.has(ua)) {
+        if (rec.set.size >= 40) ua = "other"; // רשת משותפת (בית שבט, בית ספר) יכולה להכיל הרבה מכשירים
+        else rec.set.add(ua);
+      }
       const key = crypto.createHash("sha1").update(`${hash}|${ua}`).digest("hex");
-      const t = nowIso();
-      db.prepare(
-        `INSERT INTO sessions (key, ip, user_agent, first_seen, last_seen, username) VALUES (?,?,?,?,?,?)
-         ON CONFLICT(key) DO UPDATE SET last_seen=excluded.last_seen, ip=excluded.ip, username=COALESCE(excluded.username, sessions.username)`,
-      ).run(key, shown, ua, t, t, optionalUser(req));
+      const who = optionalUser(req);
+      const now = Date.now();
+      const w = visitWrote.get(key);
+      if (!w || now - w.t > 60_000 || (who && w.u !== who)) {
+        if (visitWrote.size > 20000) visitWrote.clear();
+        visitWrote.set(key, { t: now, u: who || w?.u || "" });
+        const shown = readSettings(db).visitorIpMode === "hashed" ? `h:${hash.slice(0, 10)}` : req.ip || "";
+        const t = nowIso();
+        db.prepare(
+          `INSERT INTO sessions (key, ip, user_agent, first_seen, last_seen, username) VALUES (?,?,?,?,?,?)
+           ON CONFLICT(key) DO UPDATE SET last_seen=excluded.last_seen, ip=excluded.ip, username=COALESCE(excluded.username, sessions.username)`,
+        ).run(key, shown, ua, t, t, who);
+        if (++visitWrites % 500 === 0) {
+          try {
+            if (db.prepare("SELECT COUNT(*) AS c FROM sessions").get().c > 50_000) db.prepare("DELETE FROM sessions WHERE key IN (SELECT key FROM sessions ORDER BY last_seen ASC LIMIT 15000)").run();
+          } catch {
+            /* ניקוי הוא בונוס, לא מפילים בקשה */
+          }
+        }
+      }
       const last = visitSeen.get(key) ?? 0;
-      if (Date.now() - last > 30 * 60_000) {
+      if (now - last > 30 * 60_000) {
         if (visitSeen.size > 5000) visitSeen.clear();
-        visitSeen.set(key, Date.now());
-        logAccess(db, req, "visit", { username: optionalUser(req), page: pageFrom(req) });
+        visitSeen.set(key, now);
+        logAccess(db, req, "visit", { username: who, page: pageFrom(req) });
       } else visitSeen.set(key, last);
     }
     next();
@@ -235,7 +276,9 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   setWatermarkSource(() => findLogo(() => logo && /png|jpeg/.test(logo.type) ? logo : null));
 
   // ── public: meta ──
-  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), startedAt: bootedAt.toISOString(), maintenance: maintenanceMessage(db) }));
+  // שלב 63: מזהה הפעלה אטום (בלי שעת העלייה של השרת). הלקוח משווה בו כדי לזהות שהאתר התעדכן.
+  const BOOT_ID = crypto.randomBytes(6).toString("hex");
+  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), boot: BOOT_ID, maintenance: maintenanceMessage(db) }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
     res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: false, logoVersion: logo?.v ?? null }),
@@ -294,10 +337,20 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     res.json({ ...a, rating: ratingSummary(a.id) });
   });
 
-  app.get("/api/activities/:id/export/docx", async (req, res) => {
+  // שלב 63: ייצוא Word פתוח לכולם, אבל בנייה של קובץ היא עבודה כבדה: מגבלה לכתובת ומטמון קצר לאותה פעולה ואותן אפשרויות.
+  const docxCache = new Map();
+  app.get("/api/activities/:id/export/docx", limiter(60_000, 15), async (req, res) => {
     const a = getActivity(db, Number(req.params.id));
     if (!a) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
-    const buf = await buildDocx(a, exportOpts(req.query));
+    const opts = exportOpts(req.query);
+    const ck = `${a.id}|${a.updatedAt}|${a.verified?.at ?? ""}|${logo?.v ?? ""}|${JSON.stringify(opts)}`;
+    let buf = docxCache.get(ck);
+    if (!buf || Date.now() - buf.at > 10 * 60_000) {
+      buf = { data: await buildDocx(a, opts), at: Date.now() };
+      docxCache.set(ck, buf);
+      while (docxCache.size > 30) docxCache.delete(docxCache.keys().next().value);
+    }
+    buf = buf.data;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     res.setHeader("Content-Disposition", `attachment; filename="activity-${a.id}.docx"; filename*=UTF-8''${encodeURIComponent(a.title)}.docx`);
     res.send(buf);

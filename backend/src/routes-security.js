@@ -184,6 +184,7 @@ export function registerSecurityRoutes(app, { db, limiter, fail, requireUser, re
       .refine((o) => o.autoBlockAfter === undefined || o.autoBlockAfter === 0 || o.autoBlockAfter >= 5, { message: "חסימה אוטומטית: 0 לכיבוי, או לפחות 5 כשלונות" })
       .parse(req.body ?? {});
     writeSettings(db, v);
+    req.app.locals.resetVisitThrottle?.();
     audit(db, req.user.username, "security.settings", v);
     res.json(readSettings(db));
   });

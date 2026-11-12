@@ -155,11 +155,15 @@ export function AdminApproval() {
   const { token } = useAuth();
   const toast = useToast();
   const [on, setOn] = useState(false);
+  const [guestOn, setGuestOn] = useState(false);
   const [pending, setPending] = useState<{ id: number; title: string; author: string | null; createdAt: string }[]>([]);
 
   const load = useCallback(() => {
-    api<{ requireApproval: boolean }>("/api/admin/settings", { token })
-      .then((s) => setOn(s.requireApproval))
+    api<{ requireApproval: boolean; guestPublish?: boolean }>("/api/admin/settings", { token })
+      .then((s) => {
+        setOn(s.requireApproval);
+        setGuestOn(!!s.guestPublish);
+      })
       .catch(() => {});
     api<typeof pending>("/api/admin/pending", { token })
       .then(setPending)
@@ -172,6 +176,15 @@ export function AdminApproval() {
       await api("/api/admin/settings", { method: "PUT", token, body: { requireApproval: v } });
       setOn(v);
       toast(v ? "פעולות חדשות של מדריכים ימתינו לאישור שלכם" : "פעולות חדשות מתפרסמות מיד", { kind: "success" });
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+  };
+  const toggleGuest = async (v: boolean) => {
+    try {
+      await api("/api/admin/settings", { method: "PUT", token, body: { guestPublish: v } });
+      setGuestOn(v);
+      toast(v ? "פעולות של אורחים (בלי חשבון) יופיעו במאגר, לפי כללי האישור" : "פעולות של אורחים נשמרות כקישור ישיר בלבד", { kind: "success" });
     } catch (e) {
       toast(errorMessage(e), { kind: "error" });
     }
@@ -195,6 +208,11 @@ export function AdminApproval() {
         <span>פעולה חדשה של מדריך תופיע במאגר המשותף רק אחרי שאאשר אותה</span>
       </label>
       <p className="hint">עד האישור הפעולה לא מופיעה בחיפוש, אבל מי שיש לו את הקישור יכול לפתוח אותה. פעולות שאדמין יוצר מתפרסמות מיד.</p>
+      <label className="check">
+        <input type="checkbox" checked={guestOn} onChange={(e) => void toggleGuest(e.target.checked)} />
+        <span>לאפשר לפעולות שנוצרו בלי חשבון (אורחים) להופיע במאגר המשותף</span>
+      </label>
+      <p className="hint">ברירת המחדל: כבוי. פעולה של אורח נשמרת כקישור ישיר, לא במאגר ולא בגוגל, ובלי קישורים ומספרי טלפון בטקסט. מומלץ להשאיר כבוי, כי האתר משמש גם חניכים.</p>
       {pending.length === 0 ? (
         <p>אין פעולות שממתינות לאישור.</p>
       ) : (

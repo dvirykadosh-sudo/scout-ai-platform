@@ -2178,10 +2178,16 @@ describe("חשבונות ואבטחה: סבב 81–90", () => {
 
   it("83. אותו מייל לא יכול להיות מאומת בשני חשבונות", async () => {
     const bob = (await post("/api/auth/register", { username: "bob81", password: "password123", displayName: "בוב", signupCode: "shevet-code", email: "ana81@example.com" }));
-    assert.equal(bob.status, 409);
+    // שלב 63: ההרשמה לא חושפת שהמייל כבר רשום (201 כרגיל), אבל המייל נשאר לא מאומת בחשבון החדש
+    assert.equal(bob.status, 201);
+    assert.equal(bob.body.user.emailVerified, false);
     const b2 = (await post("/api/auth/register", { username: "bob82", password: "password123", displayName: "בוב", signupCode: "shevet-code" })).body;
     await put("/api/me/contact", { password: "password123", email: "ana81@example.com" }, b2.token);
-    assert.equal((await post("/api/me/verify/request", { channel: "email" }, b2.token)).status, 409);
+    // ובקשת אימות מחזירה אותה תשובה (200), בלי קוד: מי שלא שולט בתיבה לא לומד כלום
+    const vr = await post("/api/me/verify/request", { channel: "email" }, b2.token);
+    assert.equal(vr.status, 200);
+    assert.equal(vr.body.devCode, undefined);
+    assert.equal((await post("/api/me/verify/confirm", { channel: "email", code: "123456" }, b2.token)).status, 400);
   });
 
   it("84. איפוס סיסמה: תשובה זהה גם לחשבון שלא קיים, קוד חד-פעמי וסגירת חיבורים", async () => {
@@ -3375,7 +3381,9 @@ describe("מצב המערכת, גיבוי להורדה ובדיקת תקינות
     const h = await j("/api/health/data");
     assert.equal(h.status, 200);
     assert.equal(h.body.ok, true);
-    assert.ok((await j("/api/health")).body.startedAt);
+    const hb = (await j("/api/health")).body;
+    assert.match(hb.boot, /^[0-9a-f]{12}$/);
+    assert.equal(hb.startedAt, undefined, "שעת עליית השרת לא נחשפת לציבור");
     assert.ok([401, 403].includes((await j("/api/admin/system", { headers: H(user.token) })).status));
     const s = (await j("/api/admin/system", { headers: H(adm) })).body;
     assert.equal(s.integrity, "ok");

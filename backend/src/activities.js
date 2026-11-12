@@ -1,6 +1,7 @@
 import { nowIso } from "./db.js";
 import { gearLoad } from "./gear.js";
 import { notifyAdmins } from "./notify.js";
+import { scrubDeep } from "./guest-guard.js";
 
 export function rowToActivity(r) {
   if (!r) return null;
@@ -36,7 +37,9 @@ export function rowToActivity(r) {
 
 const n = (v) => (v === undefined ? null : v);
 
-export function insertActivity(db, a) {
+export function insertActivity(db, input) {
+  // שלב 63: פעולה שנוצרה בלי חשבון: בלי קישורים, מיילים וטלפונים בטקסט החופשי
+  const a = input.ownerId == null && !input.isSeed ? scrubDeep(input) : input;
   const t = nowIso();
   const res = db
     .prepare(
@@ -106,8 +109,8 @@ export function updateActivity(db, id, a) {
 export function getActivity(db, id, { includeArchived = false } = {}) {
   const r = db.prepare("SELECT * FROM activities WHERE id = ?").get(id);
   if (!r) return null;
-  // PENDING = waiting for approval: not in the shared library, but the direct link works
-  if (!includeArchived && r.status !== "PUBLISHED" && r.status !== "PENDING") return null;
+  // PENDING = waiting for approval, UNLISTED = made without an account (שלב 63): not in the shared library, but the direct link works
+  if (!includeArchived && r.status !== "PUBLISHED" && r.status !== "PENDING" && r.status !== "UNLISTED") return null;
   return rowToActivity(r);
 }
 

@@ -133,6 +133,7 @@ describe("שלב 58: מפת הנתיבים", () => {
   "GET /api/assist/traits",
   "GET /api/auth/invite/:code",
   "GET /api/auth/options",
+  "GET /api/auth/form-token",
   "GET /api/challenges",
   "GET /api/coverage",
   "GET /api/featured",

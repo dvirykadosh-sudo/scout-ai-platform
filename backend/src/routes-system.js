@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { persistHandle, persistHealthy, persistState } from "./persist.js";
+import { configWarnings } from "./config.js";
 
 export const startedAt = new Date();
 
@@ -41,7 +42,25 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
     if (persistState.lastError) warnings.push(`השמירה האחרונה נכשלה: ${persistState.lastError}`);
     if (integrity !== "ok") warnings.push(`בדיקת תקינות מסד הנתונים: ${integrity}`);
     if (!config.signupCode) warnings.push("לא הוגדר SIGNUP_CODE — ההרשמה פתוחה לכל.");
+    warnings.push(...configWarnings());
+    // שלב 63: אם הבקשה של האדמין עצמו עברה דרך כמה שרתי ביניים ולא הוגדר TRUST_PROXY, ייתכן שהשרת רואה כתובת של שרת ביניים
+    {
+      const xff = String(req.headers["x-forwarded-for"] || "").split(",").map((x) => x.trim()).filter(Boolean);
+      const cf = String(req.headers["cf-connecting-ip"] || "").trim();
+      if (config.isProd && !process.env.TRUST_PROXY && !config.clientIpHeader && (xff.length >= 2 || (cf && cf !== req.ip))) {
+        warnings.push(`השרת רואה אצלכם את הכתובת ${req.ip}, אבל בכותרות מופיעות כתובות נוספות (X-Forwarded-For: ${xff.join(", ") || "-"}${cf ? `, CF-Connecting-IP: ${cf}` : ""}). ייתכן שהגבלות הקצב חלות על שרת ביניים. פתחו את "איזו כתובת השרת רואה אצלי" והגדירו TRUST_PROXY.`);
+      }
+    }
     res.json({
+      // שלב 63: איזו כתובת השרת רואה אצל מי שפתח את העמוד. אם זו לא הכתובת שלכם, ההגבלות לפי כתובת חלות על שרת ביניים.
+      clientIp: {
+        seen: req.ip,
+        forwardedFor: String(req.headers["x-forwarded-for"] || ""),
+        trustProxy: config.trustProxy,
+        headerOverride: config.clientIpHeader || "",
+        cfConnectingIp: String(req.headers["cf-connecting-ip"] || ""),
+        trueClientIp: String(req.headers["true-client-ip"] || ""),
+      },
       startedAt: startedAt.toISOString(),
       uptimeSec: Math.round(process.uptime()),
       node: process.version,

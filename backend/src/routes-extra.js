@@ -11,8 +11,15 @@ const text = (max) => z.string().trim().max(max);
 export const getSetting = (db, key, def = "") => db.prepare("SELECT value FROM settings WHERE key = ?").get(key)?.value ?? def;
 export const setSetting = (db, key, value) => db.prepare("INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, String(value));
 
-/** Status for a new activity: waits for approval when the admin turned that on (admins are never held). */
-export const newActivityStatus = (db, who) => (getSetting(db, "requireApproval") === "1" && who?.role !== "ADMIN" ? "PENDING" : "PUBLISHED");
+/**
+ * Status for a new activity: waits for approval when the admin turned that on (admins are never held).
+ * שלב 63: מי שלא מחובר (אורח) יוצר פעולה "UNLISTED": לא במאגר, לא במפת האתר, לא לאינדוקס, והקישור הישיר עובד.
+ * האדמין יכול להחזיר את ההתנהגות הישנה (guestPublish) בלשונית האישורים.
+ */
+export const newActivityStatus = (db, who) => {
+  if (!who && getSetting(db, "guestPublish") !== "1") return "UNLISTED";
+  return getSetting(db, "requireApproval") === "1" && who?.role !== "ADMIN" ? "PENDING" : "PUBLISHED";
+};
 
 export function registerExtraRoutes(app, { db, limiter, fail, requireUser, requireAdmin, optionalAuth, optionalUser }) {
   const notFound = (res, msg = "הפעולה לא נמצאה") => res.status(404).json(fail("NOT_FOUND", msg));
@@ -109,12 +116,18 @@ export function registerExtraRoutes(app, { db, limiter, fail, requireUser, requi
   });
 
   // ── 18. אישור לפני כניסה למאגר המשותף ──
-  app.get("/api/admin/settings", requireAdmin(), (req, res) => res.json({ requireApproval: getSetting(db, "requireApproval") === "1" }));
+  app.get("/api/admin/settings", requireAdmin(), (req, res) => res.json({ requireApproval: getSetting(db, "requireApproval") === "1", guestPublish: getSetting(db, "guestPublish") === "1" }));
   app.put("/api/admin/settings", requireAdmin(), (req, res) => {
-    const { requireApproval } = z.object({ requireApproval: z.boolean() }).parse(req.body ?? {});
-    setSetting(db, "requireApproval", requireApproval ? "1" : "0");
-    audit(db, optionalUser(req), "settings.approval", { requireApproval });
-    res.json({ requireApproval });
+    const v = z.object({ requireApproval: z.boolean().optional(), guestPublish: z.boolean().optional() }).parse(req.body ?? {});
+    if (v.requireApproval !== undefined) {
+      setSetting(db, "requireApproval", v.requireApproval ? "1" : "0");
+      audit(db, optionalUser(req), "settings.approval", { requireApproval: v.requireApproval });
+    }
+    if (v.guestPublish !== undefined) {
+      setSetting(db, "guestPublish", v.guestPublish ? "1" : "0");
+      audit(db, optionalUser(req), "settings.guestPublish", { guestPublish: v.guestPublish });
+    }
+    res.json({ requireApproval: getSetting(db, "requireApproval") === "1", guestPublish: getSetting(db, "guestPublish") === "1" });
   });
   app.get("/api/admin/pending", requireAdmin(), (req, res) => {
     res.json(db.prepare("SELECT * FROM activities WHERE status = 'PENDING' ORDER BY created_at DESC LIMIT 200").all().map(rowToActivity));
@@ -122,7 +135,8 @@ export function registerExtraRoutes(app, { db, limiter, fail, requireUser, requi
   const decide = (status, action) => (req, res) => {
     const id = Number(req.params.id);
     const r = db.prepare("SELECT status, title, owner_id FROM activities WHERE id = ?").get(id);
-    if (!r || r.status !== "PENDING") return notFound(res, "אין פעולה שממתינה לאישור עם המספר הזה");
+    // שלב 63: אדמין יכול גם לפרסם במאגר פעולה של אורח (UNLISTED) שמצא ואהב
+    if (!r || !(r.status === "PENDING" || (status === "PUBLISHED" && r.status === "UNLISTED"))) return notFound(res, "אין פעולה שממתינה לאישור עם המספר הזה");
     db.prepare("UPDATE activities SET status = ?, updated_at = ? WHERE id = ?").run(status, nowIso(), id);
     audit(db, optionalUser(req), action, { id });
     notify(db, r.owner_id, "approval", status === "PUBLISHED" ? `הפעולה "${r.title}" אושרה ופורסמה במאגר` : `הפעולה "${r.title}" לא אושרה לפרסום במאגר המשותף`, `/library/${id}`);

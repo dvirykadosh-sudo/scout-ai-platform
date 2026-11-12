@@ -88,6 +88,11 @@ export function ActivityPage({ initial = null }: { initial?: Activity | null }) 
         <ActivityActions activity={a} onChanged={load} onDeleted={() => router.push("/library")} />
         <PosterPanel a={a} />
       </article>
+      {a.status === "UNLISTED" && (
+        <p className="card warn-box no-print" role="status">
+          הפעולה הזאת נוצרה בלי התחברות, ולכן היא לא מופיעה במאגר המשותף ולא בגוגל. מי שיש לו את הקישור יכול לפתוח אותה. כדי לשמור פעולות בחשבון ולפרסם אותן במאגר, התחברו כמדריכים.
+        </p>
+      )}
       {a.status === "PENDING" && (
         <p className="card warn-box no-print" role="status">
           הפעולה הזאת ממתינה לאישור של מנהל השבט, ולכן היא עוד לא מופיעה במאגר המשותף. הקישור הישיר עובד.

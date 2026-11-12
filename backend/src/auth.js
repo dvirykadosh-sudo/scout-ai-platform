@@ -3,14 +3,28 @@ import jwt from "jsonwebtoken";
 import { config } from "./config.js";
 import { audit, nowIso } from "./db.js";
 import { effectiveStaff, staffMayDo } from "./accounts.js";
+import { passwordProblems } from "./security.js";
 
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
 // Compared against when the user doesn't exist, so timing doesn't reveal valid usernames.
-const DUMMY_HASH = bcrypt.hashSync("dummy-password", 4);
+// שלב 63: באותו מחיר (cost) כמו סיסמאות אמיתיות, אחרת חשבון לא קיים נבדק מהר יותר מחשבון קיים. מחושב פעם אחת, לא חוסם את הטעינה.
+let dummyHash = null;
+const dummy = () => (dummyHash ||= bcrypt.hash("dummy-password-for-timing", config.bcryptCost));
 
 export const hashPassword = (pw) => bcrypt.hash(pw, config.bcryptCost);
-export const verifyPassword = (pw, hash) => bcrypt.compare(pw, hash || DUMMY_HASH).then((ok) => ok && !!hash);
+export const timingDummyRounds = async () => bcrypt.getRounds(await dummy());
+export const verifyPassword = async (pw, hash) => bcrypt.compare(pw, hash || (await dummy())).then((ok) => ok && !!hash);
+
+/** אימות אסימון מול המפתח הנוכחי, ואם הוגדר JWT_SECRET_PREVIOUS גם מולו (החלפת מפתח בלי לנתק את כולם). */
+export function verifyJwt(token, opts = { algorithms: ["HS256"] }) {
+  try {
+    return jwt.verify(token, config.jwtSecret, opts);
+  } catch (e) {
+    if (!config.jwtSecretPrevious) throw e;
+    return jwt.verify(token, config.jwtSecretPrevious, opts);
+  }
+}
 
 export function signToken(user, sid) {
   const expiresIn = user.role === "ADMIN" ? `${config.tokenHours}h` : `${config.instructorTokenDays}d`;
@@ -21,7 +35,7 @@ export function signToken(user, sid) {
 export const signChallenge = (userId, purpose = "2fa") => jwt.sign({ sub: userId, purpose }, config.jwtSecret, { expiresIn: "5m" });
 export function readChallenge(token, purpose = "2fa") {
   try {
-    const p = jwt.verify(String(token), config.jwtSecret, { algorithms: ["HS256"] });
+    const p = verifyJwt(String(token));
     return p.purpose === purpose ? p : null;
   } catch {
     return null;
@@ -31,6 +45,14 @@ export function readChallenge(token, purpose = "2fa") {
 export function ensureAdmin(db) {
   const exists = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
   if (exists) return false;
+  // שלב 63: במסד חדש בפרודקשן לא יוצרים אדמין עם סיסמה חלשה (admin123, 12345678...). זו הדלת הראשית לאתר.
+  if (config.isProd) {
+    const bad = passwordProblems(config.admin.password, { username: config.admin.username });
+    if (bad.length) {
+      console.error(`לא ניתן ליצור את חשבון האדמין הראשון: ADMIN_PASSWORD חלשה (${bad.join(", ")}). הגדירו סיסמה ארוכה וחזקה ב-Render ← Environment.`);
+      process.exit(1);
+    }
+  }
   const hash = bcrypt.hashSync(config.admin.password, config.bcryptCost);
   db.prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at) VALUES (?,?,?,?,?)").run(
     config.admin.username,
@@ -53,7 +75,7 @@ function readToken(req) {
   let out = null;
   if (header.startsWith("Bearer ")) {
     try {
-      const p = jwt.verify(header.slice(7), config.jwtSecret, { algorithms: ["HS256"] });
+      const p = verifyJwt(header.slice(7));
       if (p.purpose) throw new Error("not a session token");
       const db = req.db;
       if (!db) out = p;
@@ -120,11 +142,13 @@ export function checkLock(db, key) {
   return ms > 0 ? Math.ceil(ms / 60000) : 0;
 }
 
-export function registerFailure(db, key) {
-  const r = db.prepare("SELECT count, locked_until FROM login_attempts WHERE key = ?").get(key);
+export function registerFailure(db, key, { max = MAX_FAILS, minutes = LOCK_MINUTES } = {}) {
+  const r = db.prepare("SELECT count, locked_until, last_at FROM login_attempts WHERE key = ?").get(key);
   const expired = r?.locked_until && new Date(r.locked_until).getTime() <= Date.now();
-  const count = (expired ? 0 : r?.count || 0) + 1;
-  const lockedUntil = count >= MAX_FAILS ? new Date(Date.now() + LOCK_MINUTES * 60000).toISOString() : null;
+  // שלב 63: מונה ברמת חשבון מתאפס אחרי שעה בלי ניסיונות, כדי שכשלונות ישנים לא יצטברו לנצח
+  const stale = r?.last_at && Date.now() - new Date(r.last_at).getTime() > 60 * 60_000 && !r.locked_until;
+  const count = (expired || stale ? 0 : r?.count || 0) + 1;
+  const lockedUntil = count >= max ? new Date(Date.now() + minutes * 60000).toISOString() : null;
   db.prepare(
     `INSERT INTO login_attempts (key, count, locked_until, last_at) VALUES (?,?,?,?)
      ON CONFLICT(key) DO UPDATE SET count=excluded.count, locked_until=excluded.locked_until, last_at=excluded.last_at`,

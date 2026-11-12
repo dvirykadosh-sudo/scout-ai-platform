@@ -6,6 +6,7 @@ import { API_URL, api, errorMessage, fmtDate } from "@/lib/api";
 import { useAuth, useToast } from "./Providers";
 
 type Sys = {
+  clientIp?: { seen: string; forwardedFor: string; trustProxy: number | string | boolean; headerOverride: string; cfConnectingIp: string; trueClientIp: string };
   startedAt: string;
   uptimeSec: number;
   dbBytes: number | null;
@@ -83,6 +84,20 @@ export function AdminSystem() {
           <li>השרת עלה: {fmtDate(s.startedAt)}</li>
         </ul>
       )}
+      {s?.clientIp && (
+        <details style={{ marginBlock: 8 }}>
+          <summary>איזו כתובת השרת רואה אצלי? (בדיקה חד-פעמית של ההגבלות לפי כתובת)</summary>
+          <p>
+            השרת רואה אצלכם: <strong dir="ltr">{s.clientIp.seen || "?"}</strong>. אם זו לא הכתובת שלכם (אפשר לבדוק באתר כמו whatismyip.com), הגבלות הקצב וחסימות כתובת חלות על שרת ביניים ולא על המבקר, ויש להגדיר ב-Render את TRUST_PROXY (למשל 2) או את CLIENT_IP_HEADER.
+          </p>
+          <ul dir="ltr" style={{ textAlign: "left" }}>
+            <li>X-Forwarded-For: {s.clientIp.forwardedFor || "(ריק)"}</li>
+            <li>CF-Connecting-IP: {s.clientIp.cfConnectingIp || "(אין)"}</li>
+            <li>True-Client-IP: {s.clientIp.trueClientIp || "(אין)"}</li>
+            <li>TRUST_PROXY: {String(s.clientIp.trustProxy)}{s.clientIp.headerOverride ? ` · CLIENT_IP_HEADER: ${s.clientIp.headerOverride}` : ""}</li>
+          </ul>
+        </details>
+      )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn btn-primary" onClick={download} disabled={busy}>
           {busy ? "מכין גיבוי…" : "⬇ הורדת גיבוי עכשיו"}
@@ -119,11 +134,12 @@ export function StatusBanners() {
     let stop = false;
     const poll = async () => {
       try {
-        const h = await api<{ startedAt?: string; maintenance?: string }>("/api/health");
-        if (stop || !h.startedAt) return;
+        const h = await api<{ boot?: string; startedAt?: string; maintenance?: string }>("/api/health");
+        const bootId = h.boot ?? h.startedAt;
+        if (stop || !bootId) return;
         setMaint(h.maintenance ?? "");
-        if (first.current === null) first.current = h.startedAt;
-        else if (first.current !== h.startedAt) setUpdated(true);
+        if (first.current === null) first.current = bootId;
+        else if (first.current !== bootId) setUpdated(true);
       } catch {
         /* ignore */
       }

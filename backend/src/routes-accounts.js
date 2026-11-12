@@ -31,7 +31,8 @@ import { config } from "./config.js";
 import { consumeInvite, dailyCapReached, effectiveSignupCode, emailDomainOk, findInvite, isNewDevice, isReservedName, regSettings } from "./routes-accounts-v52.js";
 import { audit, auditHash, nowIso } from "./db.js";
 import { escapeHtml } from "./email.js";
-import { FLAG_TEXT, TERMS_VERSION, checkCaptcha, failuresForUser, failuresFromIp, invalidateBlocks, loginFlags, logAccess, makeCaptcha, pageFrom, passwordProblems, readSettings, securityAlert, strictFor, countryOf } from "./security.js";
+import { notify } from "./notify.js";
+import { FLAG_TEXT, TERMS_VERSION, checkCaptcha, formTokenAgeMs, makeFormToken, failuresForUser, failuresFromIp, invalidateBlocks, loginFlags, logAccess, makeCaptcha, pageFrom, passwordProblems, readSettings, securityAlert, strictFor, countryOf } from "./security.js";
 
 const text = (max) => z.string().trim().max(max);
 const optText = (max) => z.string().trim().max(max).optional();
@@ -100,6 +101,12 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
         audit(db, user.username, "password.expired", { maxAge });
         user = { ...user, must_change_pw: 1 };
       }
+    }
+    // שלב 63: חשבון אדמין בלי אימות דו-שלבי מקבל תזכורת (פעם בשבוע). לא כופים, כדי שלא ננעל מחוץ לאתר בלי אפליקציית אימות.
+    if (user.role === "ADMIN" && !user.totp_enabled && !user.email_otp_enabled) {
+      const text = "חשבון הניהול שלכם בלי אימות דו-שלבי. מומלץ להפעיל אותו (החשבון שלי ← אבטחה), כי זה החשבון שמחזיק את כל הנתונים.";
+      const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
+      if (!db.prepare("SELECT 1 FROM notifications WHERE user_id = ? AND kind = 'security' AND text = ? AND created_at > ?").get(user.id, text, weekAgo)) notify(db, user.id, "security", text, "/account");
     }
     const token = startSession(req, user, method);
     const flags = loginFlags(db, user, countryOf(req.ip));
@@ -174,6 +181,8 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   const origin = (req) => config.publicUrl || (config.isProd ? `${req.protocol}://${req.get("host")}` : config.webOrigin);
 
   app.get("/api/auth/options", (req, res) => res.json({ providers: providers(), signupOpen: true, signupNeedsCode: false }));
+  // שלב 63: אסימון שהשרת חותם ברגע פתיחת טופס ההרשמה
+  app.get("/api/auth/form-token", (req, res) => res.json({ token: makeFormToken() }));
 
   // ───── 81. כניסה בשם משתמש, מייל או טלפון ─────
   const capFields = () => {
@@ -196,32 +205,45 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   };
 
   // ───── 81. כניסה בשם משתמש, מייל או טלפון ─────
+  // שלב 63: מה נרשם ביומן כשהכניסה נכשלה. אם אין חשבון כזה, לא שומרים את מה שהוקלד (לפעמים זו סיסמה שהוקלדה בשדה השם),
+  // אלא רק טביעה קצרה שמאפשרת לאדמין לראות שמדובר באותו ניסיון חוזר.
+  const identForLog = (ident, user) => (user ? user.username : `לא-מזוהה:${hashSecret(`ident|${String(ident).toLowerCase()}`).slice(0, 8)}`);
+  const ACCT_CAPTCHA_AT = 8; // כשלונות בחשבון (מכל הכתובות) שאחריהם נדרשת שאלה
+  const ACCT_LOCK_AT = 20; // וכשלונות שאחריהם נעילה קצרה של החשבון
   app.post("/api/auth/login", limiter(15 * 60_000, 30), async (req, res) => {
     const { username: ident, password, captchaToken, captchaAnswer } = z.object({ username: text(120).min(1), password: z.string().min(1).max(200), captchaToken: optText(2000), captchaAnswer: optText(10) }).parse(req.body ?? {});
     if (failuresFromIp(db, req.ip) >= 20) return res.status(429).json(fail("LOCKED_IP", "יותר מדי ניסיונות כושלים מהרשת הזו. נסו שוב בעוד כמה דקות"));
     const key = `${ident.toLowerCase()}|${req.ip}`;
-    const locked = checkLock(db, key);
+    const user = findByIdentifier(db, ident);
+    const logIdent = identForLog(ident, user);
+    const acctKey = user ? `acct|${user.id}` : null;
+    const locked = checkLock(db, key) || (acctKey ? checkLock(db, acctKey) : 0);
     if (locked) {
-      audit(db, ident, "login.locked", {});
+      audit(db, logIdent, "login.locked", {});
       return res.status(429).json(fail("LOCKED", `יותר מדי ניסיונות כושלים. נסו שוב בעוד ${locked} דקות`));
     }
-    const user = findByIdentifier(db, ident);
-    // אחרי שלושה כשלונות נדרשת שאלת חשבון פשוטה, כדי לעצור ניחוש אוטומטי
+    // אחרי שלושה כשלונות נדרשת שאלת חשבון פשוטה, כדי לעצור ניחוש אוטומטי. שלב 63: גם כשהכשלונות בחשבון מגיעים מכתובות שונות
     const prior = db.prepare("SELECT count FROM login_attempts WHERE key = ?").get(key)?.count ?? 0;
-    if (prior >= 3 && !checkCaptcha(captchaToken, captchaAnswer)) {
+    const acctPrior = acctKey ? db.prepare("SELECT count FROM login_attempts WHERE key = ?").get(acctKey)?.count ?? 0 : 0;
+    if ((prior >= 3 || acctPrior >= ACCT_CAPTCHA_AT) && !checkCaptcha(captchaToken, captchaAnswer)) {
       registerFailure(db, key);
-      failedLogin(req, ident, user, "captcha");
+      failedLogin(req, logIdent, user, "captcha");
       return res.status(401).json(fail("CAPTCHA_REQUIRED", "כדי להמשיך, ענו על השאלה הקצרה", capFields()));
     }
     const ok = await verifyPassword(password, user?.password_hash);
     if (user && ok && user.pending_approval) return res.status(403).json(fail("PENDING", "ההרשמה שלכם ממתינה לאישור מנהל השבט. נעדכן במייל כשתאושר"));
     if (!user || !ok || user.disabled || (user.expires_at && Date.parse(user.expires_at) < Date.now())) {
       const n = registerFailure(db, key);
-      audit(db, ident, "login.fail", {});
-      failedLogin(req, ident, user, user?.disabled ? "disabled" : "password");
-      return res.status(401).json(fail("BAD_CREDENTIALS", "פרטי ההתחברות שגויים", n >= 3 ? capFields() : undefined));
+      if (acctKey) {
+        const an = registerFailure(db, acctKey, { max: ACCT_LOCK_AT, minutes: 15 });
+        if (an === ACCT_LOCK_AT) securityAlert(db, mailer, `החשבון ${user.username} ננעל ל-15 דקות אחרי ${ACCT_LOCK_AT} ניסיונות כניסה כושלים (מכמה כתובות)`);
+      }
+      audit(db, logIdent, "login.fail", {});
+      failedLogin(req, logIdent, user, user?.disabled ? "disabled" : "password");
+      return res.status(401).json(fail("BAD_CREDENTIALS", "פרטי ההתחברות שגויים", n >= 3 || acctPrior + 1 >= ACCT_CAPTCHA_AT ? capFields() : undefined));
     }
     clearFailures(db, key);
+    if (acctKey) clearFailures(db, acctKey);
     if (user.totp_enabled || user.email_otp_enabled) {
       audit(db, user.username, "login.2fa_required", {});
       return res.json({ needs2fa: true, challenge: signChallenge(user.id), twofaMethods: twofaMethodsOf(user) });
@@ -295,12 +317,26 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
   });
 
   // ───── 82. הרשמה עם מייל וטלפון ─────
+  const regGap = new Map();
   app.post("/api/auth/register", limiter(60 * 60_000, 10), async (req, res) => {
-    const v = z.object({ username, password: pw, displayName: text(60).min(2, "יש להזין שם להצגה"), signupCode: text(100).optional().default(""), inviteCode: optText(40), website: optText(200), formAge: z.number().optional(), email: optText(120), phone: optText(30), acceptTerms: z.boolean().optional() }).parse(req.body ?? {});
+    const v = z.object({ username, password: pw, displayName: text(60).min(2, "יש להזין שם להצגה"), signupCode: text(100).optional().default(""), inviteCode: optText(40), website: optText(200), formAge: z.number().optional(), formToken: optText(1000), email: optText(120), phone: optText(30), acceptTerms: z.boolean().optional() }).parse(req.body ?? {});
     // מלכודת בוטים: שדה נסתר שבן אדם לא ממלא, וזמן מילוי סביר
     if (v.website || (v.formAge !== undefined && v.formAge < 2000)) {
       audit(db, v.username, "register.bot", {});
       return res.status(400).json(fail("BAD_REQUEST", "לא הצלחנו להשלים את ההרשמה. נסו שוב בעוד רגע"));
+    }
+    // שלב 63: בדיקת הזמן נעשית גם בשרת. עם אסימון טופס: לפחות 2.5 שניות מהפתיחה. בלי אסימון (דפדפן ישן): רווח ארוך יותר בין ניסיונות מאותה כתובת.
+    if (config.strictTiming) {
+      const age = v.formToken ? formTokenAgeMs(v.formToken) : null;
+      if (age !== null && age < 2500) {
+        audit(db, v.username, "register.bot", { reason: "fast" });
+        return res.status(400).json(fail("BAD_REQUEST", "לא הצלחנו להשלים את ההרשמה. נסו שוב בעוד רגע"));
+      }
+      const gap = age !== null ? 5_000 : 30_000;
+      const last = regGap.get(req.ip) ?? 0;
+      if (Date.now() - last < gap) return res.status(429).json(fail("RATE_LIMIT", "נסו שוב בעוד כמה שניות"));
+      if (regGap.size > 5000) regGap.clear();
+      regGap.set(req.ip, Date.now());
     }
     const invite = v.inviteCode ? findInvite(db, v.inviteCode) : null;
     if (v.inviteCode && !invite) return res.status(403).json(fail("BAD_INVITE", "קוד ההזמנה לא תקף. ייתכן שפג תוקפו או שכבר נוצל"));
@@ -317,8 +353,8 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     if (v.email && !email) return res.status(400).json(fail("BAD_EMAIL", "כתובת המייל לא תקינה"));
     if (v.phone && !phone) return res.status(400).json(fail("BAD_PHONE", "מספר הטלפון לא תקין. למשל 050-1234567"));
     if (db.prepare("SELECT 1 FROM users WHERE lower(username) = lower(?)").get(v.username)) return res.status(409).json(fail("USERNAME_TAKEN", "שם המשתמש תפוס. בחרו שם אחר"));
-    if (email && db.prepare("SELECT 1 FROM users WHERE lower(email) = ? AND email_verified_at IS NOT NULL").get(email)) return res.status(409).json(fail("EMAIL_TAKEN", "המייל הזה כבר משויך לחשבון אחר"));
-    if (phone && db.prepare("SELECT 1 FROM users WHERE phone = ? AND phone_verified_at IS NOT NULL").get(phone)) return res.status(409).json(fail("PHONE_TAKEN", "הטלפון הזה כבר משויך לחשבון אחר"));
+    // שלב 63: לא חושפים אם מייל או טלפון כבר רשומים (אחרת כל אחד יכול לבדוק אם אדם מסוים הוא מדריך באתר).
+    // החשבון החדש נוצר עם הפרט כלא-מאומת. הייחודיות נאכפת רק באימות (שדורש גישה לתיבה/לטלפון), ושם אין דליפה.
     const r = db
       .prepare("INSERT INTO users (username, password_hash, role, must_change_pw, created_at, display_name, email, phone, password_changed_at, terms_accepted_at, terms_version, pending_approval, disabled, invite_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
       .run(v.username, await hashPassword(v.password), "INSTRUCTOR", 0, nowIso(), v.displayName, email, phone, nowIso(), v.acceptTerms ? nowIso() : null, v.acceptTerms ? TERMS_VERSION : null, reg.approval && !invite ? 1 : 0, reg.approval && !invite ? 1 : 0, invite?.id ?? null);
@@ -401,6 +437,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     db.prepare("UPDATE users SET password_hash = ?, must_change_pw = 0, password_changed_at = ? WHERE id = ?").run(await hashPassword(newPassword), nowIso(), user.id);
     revokeSessions(user.id);
     clearFailures(db, `${String(identifier).toLowerCase()}|${req.ip}`);
+    clearFailures(db, `acct|${user.id}`);
     audit(db, user.username, "password.reset", {});
     res.json({ ok: true });
   });
@@ -476,7 +513,16 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
     if (!target) return res.status(400).json(fail("NO_TARGET", channel === "email" ? "קודם הוסיפו כתובת מייל" : "קודם הוסיפו מספר טלפון"));
     if (channel === "email" ? u.email_verified_at : u.phone_verified_at) return res.status(400).json(fail("ALREADY", "כבר מאומת"));
     const taken = channel === "email" ? db.prepare("SELECT 1 FROM users WHERE lower(email) = ? AND email_verified_at IS NOT NULL AND id != ?").get(target.toLowerCase(), u.id) : db.prepare("SELECT 1 FROM users WHERE phone = ? AND phone_verified_at IS NOT NULL AND id != ?").get(target, u.id);
-    if (taken) return res.status(409).json(fail("TAKEN", "הפרט הזה כבר מאומת בחשבון אחר"));
+    // שלב 63: אותה תשובה גם כשהפרט כבר מאומת בחשבון אחר, כדי שלא יהיה אפשר לבדוק מי רשום. למייל נשלחת הודעה לבעל התיבה בלבד.
+    if (taken) {
+      audit(db, u.username, "verify.target_taken", { channel });
+      if (channel === "email") {
+        try {
+          await deliver("email", target, "ניסיון לקשר את המייל לחשבון", "מישהו ניסה לקשר את הכתובת הזו לחשבון חדש במחולל פעולות, אבל היא כבר משויכת לחשבון קיים.", `<p>מישהו ניסה לקשר את הכתובת הזו לחשבון חדש במחולל הפעולות, אבל היא כבר משויכת לחשבון קיים.</p><p>אם זה אתם: היכנסו עם החשבון הקיים, או השתמשו ב"שכחתי סיסמה". אם לא, אין צורך לעשות כלום.</p>`);
+        } catch { /* לא חושפים כשלון שליחה */ }
+      }
+      return res.json({ ok: true, sentTo: channel === "email" ? maskEmail(target) : maskPhone(target) });
+    }
     if (tooMany(u.id, `verify_${channel}`)) return res.status(429).json(fail("RATE_LIMIT", "נשלחו כבר כמה קודים. נסו שוב בעוד שעה"));
     const code = newCode();
     issue(u.id, `verify_${channel}`, target, code, 10);
