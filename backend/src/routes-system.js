@@ -25,7 +25,7 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
   // בדיקה לניטור חיצוני (למשל UptimeRobot): נכשלת אם שמירת הנתונים תקועה יותר מרבע שעה.
   app.get("/api/health/data", (req, res) => {
     const ok = integrity === "ok" && persistHealthy(Date.now(), startedAt.getTime());
-    res.status(ok ? 200 : 503).json({ ok, integrity, persist: persistState.configured ? (persistHealthy(Date.now(), startedAt.getTime()) ? "ok" : "stuck") : "off" });
+    res.status(ok ? 200 : 503).json({ ok, integrity, persist: persistState.configured ? (persistState.blocked ? "blocked" : persistHealthy(Date.now(), startedAt.getTime()) ? "ok" : "stuck") : "off" });
   });
 
   app.get("/api/admin/system", requireAdmin(), (req, res) => {
@@ -38,8 +38,12 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
     const warnings = [];
     if (dbBytes && dbBytes > 50 * 1024 * 1024) warnings.push(`מסד הנתונים גדול (${Math.round(dbBytes / 1048576)}MB). שמירה ב-GitHub מוגבלת ל-100MB.`);
     if (config.isProd && !persistState.configured && !process.env.RENDER_DISK_PATH && !String(dbFile).startsWith("/data")) warnings.push("אין שמירת נתונים חיצונית: בהפעלה מחדש של השרת הנתונים עלולים להימחק (ראו deploy/FREE.md).");
-    if (persistState.configured && !persistHealthy(Date.now(), startedAt.getTime())) warnings.push("שמירת הנתונים תקועה. בדקו את הטוקן של GitHub ב-Render.");
-    if (persistState.lastError) warnings.push(`השמירה האחרונה נכשלה: ${persistState.lastError}`);
+    if (persistState.blocked) warnings.push(`שמירת הנתונים עצורה כדי לא לדרוס את הגיבוי הקיים: ${persistState.blocked}. תקנו את הסיבה (טוקן, BACKUP_KEY או JWT_SECRET_PREVIOUS) והפעילו מחדש את השרת. אם אתם בטוחים שרוצים להתחיל ממסד חדש, השתמשו ב"שמירה עכשיו" עם אישור.`);
+    else if (persistState.configured && !persistHealthy(Date.now(), startedAt.getTime())) warnings.push("שמירת הנתונים תקועה. בדקו את הטוקן של GitHub ב-Render.");
+    if (persistState.failStreak >= 3) warnings.push(`${persistState.failStreak} שמירות ברצף ל-GitHub נכשלו. עד שזה יסתדר, נתונים חדשים עלולים ללכת לאיבוד בהפעלה מחדש.`);
+    if (persistState.lastError && !persistState.blocked) warnings.push(`השמירה האחרונה נכשלה: ${persistState.lastError}`);
+    if (persistState.configured && persistState.encrypted === false) warnings.push("הצילום ששמור ב-GitHub אינו מוצפן (אין JWT_SECRET או BACKUP_KEY בסביבה).");
+    if (persistState.configured && persistState.keySource === "JWT_SECRET" && !process.env.BACKUP_KEY) warnings.push("הצילום ב-GitHub מוצפן במפתח שנגזר מ-JWT_SECRET. כדי שהחלפת JWT_SECRET לא תנעל את הגיבוי, הגדירו ב-Render גם BACKUP_KEY (מחרוזת אקראית של 32 תווים ומעלה, ולא מחליפים אותה אחר כך).");
     if (integrity !== "ok") warnings.push(`בדיקת תקינות מסד הנתונים: ${integrity}`);
     if (!config.signupCode) warnings.push("לא הוגדר SIGNUP_CODE — ההרשמה פתוחה לכל.");
     warnings.push(...configWarnings());
@@ -75,8 +79,11 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
   app.post("/api/admin/persist/save", requireAdmin(), async (req, res) => {
     const h = persistHandle();
     if (!h) return res.status(400).json(fail("NO_PERSIST", "שמירת הנתונים החיצונית לא מוגדרת"));
-    const saved = await h.push({ force: true });
-    audit(db, req.user.username, "persist.save", { saved });
+    // כשהשמירה עצורה (כדי לא לדרוס גיבוי טוב) נדרש אישור מפורש: { override: true }
+    const override = req.body?.override === true;
+    if (persistState.blocked && !override) return res.status(409).json(fail("PERSIST_BLOCKED", `השמירה עצורה: ${persistState.blocked}. אם בכל זאת רוצים לשמור את המסד הנוכחי במקום הגיבוי הקיים, צריך אישור מפורש.`));
+    const saved = await h.push({ force: true, override });
+    audit(db, req.user.username, "persist.save", { saved, override });
     res.json({ saved, state: { ...persistState } });
   });
 

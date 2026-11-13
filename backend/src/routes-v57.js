@@ -7,6 +7,7 @@ import { ME, filterRange, maskMessages, parseChat, scrubPII } from "./chat-parse
 import { INTENT_LABEL, analyzeChat, classifyIntent, safetyAdvice, safetyScan, toneOf, HOTLINES } from "./chat-analyze.js";
 import { cleanDict } from "./human-voice.js";
 import { privacyScan } from "./story-build.js";
+import { requireAiBudget } from "./ai-budget.js";
 
 const MAX_SAVED = 40, MAX_FOLLOW = 100, MAX_TOKENS = 3, SAVED_DAYS = 30, TOKEN_DAYS = 60;
 const nowIso = () => new Date().toISOString();
@@ -249,6 +250,7 @@ export function registerV57Routes(app, { db, limiter, fail, requireUser, audit, 
     if (!config.ai?.key) return res.json({ mode: "prompt", prompt, note: "אין מפתח AI באתר. ההנחיה כבר מוסתרת משמות ופרטים. אפשר להעתיק אותה לצ'אט שאתם משתמשים בו, ולבדוק את התשובה." });
     if (!b.confirmExternal) return F(res, 428, "CONFIRM_REQUIRED", "הניסוח ישלח את ההודעות האחרונות (מוסתרות משמות ופרטים) לשירות AI חיצוני. אשרו כדי להמשיך.");
     try {
+      requireAiBudget();
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": config.ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },

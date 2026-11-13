@@ -5,6 +5,8 @@ import { notify } from "./notify.js";
 import { getActivity, insertActivity, rowToActivity } from "./activities.js";
 import { audit, nowIso } from "./db.js";
 import { suggestTopics } from "./topics.js";
+import { guestDailyCap } from "./guest-limits.js";
+import { scrubContact } from "./guest-guard.js";
 
 const text = (max) => z.string().trim().max(max);
 
@@ -151,12 +153,12 @@ export function registerExtraRoutes(app, { db, limiter, fail, requireUser, requi
     liked: text(200).default(""),
     more: z.enum(["yes", "maybe", "no"]).default("maybe"),
   });
-  app.post("/api/activities/:id/feedback", limiter(60 * 60_000, 30), (req, res) => {
+  app.post("/api/activities/:id/feedback", limiter(60 * 60_000, 30), guestDailyCap({ label: "feedback", max: 40 }), (req, res) => {
     const id = Number(req.params.id);
     if (!getActivity(db, id)) return notFound(res);
     const f = fbSchema.parse(req.body ?? {});
     // no name, no IP and no user are stored: the form is anonymous
-    db.prepare("INSERT INTO feedback (activity_id, rating, liked, more, created_at) VALUES (?,?,?,?,?)").run(id, f.rating, f.liked, f.more, nowIso());
+    db.prepare("INSERT INTO feedback (activity_id, rating, liked, more, created_at) VALUES (?,?,?,?,?)").run(id, f.rating, scrubContact(f.liked), f.more, nowIso());
     res.status(201).json({ ok: true });
   });
   app.get("/api/activities/:id/feedback", requireUser(), (req, res) => {

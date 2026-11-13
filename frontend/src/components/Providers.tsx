@@ -161,6 +161,12 @@ export function Providers({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    // שלב 64: מנקים את מטמון ה-Service Worker, כדי שלא יישאר בדפדפן תוכן של מי שהתנתק
+    try {
+      navigator.serviceWorker?.controller?.postMessage("clear-private");
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const toast = useCallback<ToastFn>((message, options = {}) => {

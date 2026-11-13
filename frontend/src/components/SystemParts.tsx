@@ -12,7 +12,7 @@ type Sys = {
   dbBytes: number | null;
   integrity: string;
   counts: { users: number; activities: number; writeDocs: number };
-  persist: { configured: boolean; lastGoodAt: number | null; lastSavedAt: number | null; lastError: string | null; saves: number };
+  persist: { configured: boolean; lastGoodAt: number | null; lastSavedAt: number | null; lastError: string | null; saves: number; blocked?: string | null; failStreak?: number; encrypted?: boolean | null };
   warnings: string[];
 };
 
@@ -61,6 +61,19 @@ export function AdminSystem() {
       toast("הנתונים נשמרו ב-GitHub");
       load();
     } catch (e) {
+      // שלב 64: השמירה עצורה כדי לא לדרוס גיבוי טוב. דורסים רק באישור מפורש.
+      if ((e as { code?: string })?.code === "PERSIST_BLOCKED") {
+        if (window.confirm(`${errorMessage(e)}\n\nזה יחליף את הגיבוי ששמור ב-GitHub במסד הנוכחי. להמשיך?`)) {
+          try {
+            await api("/api/admin/persist/save", { method: "POST", token, body: { override: true } });
+            toast("הנתונים נשמרו ב-GitHub");
+            load();
+          } catch (e2) {
+            toast(errorMessage(e2), { kind: "error" });
+          }
+        }
+        return;
+      }
       toast(errorMessage(e), { kind: "error" });
     }
   };

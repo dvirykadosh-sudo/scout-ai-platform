@@ -4,6 +4,7 @@ import { getActivity, updateActivity } from "./activities.js";
 import { DEFAULT_STYLE, styleGuide, styleSchema } from "./style.js";
 import { cleanDict, cleanTranscript, detailGaps, dictCheck, findCliches, fixCliches, humanScore, readAloudCheck, shiftRegister, stageDirections, suggestSay, wordDiff } from "./human-voice.js";
 import { aiPrompt, ageVersions, allMoments, buildStory, closings, inventionCheck, maskNames, momentsFor, openings, privacyScan, valueFor } from "./story-build.js";
+import { requireAiBudget } from "./ai-budget.js";
 
 const txt = (n) => z.string().max(n).default("");
 const partsZ = z.object({ situation: txt(1500), turn: txt(1500), feeling: txt(800), learning: txt(800), place: txt(80), person: txt(80), want: txt(300), value: txt(60) }).default({});
@@ -234,6 +235,7 @@ export function registerV56Routes(app, { db, limiter, fail, requireUser, canMana
     const prompt = `${p.system}\n\n---\n${p.user}`;
     if (!config.ai?.key) return res.json({ mode: "prompt", prompt, note: "אין מפתח AI באתר. העתיקו את ההנחיה לצ'אט שאתם משתמשים בו, והדביקו את התוצאה בחזרה. בדקו שלא נוספו פרטים." });
     try {
+      requireAiBudget();
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": config.ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },

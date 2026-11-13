@@ -38,6 +38,9 @@ import { registerV57Routes } from "./routes-v57.js";
 import { registerLuxRoutes } from "./routes-lux.js";
 import { registerV56Routes } from "./routes-v56.js";
 import { cleanDict } from "./human-voice.js";
+import { persistHealthy, persistState } from "./persist.js";
+import { guestDailyCap, takeDaily } from "./guest-limits.js";
+import { scrubContact } from "./guest-guard.js";
 import compression from "compression";
 import { registerAccountV52Routes, regSettings } from "./routes-accounts-v52.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
@@ -75,6 +78,9 @@ export const isInternal = (req) => {
 export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPath }) {
   const app = express();
   app.disable("x-powered-by");
+  // שלב 64 (ממצא 37): רק שיטות HTTP שהאתר צריך. TRACE, CONNECT וכדומה נדחות לפני כל דבר אחר.
+  const METHODS_OK = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
+  app.use((req, res, next) => (METHODS_OK.has(req.method) ? next() : res.status(405).set("Allow", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS").type("text/plain; charset=utf-8").send("שיטת הבקשה אינה נתמכת")));
   // behind a hosting proxy (Render, Fly...) req.ip must be the visitor, not the proxy.
   // שלב 63: מספר הקפיצות ניתן להגדרה (TRUST_PROXY), ואפשר גם לקבוע כותרת שהפלטפורמה מציבה עם כתובת המבקר (CLIENT_IP_HEADER).
   // אימות מול האתר החי: אדמין ← מערכת ← "איזו כתובת השרת רואה אצלי" (או GET /api/admin/ip-check).
@@ -140,7 +146,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   });
   app.use((req, res, next) => (req.path.startsWith("/api") ? apiHelmet(req, res, next) : pageHelmet(req, res, next)));
   // CORS: only the configured site origin (same-origin calls need no CORS at all); no wildcard, no credentials
-  app.use(cors({ origin: config.webOrigin, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"], maxAge: 600 }));
+  app.use(cors({ origin: config.webOrigin || false, methods: ["GET", "POST", "PUT", "PATCH", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"], maxAge: 600 }));
   // שלב 58: גוף של עד 3MB נקרא רק אם נשלחה כותרת התחברות (האימות המלא נעשה בנתיב עצמו)
   app.use("/api/chat", (req, res, next) => {
     const h = req.headers.authorization || req.headers["x-maoz-ext"];
@@ -180,6 +186,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   const ANON_CREATE = /^\/api\/activities\/(quick|generate|emergency|import|import-parsed|\d+\/(duplicate|similar|upgrade-peak|shorten|adapt))\/?$/; // שלב 58: נוספו generate/emergency/import/import-parsed
   app.use((req, res, next) => {
     if (req.method !== "POST" || !ANON_CREATE.test(req.path) || optionalAuth(req)) return next();
+    // שלב 64: מכסה יומית לכל כתובת, כדי שמשתמש אחד לא ימלא את המכסה הכללית לכולם
+    if ((config.nodeEnv !== "test" || process.env.DAILY_CAPS === "1") && !takeDaily("anon-create", req.ip || "", config.guestDailyPerIp)) return res.status(429).json(fail("DAILY_CAP", "הגעתם למכסה היומית של פעולות בלי התחברות. התחברו כמדריכים כדי להמשיך"));
     if (config.nodeEnv !== "test") {
       const since = new Date(Date.now() - 24 * 3600_000).toISOString();
       const n = db.prepare("SELECT COUNT(*) AS c FROM activities WHERE owner_id IS NULL AND is_seed = 0 AND created_at >= ?").get(since).c;
@@ -278,7 +286,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   // ── public: meta ──
   // שלב 63: מזהה הפעלה אטום (בלי שעת העלייה של השרת). הלקוח משווה בו כדי לזהות שהאתר התעדכן.
   const BOOT_ID = crypto.randomBytes(6).toString("hex");
-  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), boot: BOOT_ID, maintenance: maintenanceMessage(db) }));
+  app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), boot: BOOT_ID, maintenance: maintenanceMessage(db), persist: persistState.configured ? (persistState.blocked ? "blocked" : persistHealthy() ? "ok" : "stuck") : "off" }));
   app.get("/api/methods", (req, res) => res.json(METHODS));
   app.get("/api/meta", (req, res) =>
     res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: false, logoVersion: logo?.v ?? null }),
@@ -371,15 +379,19 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     res.json({ ...ratingSummary(id), items });
   });
 
-  app.post("/api/activities/:id/ratings", limiter(15 * 60_000, 20), (req, res) => {
+  // שלב 64: אורח יכול לדרג פעולה אחת עד 3 פעמים ביום, ועד 30 דירוגים ביום בסך הכול
+  const ratingPerActivity = guestDailyCap({ label: "rating-activity", max: 3, keyExtra: (req) => req.params.id, message: "כבר דירגתם את הפעולה הזו כמה פעמים היום. תודה!" });
+  const ratingPerIp = guestDailyCap({ label: "rating", max: 30 });
+  app.post("/api/activities/:id/ratings", limiter(15 * 60_000, 20), ratingPerActivity, ratingPerIp, (req, res) => {
     const id = Number(req.params.id);
     if (!getActivity(db, id)) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
     const r = ratingSchema.parse(req.body ?? {});
+    // שלב 64: הערה ושם חופשיים נשמרים בלי טלפונים, מיילים וקישורים (הדירוג מוצג לכולם)
     db.prepare("INSERT INTO ratings (activity_id, stars, comment, author, age_used, created_at) VALUES (?,?,?,?,?,?)").run(
       id,
       r.stars,
-      r.comment || null,
-      r.author || null,
+      r.comment ? scrubContact(r.comment) : null,
+      r.author ? scrubContact(r.author) : null,
       r.ageUsed ?? null,
       nowIso(),
     );

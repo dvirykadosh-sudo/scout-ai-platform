@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "./config.js";
@@ -32,14 +33,25 @@ export function signToken(user, sid) {
 }
 
 /** אסימון קצר לשלב האימות הדו-שלבי, בלי הרשאות אחרות. */
-export const signChallenge = (userId, purpose = "2fa") => jwt.sign({ sub: userId, purpose }, config.jwtSecret, { expiresIn: "5m" });
+// שלב 64 (ממצא 28): לכל אסימון אתגר יש jti. אחרי כניסה מוצלחת הוא "נשרף", ולא ניתן להשתמש בו שוב גם אם הועתק (התוקף נשאר 5 דקות).
+const burned = new Map();
+export const signChallenge = (userId, purpose = "2fa") => jwt.sign({ sub: userId, purpose, jti: crypto.randomUUID() }, config.jwtSecret, { expiresIn: "5m" });
 export function readChallenge(token, purpose = "2fa") {
   try {
     const p = verifyJwt(String(token));
-    return p.purpose === purpose ? p : null;
+    if (p.purpose !== purpose) return null;
+    if (p.jti && burned.has(p.jti)) return null;
+    return p;
   } catch {
     return null;
   }
+}
+/** מסמן אסימון אתגר כמנוצל. נקרא אחרי אימות דו-שלבי מוצלח. */
+export function burnChallenge(p) {
+  if (!p?.jti) return;
+  const now = Date.now();
+  burned.set(p.jti, now + 6 * 60_000);
+  if (burned.size > 500) for (const [k, exp] of burned) if (exp < now) burned.delete(k);
 }
 
 export function ensureAdmin(db) {

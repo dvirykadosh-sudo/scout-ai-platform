@@ -4,6 +4,7 @@ import { apportion, buildFallback, framing } from "./ai.js";
 import { config } from "./config.js";
 import { AGE_GROUPS, GRADES, STAGE_LAYERS, STAGE_NAMES } from "./shared/constants.js";
 import { DEFAULT_STYLE, HUMAN_RULES, styleGuide } from "./style.js";
+import { requireAiBudget } from "./ai-budget.js";
 
 const TONES = ["warm", "humor", "serious", "story", "youth"];
 
@@ -48,6 +49,7 @@ export function regenerateStageFallback(activity, index, { variant = 1, style } 
 
 async function regenerateStageAI(activity, index, style) {
   const st = { ...DEFAULT_STYLE, ...(style || {}) };
+  requireAiBudget();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": config.ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },

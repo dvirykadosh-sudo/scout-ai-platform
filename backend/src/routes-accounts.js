@@ -2,7 +2,7 @@
 // אימות דו-שלבי, מכשירים מחוברים, תפקידי צוות, ניהול משתמשים ויומן פעולות.
 import crypto from "node:crypto";
 import { z } from "zod";
-import { checkLock, clearFailures, hashPassword, readChallenge, registerFailure, signChallenge, signToken, verifyPassword } from "./auth.js";
+import { burnChallenge, checkLock, clearFailures, hashPassword, readChallenge, registerFailure, signChallenge, signToken, verifyPassword } from "./auth.js";
 import {
   STAFF_KEYS,
   STAFF_ROLES,
@@ -312,6 +312,7 @@ export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireU
       return res.status(401).json(fail("BAD_CODE", "הקוד שגוי"));
     }
     clearFailures(db, key);
+    burnChallenge(ch); // שלב 64: האסימון הזמני חד-פעמי
     if (how === "backup") audit(db, user.username, "2fa.backup_used", {});
     finishLogin(req, res, user, how === "backup" ? "password+backup" : "password+2fa");
   });

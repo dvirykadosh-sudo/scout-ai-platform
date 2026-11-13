@@ -11,6 +11,7 @@ import { rowToActivity } from "./activities.js";
 import { maintenanceMessage } from "./ops.js";
 import { smartSearch } from "./smart-search.js";
 import { GRADES } from "./shared/constants.js";
+import { guestDailyCap } from "./guest-limits.js";
 
 const nowIso = () => new Date().toISOString();
 const sha = (s) => crypto.createHash("sha1").update(String(s)).digest("hex");
@@ -60,7 +61,7 @@ export function registerV54Routes(app, { db, dbFile, limiter, fail, requireUser,
 
   // ───── 429: לכידת שגיאות מהדפדפן ─────
   const errBody = z.object({ message: z.string().max(600), stack: z.string().max(3000).optional(), page: z.string().max(200).optional() });
-  app.post("/api/client-error", lightLim, (req, res) => {
+  app.post("/api/client-error", lightLim, guestDailyCap({ label: "client-error", max: 60, guestsOnly: false, message: "יותר מדי דיווחי שגיאה מהכתובת הזו היום." }), (req, res) => {
     const b = errBody.safeParse(req.body ?? {});
     if (!b.success) return F(res, 400, "VALIDATION", "בקשה לא תקינה");
     const clean = (s) => String(s || "").replace(/https?:\/\/[^\s)]+/g, (u) => { try { return new URL(u).pathname; } catch { return "url"; } }).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "<email>");
@@ -70,7 +71,7 @@ export function registerV54Routes(app, { db, dbFile, limiter, fail, requireUser,
     const sig = sha(message.replace(/\d+/g, "#") + frame).slice(0, 12);
     const u = optionalAuth(req);
     const recent = db.prepare("SELECT COUNT(*) AS c FROM client_errors WHERE sig = ? AND created_at > ?").get(sig, new Date(Date.now() - 3600_000).toISOString()).c;
-    if (recent < 25) db.prepare("INSERT INTO client_errors (sig, message, stack, page, ua, user_id, created_at) VALUES (?,?,?,?,?,?,?)").run(sig, message, stack, pageOk(b.data.page), String(req.headers["user-agent"] || "").slice(0, 140), u?.id ?? null, nowIso());
+    if (recent < 8) db.prepare("INSERT INTO client_errors (sig, message, stack, page, ua, user_id, created_at) VALUES (?,?,?,?,?,?,?)").run(sig, message, stack, pageOk(b.data.page), String(req.headers["user-agent"] || "").slice(0, 140), u?.id ?? null, nowIso());
     db.prepare("DELETE FROM client_errors WHERE id NOT IN (SELECT id FROM client_errors ORDER BY id DESC LIMIT 4000)").run();
     res.status(204).end();
   });
@@ -78,7 +79,7 @@ export function registerV54Routes(app, { db, dbFile, limiter, fail, requireUser,
   // ───── 430: מדדי ביצועים אמיתיים ─────
   let vitalsN = 0;
   const vitalBody = z.object({ metric: z.enum(["LCP", "FCP", "INP", "CLS", "TTFB"]), value: z.number().finite(), page: z.string().max(200).optional() });
-  app.post("/api/vitals", lightLim, (req, res) => {
+  app.post("/api/vitals", lightLim, guestDailyCap({ label: "vitals", max: 400, guestsOnly: false, message: "יותר מדי מדידות מהכתובת הזו היום." }), (req, res) => {
     const arr = Array.isArray(req.body?.metrics) ? req.body.metrics.slice(0, 6) : [req.body];
     let saved = 0;
     for (const m of arr) {

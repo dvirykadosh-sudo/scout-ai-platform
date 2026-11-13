@@ -27,5 +27,10 @@
     "nodemailer": "^10.1.0",
     "qrcode": "^1.5.4",
     "zod": "^4.6.5"
+  },
+  "overrides": {
+    "geoip-country": {
+      "ip-address": "^10.7.5"
+    }
   }
 }

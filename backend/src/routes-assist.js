@@ -11,6 +11,7 @@ import { registerAssist2Routes } from "./routes-assist2.js";
 import { registerAssist3Routes } from "./routes-assist3.js";
 import { readiness } from "./assist3.js";
 import { TRAIT_IDS } from "./assist-balance.js";
+import { requireAiBudget } from "./ai-budget.js";
 
 const profileSchema = z.object({
   name: z.string().trim().max(60).optional(),
@@ -28,6 +29,7 @@ const saveSchema = z.object({
 });
 
 async function aiHelp(raw, base) {
+  requireAiBudget();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": config.ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -51,6 +53,7 @@ const VARIANT_HINT = { normal: "", shorter: "קצר מאוד: עד 20 מילים
 
 /** קריאה כללית למודל. מחזיר טקסט גולמי או זורק שגיאה, והקוראים נופלים לגרסה המקומית. */
 async function callAI(system, payload, maxTokens = 900) {
+  requireAiBudget();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": config.ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },

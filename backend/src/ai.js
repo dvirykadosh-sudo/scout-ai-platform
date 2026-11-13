@@ -2,6 +2,7 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { METHOD_NAMES, MIDOT, STAGE_LAYERS, STAGE_NAMES } from "./shared/constants.js";
 import { DEFAULT_STYLE, HUMAN_RULES, styleGuide } from "./style.js";
+import { requireAiBudget } from "./ai-budget.js";
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -311,6 +312,7 @@ function modelPayload(input, total) {
 }
 
 async function callModel(input, total) {
+  requireAiBudget();
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": config.ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },

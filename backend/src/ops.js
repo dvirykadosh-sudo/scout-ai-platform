@@ -94,7 +94,7 @@ export function startOps({ db, dbFile, config, mailer }) {
     try {
       recordSample(db, dbFile);
       const to = config.smtp.adminEmail;
-      const stuck = persistState.configured && !persistHealthy(Date.now(), Date.now() - 20 * 60_000);
+      const stuck = persistState.configured && (persistState.failStreak >= 3 || !persistHealthy(Date.now(), Date.now() - 20 * 60_000));
       if (stuck && !alerted.persist) {
         alerted.persist = true;
         if (to && mailer?.hasTransport) mailer.enqueue("התראה: שמירת הנתונים תקועה", '<p dir="rtl">השמירה ל-GitHub לא הצליחה כבר יותר מרבע שעה. בדקו את הטוקן ב-Render. עד לתיקון, נתונים חדשים עלולים ללכת לאיבוד באיתחול.</p>', to);

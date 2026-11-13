@@ -24,7 +24,8 @@ export const config = {
   // שלב 63: בדיקות "זמן אנושי" (אסימון טופס, שאלת חשבון). פעילות בפרודקשן; הבדיקות האוטומטיות מדליקות אותה במקום שהן בודקות אותה.
   strictTiming: isProd || env.STRICT_TIMING === "1",
   port: Number(env.PORT) || 4000,
-  webOrigin: env.WEB_ORIGIN || "http://localhost:3000",
+  // שלב 64: בפרודקשן בלי WEB_ORIGIN לא מתירים אף מקור חיצוני (האתר והשרת על אותו דומיין, ואין צורך ב-CORS)
+  webOrigin: env.WEB_ORIGIN || (isProd ? "" : "http://localhost:3000"),
   // הכתובת הציבורית של האתר (למשל https://maoz.example.co.il), לקישורים בקבצי יומן
   publicUrl: (env.PUBLIC_URL || "").replace(/\/+$/, ""),
   dbPath: env.DB_PATH || "./data/scout.db",
@@ -65,7 +66,11 @@ export const config = {
   ai: {
     key: env.ANTHROPIC_API_KEY || "",
     model: env.AI_MODEL || "claude-sonnet-5-5",
+    // שלב 64: תקרת קריאות למודל לכל האתר ביום (כולל אורחים). מעבר לה כולם עוברים למחולל המקומי, בלי עלות.
+    dailyCap: Math.max(0, Number(env.AI_DAILY_CAP ?? 400) || 0),
   },
+  // שלב 64: כמה פעולות בלי התחברות מותר ליצור מכל כתובת ביום (בנוסף למכסה הכללית)
+  guestDailyPerIp: Math.max(1, Number(env.GUEST_DAILY_PER_IP ?? 40) || 40),
 };
 
 /** מפתח משנה לשימוש מסוים (HKDF), כדי שאסימון שנוצר לצורך אחד לא יתקבל בצורך אחר. */
@@ -77,6 +82,8 @@ export function configWarnings() {
   if (config.isProd) {
     if (config.jwtSecret.length < 32) w.push(`JWT_SECRET קצר (${config.jwtSecret.length} תווים). מומלץ מחרוזת אקראית של 32 תווים ומעלה. החלפה מנתקת את כל המחוברים; כדי להימנע מזה שימו את הישן ב-JWT_SECRET_PREVIOUS.`);
     if (config.trustProxy === true) w.push("TRUST_PROXY=true מאפשר לכל מבקר לזייף את כתובת ה-IP שלו. עדיף מספר (למשל 1).");
+    // שלב 64 (ממצא 36): שם משתמש ברירת מחדל מקל על ניחוש. אפשר להגדיר ADMIN_USERNAME אחר (החשבון הקיים לא משתנה אוטומטית).
+    if (config.admin.username === "admin") w.push("שם המשתמש של האדמין הוא \"admin\", וזה השם הראשון שמנחשים. אפשר לשנות אותו בהגדרות החשבון, או להגדיר ADMIN_USERNAME לפני יצירת מסד חדש.");
   }
   return w;
 }

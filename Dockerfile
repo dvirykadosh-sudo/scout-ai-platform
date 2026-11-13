@@ -8,4 +8,5 @@ ENV DB_PATH=/data/scout.db
 EXPOSE 10000
 ENV PORT=10000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://localhost:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "backend/src/all.js"]
+# שלב 64: הכניסה עוברת ל-docker-entry.sh, והוא מריץ את השרת כמשתמש node (לא root)
+CMD ["sh", "deploy/docker-entry.sh"]

@@ -9,6 +9,7 @@ import { expandToken, norm, skeleton, smartSearch, stems } from "./smart-search.
 import { rowToActivity } from "./activities.js";
 import { collectEvents } from "./lux-insights.js";
 import { writeHelp } from "./lux-eagle-write.js";
+import { requireAiBudget } from "./ai-budget.js";
 
 const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 
@@ -292,6 +293,7 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
   };
 
   async function callModel(question, ctx) {
+    requireAiBudget();
     const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },

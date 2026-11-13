@@ -8,6 +8,8 @@ import { listBackups, backupDirFor } from "./backup.js";
 import { audit, nowIso } from "./db.js";
 import { isRealDate, israelToday } from "./organizer.js";
 import { notify, notifyAdmins } from "./notify.js";
+import { guestDailyCap } from "./guest-limits.js";
+import { scrubContact } from "./guest-guard.js";
 
 const text = (max) => z.string().trim().max(max);
 export const FLAG_REASONS = { age: "לא מתאים לגיל", content: "תוכן בעייתי או לא ראוי", mistake: "שגיאה או חוסר בפעולה", safety: "בעיית בטיחות", other: "אחר" };
@@ -41,12 +43,12 @@ export function registerCareRoutes(app, { db, dbFile, limiter, fail, requireUser
 
   // ── 36. דיווח על פעולה ──
   app.get("/api/flag-reasons", (req, res) => res.json(Object.entries(FLAG_REASONS).map(([id, label]) => ({ id, label }))));
-  app.post("/api/activities/:id/flags", limiter(15 * 60_000, 10), (req, res) => {
+  app.post("/api/activities/:id/flags", limiter(15 * 60_000, 10), guestDailyCap({ label: "flag", max: 15 }), guestDailyCap({ label: "flag-activity", max: 2, keyExtra: (req) => req.params.id, message: "כבר דיווחתם על הפעולה הזו. הצוות יבדוק." }), (req, res) => {
     const a = getActivity(db, Number(req.params.id));
     if (!a) return notFound(res);
     const v = flagSchema.parse(req.body ?? {});
     const who = optionalAuth(req);
-    db.prepare("INSERT INTO flags (activity_id, reason, note, reporter_id, status, created_at) VALUES (?,?,?,?,'OPEN',?)").run(a.id, v.reason, v.note || null, who?.id ?? null, nowIso());
+    db.prepare("INSERT INTO flags (activity_id, reason, note, reporter_id, status, created_at) VALUES (?,?,?,?,'OPEN',?)").run(a.id, v.reason, v.note ? scrubContact(v.note) : null, who?.id ?? null, nowIso());
     notifyAdmins(db, "flag", `דיווח על "${a.title}": ${FLAG_REASONS[v.reason]}`, "/admin");
     if (a.ownerId && a.ownerId !== who?.id) notify(db, a.ownerId, "flag", `מישהו דיווח על בעיה בפעולה שלך "${a.title}": ${FLAG_REASONS[v.reason]}`, `/library/${a.id}`);
     audit(db, who?.username, "flag.add", { id: a.id, reason: v.reason });

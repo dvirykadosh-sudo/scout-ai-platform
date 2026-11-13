@@ -109,7 +109,7 @@ export function registerAssist2Routes(app, { db, limiter, fail, requireUser, opt
 
   // ───── 64. טיוטות בענן, שיתוף ותגובות ─────
   const myDraft = (id, userId) => db.prepare("SELECT * FROM assist_drafts WHERE id = ? AND owner_id = ?").get(id, userId);
-  const draftOut = (d, extra = {}) => ({ id: d.id, title: d.title, text: d.text, ageGroup: d.age_group || "", shareToken: d.share_token || null, updatedAt: d.updated_at, ...extra });
+  const draftOut = (d, extra = {}) => ({ id: d.id, title: d.title, text: d.text, ageGroup: d.age_group || "", shareToken: d.share_token || null, shareExpiresAt: d.share_expires_at || null, updatedAt: d.updated_at, ...extra });
 
   app.get("/api/assist/drafts", requireUser(), (req, res) => {
     const rows = db
@@ -154,13 +154,15 @@ export function registerAssist2Routes(app, { db, limiter, fail, requireUser, opt
   });
 
   app.post("/api/assist/drafts/:id/share", requireUser(), (req, res) => {
-    const { enable } = z.object({ enable: z.boolean() }).parse(req.body ?? {});
+    // שלב 64 (ממצא 39): אפשר לקבוע תוקף לקישור (days). בלי days הקישור פעיל עד שמבטלים אותו, כמו קודם.
+    const { enable, days } = z.object({ enable: z.boolean(), days: z.number().int().min(1).max(365).optional() }).parse(req.body ?? {});
     const d = myDraft(Number(req.params.id), req.user.id);
     if (!d) return notFound(res, "הטיוטה לא נמצאה");
     const token = enable ? d.share_token || crypto.randomBytes(18).toString("base64url") : null;
-    db.prepare("UPDATE assist_drafts SET share_token = ? WHERE id = ?").run(token, d.id);
-    audit(db, req.user.username, enable ? "assist.share-on" : "assist.share-off", { id: d.id });
-    res.json({ shareToken: token });
+    const expires = enable && days ? new Date(Date.now() + days * 86_400_000).toISOString() : null;
+    db.prepare("UPDATE assist_drafts SET share_token = ?, share_expires_at = ? WHERE id = ?").run(token, expires, d.id);
+    audit(db, req.user.username, enable ? "assist.share-on" : "assist.share-off", { id: d.id, days: days ?? null });
+    res.json({ shareToken: token, expiresAt: expires });
   });
 
   app.patch("/api/assist/comments/:id", requireUser(), (req, res) => {
@@ -176,8 +178,13 @@ export function registerAssist2Routes(app, { db, limiter, fail, requireUser, opt
     res.json({ ok: true });
   });
 
+  // שלב 64: קישור שפג תוקפו מתבטל אוטומטית (הבדיקה רצה בכל גישה לקישור ובמחזור קבוע)
+  const expireShares = () => db.prepare("UPDATE assist_drafts SET share_token = NULL, share_expires_at = NULL WHERE share_token IS NOT NULL AND share_expires_at IS NOT NULL AND share_expires_at < ?").run(new Date().toISOString());
+  const sweep = setInterval(expireShares, 5 * 60_000);
+  sweep.unref?.();
+
   // תצוגה ציבורית של טיוטה משותפת (מי שיש לו את הקישור)
-  const byToken = (token) => (/^[A-Za-z0-9_-]{16,64}$/.test(token) ? db.prepare("SELECT d.*, COALESCE(u.display_name, u.username) AS owner_name FROM assist_drafts d JOIN users u ON u.id = d.owner_id WHERE d.share_token = ?").get(token) : null);
+  const byToken = (token) => (expireShares(), /^[A-Za-z0-9_-]{16,64}$/.test(token) ? db.prepare("SELECT d.*, COALESCE(u.display_name, u.username) AS owner_name FROM assist_drafts d JOIN users u ON u.id = d.owner_id WHERE d.share_token = ?").get(token) : null);
 
   app.get("/api/assist/shared/:token", limiter(60_000, 60), (req, res) => {
     const d = byToken(String(req.params.token));

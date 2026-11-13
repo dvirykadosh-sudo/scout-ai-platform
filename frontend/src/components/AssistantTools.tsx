@@ -558,6 +558,7 @@ interface DraftFull {
   id: number;
   title: string;
   shareToken: string | null;
+  shareExpiresAt?: string | null;
   comments: { id: number; authorName: string; quote: string; body: string; resolved: boolean; createdAt: string }[];
 }
 interface DraftBrief {
@@ -610,10 +611,11 @@ function ShareTool({ text, setText, ageGroup, cloudId, setCloudId, onClose }: To
       setFull(await api<DraftFull>(`/api/assist/drafts/${d.id}`, { token }));
       setList(await api<DraftBrief[]>("/api/assist/drafts", { token }));
     });
+  const [shareDays, setShareDays] = useState(0);
   const toggleShare = (enable: boolean) =>
     run(async () => {
       if (!cloudId) return;
-      await api(`/api/assist/drafts/${cloudId}/share`, { method: "POST", token, body: { enable } });
+      await api(`/api/assist/drafts/${cloudId}/share`, { method: "POST", token, body: { enable, ...(enable && shareDays ? { days: shareDays } : {}) } });
       setFull(await api<DraftFull>(`/api/assist/drafts/${cloudId}`, { token }));
     });
   const resolve = (id: number, resolved: boolean) =>
@@ -662,9 +664,20 @@ function ShareTool({ text, setText, ageGroup, cloudId, setCloudId, onClose }: To
               {cloudId ? "עדכון הטיוטה בענן" : "שמירת הטיוטה בענן"}
             </button>
             {cloudId && !full?.shareToken && (
-              <button type="button" className="btn" onClick={() => toggleShare(true)} disabled={busy}>
-                יצירת קישור לשיתוף
-              </button>
+              <>
+                <label className="hint" htmlFor="share-days" style={{ margin: 0 }}>
+                  תוקף הקישור
+                </label>
+                <select id="share-days" value={shareDays} onChange={(e) => setShareDays(Number(e.target.value))} disabled={busy}>
+                  <option value={0}>עד שאבטל</option>
+                  <option value={7}>7 ימים</option>
+                  <option value={30}>30 ימים</option>
+                  <option value={90}>90 ימים</option>
+                </select>
+                <button type="button" className="btn" onClick={() => toggleShare(true)} disabled={busy}>
+                  יצירת קישור לשיתוף
+                </button>
+              </>
             )}
             {full?.shareToken && (
               <button type="button" className="btn" onClick={() => toggleShare(false)} disabled={busy}>
@@ -682,6 +695,7 @@ function ShareTool({ text, setText, ageGroup, cloudId, setCloudId, onClose }: To
                   העתקה
                 </button>
               </div>
+              {full.shareExpiresAt && <p className="hint">הקישור יפוג ב-{new Date(full.shareExpiresAt).toLocaleDateString("he-IL")}.</p>}
               <p className="hint">הטיוטה בענן היא עותק שנשמר ברגע השמירה. אחרי שינויים לחצו &quot;עדכון הטיוטה בענן&quot;.</p>
             </div>
           )}

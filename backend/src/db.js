@@ -634,6 +634,7 @@ function migrate(db) {
   const add = (table, col, ddl) => {
     if (!columnsOf(db, table).includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
   };
+  add("assist_drafts", "share_expires_at", "TEXT");
   add("users", "display_name", "TEXT");
   add("users", "style_json", "TEXT");
   add("users", "disabled", "INTEGER NOT NULL DEFAULT 0");
