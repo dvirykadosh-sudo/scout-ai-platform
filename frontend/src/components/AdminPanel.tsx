@@ -7,7 +7,7 @@ import { ACTION_LABELS } from "@/lib/constants";
 import type { LogRow, SessionRow, Stats } from "@/lib/types";
 import { AdminAnnouncements } from "./CommunityParts";
 import { AdminWriteMetrics } from "./WriteFinal";
-import { AdminOps, AdminSystem } from "./SystemParts";
+import { AdminEagleGaps, AdminOps, AdminSystem } from "./SystemParts";
 import { AdminPilot } from "./PilotParts";
 import { AdminFlags, AdminReport, AdminStorage } from "./CareParts";
 import { AdminApproval, AdminBackups, AdminFeatured, AdminInsights, AdminLogo } from "./AdminExtras";
@@ -191,6 +191,7 @@ function Dashboard() {
               <AdminAnnouncements />
               <AdminWriteMetrics />
               <AdminFlags />
+              <AdminEagleGaps />
               <AdminApproval />
             </>
           )}

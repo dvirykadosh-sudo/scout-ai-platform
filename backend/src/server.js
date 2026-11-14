@@ -5,6 +5,7 @@ import { assertProductionSafe, config } from "./config.js";
 import { openDb } from "./db.js";
 import { createMailer } from "./email.js";
 import { seedIfEmpty } from "./seed.js";
+import { installProcessGuards } from "./server-errors.js";
 
 assertProductionSafe();
 
@@ -16,6 +17,7 @@ const mailer = createMailer(db, config.smtp);
 mailer.start();
 startBackupSchedule(db, backupDirFor());
 
+installProcessGuards({ db, mailer, config });
 const app = createApp({ db, mailer });
 app.listen(config.port, () => {
   console.log(`\nהשרת פועל: http://localhost:${config.port}`);

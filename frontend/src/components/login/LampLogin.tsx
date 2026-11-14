@@ -58,7 +58,7 @@ export function LampLogin({ embedded = false }: { embedded?: boolean }) {
           )}
         </AnimatePresence>
         <motion.img
-          src="/logo-maoz.png"
+          src="/logo-maoz-320.v1.webp"
           alt="נשר שבט מעוז"
           width={230}
           height={230}

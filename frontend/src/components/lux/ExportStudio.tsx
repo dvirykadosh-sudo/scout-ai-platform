@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { tribeOrDefault } from "@/lib/lux/tribe";
 import type { Activity } from "@/lib/types";
+import { useLogoUrl } from "../Chrome";
 import { PageTitle, Skeleton } from "../ui";
 import { PosterPanel } from "./Poster";
 
@@ -20,6 +21,9 @@ const lines = (t: string) => t.split(/\n+/).map((l) => l.replace(/^\s*(?:[-•*]
 
 export function ExportStudio() {
   const { id } = useParams<{ id: string }>();
+  // שלב 65: הלוגו המותאם של האדמין אם יש, ואחרת הקובץ המובנה (בלי בקשה ל-/api/logo שמחזירה 404)
+  const logoSrc = useLogoUrl() ?? "/logo-maoz-320.v1.webp";
+  const wmSrc = logoSrc.includes("/api/logo") ? logoSrc : "/logo-maoz-640.v1.webp";
   const [a, setA] = useState<Activity | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"doc" | "cards" | "poster">("doc");
@@ -161,8 +165,7 @@ export function ExportStudio() {
                   <img
                     className={`studio-logo ${dragX !== null ? "drag" : ""}`}
                     style={{ left: logoLeft }}
-                    src="/api/logo"
-                    onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/logo-maoz.png")}
+                    src={logoSrc}
                     alt="לוגו השבט (אפשר לגרור)"
                     onPointerDown={onDown}
                     draggable={false}
@@ -170,7 +173,7 @@ export function ExportStudio() {
                 </div>
                 {!eco && wm > 0 && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img className="studio-wm" style={{ opacity: wm * 0.55 }} src="/api/logo" onError={(e) => ((e.currentTarget as HTMLImageElement).src = "/logo-maoz.png")} alt="" aria-hidden="true" />
+                  <img className="studio-wm" style={{ opacity: wm * 0.55 }} src={wmSrc} alt="" aria-hidden="true" />
                 )}
                 <h2 className="studio-title">{a.title}</h2>
                 <dl className="studio-meta">

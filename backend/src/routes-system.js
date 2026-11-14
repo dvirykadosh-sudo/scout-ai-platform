@@ -2,12 +2,15 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { persistHandle, persistHealthy, persistState } from "./persist.js";
+import { persistHandle, persistHealthy, persistState, verifyRemoteBackup } from "./persist.js";
+import { aiBudgetState } from "./ai-budget.js";
+import { recentServerErrors } from "./server-errors.js";
+import { schemaVersion, SCHEMA_VERSION } from "./db.js";
 import { configWarnings } from "./config.js";
 
 export const startedAt = new Date();
 
-export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdmin, audit }) {
+export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdmin, audit, mailer, limiter }) {
   let integrity = "לא נבדק";
   try {
     integrity = db.prepare("PRAGMA quick_check").get()?.quick_check ?? "לא ידוע";
@@ -41,11 +44,12 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
     if (persistState.blocked) warnings.push(`שמירת הנתונים עצורה כדי לא לדרוס את הגיבוי הקיים: ${persistState.blocked}. תקנו את הסיבה (טוקן, BACKUP_KEY או JWT_SECRET_PREVIOUS) והפעילו מחדש את השרת. אם אתם בטוחים שרוצים להתחיל ממסד חדש, השתמשו ב"שמירה עכשיו" עם אישור.`);
     else if (persistState.configured && !persistHealthy(Date.now(), startedAt.getTime())) warnings.push("שמירת הנתונים תקועה. בדקו את הטוקן של GitHub ב-Render.");
     if (persistState.failStreak >= 3) warnings.push(`${persistState.failStreak} שמירות ברצף ל-GitHub נכשלו. עד שזה יסתדר, נתונים חדשים עלולים ללכת לאיבוד בהפעלה מחדש.`);
+    if (persistState.verifyOk === false) warnings.push(`בדיקת השחזור של הגיבוי ב-GitHub נכשלה: ${persistState.verifyError}. ייתכן שלא תהיה אפשרות לשחזר את האתר אחרי הפעלה מחדש.`);
+    if (aiBudgetState().blocked > 0) warnings.push(`תקרת ה-AI היומית (${aiBudgetState().cap}) הוצתה. מי שביקש עזרת AI קיבל את המחולל המקומי. אפשר להגדיל ב-AI_DAILY_CAP.`);
     if (persistState.lastError && !persistState.blocked) warnings.push(`השמירה האחרונה נכשלה: ${persistState.lastError}`);
     if (persistState.configured && persistState.encrypted === false) warnings.push("הצילום ששמור ב-GitHub אינו מוצפן (אין JWT_SECRET או BACKUP_KEY בסביבה).");
     if (persistState.configured && persistState.keySource === "JWT_SECRET" && !process.env.BACKUP_KEY) warnings.push("הצילום ב-GitHub מוצפן במפתח שנגזר מ-JWT_SECRET. כדי שהחלפת JWT_SECRET לא תנעל את הגיבוי, הגדירו ב-Render גם BACKUP_KEY (מחרוזת אקראית של 32 תווים ומעלה, ולא מחליפים אותה אחר כך).");
     if (integrity !== "ok") warnings.push(`בדיקת תקינות מסד הנתונים: ${integrity}`);
-    if (!config.signupCode) warnings.push("לא הוגדר SIGNUP_CODE — ההרשמה פתוחה לכל.");
     warnings.push(...configWarnings());
     // שלב 63: אם הבקשה של האדמין עצמו עברה דרך כמה שרתי ביניים ולא הוגדר TRUST_PROXY, ייתכן שהשרת רואה כתובת של שרת ביניים
     {
@@ -72,8 +76,54 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
       integrity,
       counts: { users: count("users"), activities: count("activities"), writeDocs: count("write_docs") },
       persist: { ...persistState },
+      schema: { version: schemaVersion(db), expected: SCHEMA_VERSION },
+      ai: { ...aiBudgetState(), configured: Boolean(config.ai.key) },
+      serverErrors: recentServerErrors(),
       warnings,
     });
+  });
+
+  // שלב 64: בדיקת שחזור ידנית של הגיבוי שב-GitHub (מורידה, פותחת, ובודקת שהמסד תקין. לא נוגעת במסד החי)
+  app.post("/api/admin/persist/verify", requireAdmin(), async (req, res) => {
+    if (!persistState.configured) return res.status(400).json(fail("NOT_CONFIGURED", "השמירה ב-GitHub לא מוגדרת"));
+    const r = await verifyRemoteBackup();
+    audit(db, req.user.username, "persist.verify", { ok: r.ok });
+    res.json(r);
+  });
+
+  // שלב 65 (ממצא 62): מייל בדיקה. הנמען קבוע: המייל של האדמין עצמו (או כתובת האדמין שהוגדרה), כדי שלא ישמש כמשגר לכתובות אחרות
+  app.post("/api/admin/mail/test", requireAdmin(), limiter ? limiter(10 * 60_000, 5) : (_q, _s, next) => next(), async (req, res) => {
+    if (!mailer?.hasTransport) return res.status(400).json(fail("NO_MAIL", "אין ספק מייל מוגדר. הגדירו SMTP_HOST, MAIL_RELAY_URL או RESEND_API_KEY ב-Environment (ראו SMTP-SETUP.md)."));
+    const own = db.prepare("SELECT email FROM users WHERE id = ? AND email_verified_at IS NOT NULL").get(req.user.id)?.email;
+    const to = String(own || config.smtp?.adminEmail || "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || to.length > 200) return res.status(400).json(fail("NO_TARGET", "אין כתובת מייל לשלוח אליה. אשרו מייל בחשבון שלכם (הגדרות חשבון), או הגדירו ADMIN_EMAIL ב-Environment."));
+    const masked = to.replace(/^(.).*(@.*)$/, "$1***$2");
+    try {
+      const r = await mailer.sendNow({ to, subject: "בדיקת מייל - מחולל פעולות", html: `<p dir="rtl" style="font-size:16px">אם הגעתם לכאן, שליחת המיילים באתר עובדת (ערוץ: ${mailer.mode}).</p>` });
+      audit(db, req.user.username, "mail.test", { ok: true, mode: r.mode });
+      res.json({ ok: true, mode: r.mode, to: masked });
+    } catch (e) {
+      audit(db, req.user.username, "mail.test", { ok: false, code: e.code });
+      res.status(502).json(fail("MAIL_FAILED", `השליחה נכשלה: ${e.message}${e.hint ? ` — ${e.hint}` : ""}`));
+    }
+  });
+
+  // שלב 66 (ממצא 91): שאלות שמעוז לא ידע לענות עליהן (לפי כמות, מאוחדות). רק לאדמין
+  app.get("/api/admin/eagle/unanswered", requireAdmin(), (req, res) => {
+    res.set("Cache-Control", "no-store");
+    const items = db.prepare("SELECT id, q, count, first_at AS firstAt, last_at AS lastAt FROM eagle_unanswered ORDER BY count DESC, last_at DESC LIMIT 100").all();
+    res.json({ items, logging: process.env.EAGLE_LOG_UNANSWERED !== "0" });
+  });
+  app.delete("/api/admin/eagle/unanswered/:id", requireAdmin(), (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json(fail("BAD_REQUEST", "מזהה לא תקין"));
+    db.prepare("DELETE FROM eagle_unanswered WHERE id = ?").run(id);
+    res.json({ ok: true });
+  });
+  app.delete("/api/admin/eagle/unanswered", requireAdmin(), (req, res) => {
+    const n = db.prepare("DELETE FROM eagle_unanswered").run().changes;
+    audit(db, req.user.username, "eagle.unanswered.clear", { n });
+    res.json({ ok: true, removed: n });
   });
 
   app.post("/api/admin/persist/save", requireAdmin(), async (req, res) => {

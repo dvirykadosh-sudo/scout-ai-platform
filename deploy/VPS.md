@@ -25,7 +25,7 @@ cd scout-ai-platform
 cp .env.example .env
 nano .env
 ```
-ב-`nano` משנים את הערכים (DOMAIN, PUBLIC_URL, JWT_SECRET, ADMIN_PASSWORD, SIGNUP_CODE). שמירה: Ctrl+O ואז Enter. יציאה: Ctrl+X.
+ב-`nano` משנים את הערכים (DOMAIN, PUBLIC_URL, JWT_SECRET, ADMIN_PASSWORD). שמירה: Ctrl+O ואז Enter. יציאה: Ctrl+X.
 את JWT_SECRET אפשר לייצר עם: `openssl rand -hex 32`
 
 ## 5. מפעילים

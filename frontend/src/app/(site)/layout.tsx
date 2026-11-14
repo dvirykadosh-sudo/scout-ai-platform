@@ -16,7 +16,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <tr>
           <td>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-maoz.png" alt="" width={64} height={64} />
+            <img src="/logo-maoz-320.v1.webp" alt="" width={64} height={64} />
             <span>שבט מעוז · מחולל פעולות</span>
           </td>
         </tr>
@@ -25,7 +25,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <tr>
           <td>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="print-wm" src="/logo-maoz.png" alt="" aria-hidden="true" />
+            <img className="print-wm" src="/logo-maoz-640.v1.webp" alt="" aria-hidden="true" />
             <a className="skip-link" href="#main">
               דלג לתוכן הראשי
             </a>

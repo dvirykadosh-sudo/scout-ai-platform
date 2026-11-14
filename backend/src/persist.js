@@ -27,6 +27,9 @@ export const persistState = {
   encrypted: null, // האם הצילום האחרון שנשמר מוצפן
   keySource: null, // "BACKUP_KEY" | "JWT_SECRET" | null
   restore: null, // תוצאת השחזור האחרון
+  lastVerifiedAt: null, // בדיקת שחזור אחרונה של הגיבוי שב-GitHub (בלי לגעת במסד החי)
+  verifyOk: null,
+  verifyError: null,
   blocked: null, // סיבה שבגללה אסור לשמור (כדי לא לדרוס גיבוי טוב במסד ריק)
 };
 let handle = null;
@@ -162,6 +165,31 @@ export async function restoreIfMissing(dbFile, { env = process.env, fetchFn = fe
   }
   log(`שמירת נתונים: השחזור נכשל (${lastErr}). לא שומרים צילום חדש כדי לא לדרוס את הגיבוי הקיים.`);
   return done("error", `השחזור מ-GitHub נכשל (${lastErr})`);
+}
+
+/** שלב 64 (ממצא 64): מוריד את הגיבוי שב-GitHub ובודק שאפשר לפתוח אותו ולשחזר ממנו, בלי לגעת במסד החי.
+ *  גיבוי שאי אפשר לשחזר הוא לא גיבוי, ועדיף לגלות את זה היום ולא ביום שצריך אותו. */
+export async function verifyRemoteBackup({ env = process.env, fetchFn = fetch, log = console.log } = {}) {
+  const c = cfg(env);
+  if (!c.repo || !c.token) return { ok: false, error: "השמירה ב-GitHub לא מוגדרת" };
+  const finish = (ok, error = null, extra = {}) => {
+    persistState.lastVerifiedAt = new Date().toISOString();
+    persistState.verifyOk = ok;
+    persistState.verifyError = error;
+    if (!ok) log(`בדיקת גיבוי: נכשלה (${error})`);
+    return { ok, error, ...extra };
+  };
+  try {
+    const r = await fetchFn(`${url(c)}?ref=${encodeURIComponent(c.branch)}`, { headers: headers(c, "application/vnd.github.raw+json") });
+    if (r.status === 404) return finish(false, "אין עדיין גיבוי ב-GitHub");
+    if (!r.ok) return finish(false, `GitHub ${r.status}`);
+    const { gz, encrypted } = openBackup(Buffer.from(await r.arrayBuffer()), env);
+    const data = zlib.gunzipSync(gz);
+    checkSqliteFile(data);
+    return finish(true, null, { bytes: data.length, encrypted });
+  } catch (e) {
+    return finish(false, e.message);
+  }
 }
 
 /** בודק כל דקה אם המסד השתנה, ושומר צילום. שינוי אמיתי: לכל היותר אחת ל-2 דקות; שינוי ברעש בלבד: אחת לחצי שעה. שומר גם בכיבוי השרת. */

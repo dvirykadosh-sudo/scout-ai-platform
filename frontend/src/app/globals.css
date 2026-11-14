@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=Rubik:wght@500;700&display=swap");
+/* שלב 64: הגופנים (Heebo, Rubik) מתארחים באתר עצמו (חבילות @fontsource), בלי בקשה ל-Google. ראו app/layout.tsx */
 
 /* ───────────── tokens ─────────────
    שלב 59: עיצוב אחיד לכל האתר. מעטפת כהה (גרפיט) עם סרגל זכוכית, ומשטח עבודה בהיר (Bento) לתוכן.

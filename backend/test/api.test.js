@@ -216,10 +216,11 @@ describe("לוח אדמין ושכפול", () => {
     assert.equal(r.body.stages.reduce((s, x) => s + x.minutes, 0), 25);
     assert.equal(r.body.isSeed, false);
   });
-  it("דף הבית זמין ושגיאות API ב-JSON", async () => {
-    const home = await fetch(base + "/");
-    assert.equal(home.status, 200);
-    assert.equal((await j("/api/nope")).status, 404);
+  it("בדיקת תקינות זמינה ושגיאות API ב-JSON (דף הבית מוגש על ידי Next.js ולא על ידי השרת הזה)", async () => {
+    assert.equal((await fetch(base + "/api/health")).status, 200);
+    const nope = await j("/api/nope");
+    assert.equal(nope.status, 404);
+    assert.ok(nope.body?.error, "שגיאה בפורמט JSON");
   });
 });
 
@@ -304,8 +305,7 @@ describe("חשבונות מדריכים", () => {
   const reg = (u, name = "מדריך " + u) => post("/api/auth/register", { username: u, password: "password123", displayName: name, signupCode: "shevet-code" });
   let noa, dan, admin;
 
-  it("הרשמה דורשת קוד, מונעת כפילות וחוזרת עם טוקן", async () => {
-    assert.equal((await post("/api/auth/register", { username: "noa", password: "password123", displayName: "נועה", signupCode: "bad" })).status, 403);
+  it("ההרשמה פתוחה (בלי קוד שבט), מונעת כפילות וחוזרת עם טוקן", async () => {
     const r = await reg("noa", "נועה");
     assert.equal(r.status, 201);
     assert.equal(r.body.user.role, "INSTRUCTOR");
@@ -314,7 +314,7 @@ describe("חשבונות מדריכים", () => {
     dan = (await reg("dan", "דן")).body;
     admin = (await post("/api/auth/login", { username: "admin", password: "a-new-strong-pass" })).body;
     assert.equal(admin.user.role, "ADMIN");
-    assert.equal((await j("/api/meta")).body.signupNeedsCode, true);
+    assert.equal((await j("/api/meta")).body.signupNeedsCode, false, "קוד שבט כבר לא נדרש");
   });
   it("התחברות לא תלויית רישיות, ולוח הבקרה סגור למדריכים", async () => {
     assert.equal((await post("/api/auth/login", { username: "Noa", password: "password123" })).status, 200);
@@ -2961,10 +2961,10 @@ describe("ייצוא וכלים נלווים: סבב 127–138", () => {
     assert.equal(list.find((x) => x.id === d.id).pinned, true);
   });
 
-  it("128. קוד הרשמה: רווחים ואותיות גדולות לא מפריעים", async () => {
+  it("128. קוד הרשמה ישן שנשלח מהלקוח לא מפריע (ההרשמה פתוחה, והשדה מתעלמים ממנו)", async () => {
     const r = await req("POST", "/api/auth/register", { username: "exp2", password: "password123", displayName: "אחר", signupCode: "  SHEVET-CODE " });
     assert.equal(r.status, 201);
-    assert.equal((await req("POST", "/api/auth/register", { username: "exp3", password: "password123", displayName: "אחר", signupCode: "שגוי" })).status, 403);
+    assert.equal((await req("POST", "/api/auth/register", { username: "exp3", password: "password123", displayName: "אחר", signupCode: "שגוי" })).status, 201);
   });
 });
 
@@ -3908,16 +3908,13 @@ describe("accounts v52 (367-387)", () => {
     await rq("PUT", "/api/admin/security/registration", { approval: false });
   });
 
-  it("domain allowlist, daily cap and rotated code", async () => {
+  it("domain allowlist and daily cap (קוד שבט כבר לא נדרש)", async () => {
     await rq("PUT", "/api/admin/security/registration", { domains: ["tzofim.org.il"] });
     assert.equal((await reg("dom1", { email: "a@gmail.com" })).status, 400);
     assert.equal((await reg("dom2")).status, 400);
     assert.equal((await reg("dom3", { email: "a@tzofim.org.il" })).status, 201);
     await rq("PUT", "/api/admin/security/registration", { domains: [] });
-    await rq("PUT", "/api/admin/security/registration", { newCode: "new-code-77" });
-    assert.equal((await reg("rot1")).status, 403);
-    assert.equal((await reg("rot2", { signupCode: "new-code-77" })).status, 201);
-    await rq("PUT", "/api/admin/security/registration", { clearCode: true });
+    assert.equal((await reg("rot1")).status, 201, "בלי קוד שבט");
     await rq("PUT", "/api/admin/security/registration", { dailyCap: 1 });
     assert.equal((await reg("cap1")).status, 429);
     await rq("PUT", "/api/admin/security/registration", { dailyCap: 0 });

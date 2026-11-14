@@ -13,6 +13,7 @@ import { createMailer } from "./email.js";
 import { restoreIfMissing, startPersist } from "./persist.js";
 import { applyPendingRestore, startOps } from "./ops.js";
 import { seedIfEmpty } from "./seed.js";
+import { installProcessGuards } from "./server-errors.js";
 
 process.env.NEXT_DIST_DIR ||= ".next-prod";
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "frontend");
@@ -31,14 +32,31 @@ mailer.start();
 startBackupSchedule(db, backupDirFor());
 const persist = startPersist(db, config.dbPath);
 startOps({ db, dbFile: config.dbPath, config, mailer });
-if (persist) {
-  const bye = async () => {
-    await persist.flush();
-    process.exit(0);
-  };
-  process.on("SIGTERM", bye);
-  process.on("SIGINT", bye);
-}
+// שלב 64: כיבוי מסודר. מפסיקים לקבל חיבורים חדשים, שומרים את הנתונים אחרון, ויוצאים (עד 12 שניות).
+let httpServer = null;
+let closing = false;
+const shutdown = async (code = 0) => {
+  if (closing) return;
+  closing = true;
+  const hard = setTimeout(() => process.exit(code), 12_000);
+  hard.unref?.();
+  try {
+    httpServer?.close();
+    httpServer?.closeIdleConnections?.();
+    setTimeout(() => httpServer?.closeAllConnections?.(), 4_000).unref?.();
+  } catch {
+    /* ignore */
+  }
+  try {
+    await persist?.flush();
+  } catch {
+    /* ignore */
+  }
+  process.exit(code);
+};
+process.on("SIGTERM", () => void shutdown(0));
+process.on("SIGINT", () => void shutdown(0));
+installProcessGuards({ db, mailer, config }, { shutdown });
 
 const web = next({ dev: false, dir: frontendDir });
 await web.prepare();
@@ -54,6 +72,6 @@ app.use((req, res) => {
   if (m && m[1] !== "import" && !(/^\d{1,9}$/.test(m[1]) && getActivity(db, Number(m[1])))) res.statusCode = 404;
   return handle(req, res);
 });
-app.listen(config.port, "0.0.0.0", () => {
+httpServer = app.listen(config.port, "0.0.0.0", () => {
   console.log(`האתר פועל על פורט ${config.port}`);
 });

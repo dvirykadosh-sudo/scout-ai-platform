@@ -1,0 +1,10 @@
+{
+  "name": "scout-lint",
+  "private": true,
+  "description": "כלי בדיקת קוד (ESLint) לשרת. מותקן בנפרד כדי לא להכביד על התקנת האתר ב-Render.",
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0"
+  }
+}

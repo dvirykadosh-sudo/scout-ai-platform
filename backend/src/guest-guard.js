@@ -14,6 +14,15 @@ const PHONE_GROUPS = /(?<![\d])\d{3}[\s-]\d{3}[\s-]\d{4}(?![\d])/g;
 const LONG_DIGITS = /(?<![\d])\d{10,}(?![\d])/g;
 
 /** מסיר מטקסט קישורים, מיילים ומספרי טלפון. אם אין מה להסיר, מחזיר את אותו הטקסט. */
+/** שם כותב לתצוגה ציבורית לפי RATING_AUTHOR_MODE: שם פרטי בלבד (מילה ראשונה, עד 14 תווים), מוסתר, או כמו שהוזן. */
+export function publicAuthor(author, mode = "first") {
+  const a = String(author ?? "").trim();
+  if (!a || mode === "hidden") return null;
+  if (mode === "full") return a;
+  const first = a.split(/\s+/)[0].replace(/[^\p{L}\p{N}'\-"״׳]/gu, "").slice(0, 14);
+  return first || null;
+}
+
 export function scrubContact(s) {
   if (typeof s !== "string" || s.length < 5) return s;
   return s

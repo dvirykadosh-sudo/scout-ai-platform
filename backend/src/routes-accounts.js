@@ -41,7 +41,7 @@ const username = text(30)
   .min(3, "שם משתמש: לפחות 3 תווים")
   .regex(/^[A-Za-z0-9_.֐-׿-]+$/, "שם משתמש יכול להכיל אותיות, ספרות, נקודה, מקף וקו תחתון");
 
-export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen }) {
+export function registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin }) {
   const ip = (req) => req.ip || "";
   const ua = (req) => String(req.headers["user-agent"] || "").slice(0, 200);
   const isDev = !config.isProd;

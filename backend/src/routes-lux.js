@@ -230,7 +230,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
   });
 
   // ── שלב 62: "שאל את מעוז" ──
-  // פתוח גם לאורחים (עונה על שאלות על האתר והמאגר). שום שאלה או תשובה לא נשמרות. ניסוח בעזרת מודל רק כשמוגדר מפתח,
+  // פתוח גם לאורחים (עונה על שאלות על האתר והמאגר). התשובות והשיחה לא נשמרות; רק שאלה שלא נענתה נרשמת בטקסט מוסתר ובלי משתמש (ראו recordUnanswered). ניסוח בעזרת מודל רק כשמוגדר מפתח,
   // רק למשתמש מחובר ובמכסה יומית. פרטי היומן האישי מחושבים מקומית ולא נשלחים למודל.
   const eagle = createEagle({
     db,
@@ -239,6 +239,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
     today: todayStr,
     aiDaily: Number(process.env.EAGLE_AI_DAILY) || 20,
     aiGlobal: Number(process.env.EAGLE_AI_GLOBAL_DAILY) || 300,
+    logUnanswered: process.env.EAGLE_LOG_UNANSWERED !== "0",
   });
   const eagleLim = limiter(60_000, 20);
   const askSchema = z.object({ q: z.string().trim().min(2).max(400) }).strict();
@@ -270,6 +271,15 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
     if (db.prepare("SELECT COUNT(*) AS c FROM write_docs WHERE owner_id = ?").get(req.user.id).c >= 100) return res.status(409).json(fail("LIMIT", "אפשר לשמור עד 100 מסמכים. אפשר למחוק או לארכב ישנים."));
     const t = TEMPLATES.find((x) => x.id === "classic");
     let blocks = t.blocks();
+    // שלב 66 (ממצא 92): מעוז לא ממציא תוכן (הטקסט נשאר ריק, וזו החלטה מכוונת), אבל הרמזים בכל שלב מותאמים לנושא שבחרו
+    const topic = (v.data.value || v.data.title).slice(0, 40);
+    const HINT = {
+      open: `שאלה, משפט או מעשה קטן שמכניסים את החבורה לנושא "${topic}"`,
+      body: `הרעיון המרכזי של "${topic}": הסבר קצר, ומשחק או פעילות שמדגימים אותו`,
+      peak: `הרגע שבו "${topic}" נוגע בהם באמת: מקרה מהחיים שלהם או החלטה אישית`,
+      close: `מה לוקחים מ"${topic}", ומה עושים עם זה השבוע`,
+    };
+    blocks = blocks.map((b) => ({ ...b, hint: HINT[b.kind] ?? b.hint }));
     if (v.data.minutes) {
       const parts = apportion(blocks.map((b) => b.minutes || 1), v.data.minutes);
       blocks = blocks.map((b, i) => ({ ...b, minutes: parts[i] }));

@@ -348,7 +348,7 @@ export function EagleChat({ chat, loggedIn, onBack, onClose }: { chat: EagleChat
           שליחה
         </button>
       </form>
-      <p className="eg-privacy">אל תכתבו שמות או פרטים מזהים של חניכים. השיחה לא נשמרת בשרת ונעלמת ברענון.</p>
+      <p className="eg-privacy">אל תכתבו שמות או פרטים מזהים של חניכים. השיחה לא נשמרת ונעלמת ברענון. שאלה שמעוז לא ידע לענות עליה נרשמת בלי שם ובלי פרטים אישיים, כדי שנוסיף תשובה.</p>
     </div>
   );
 }

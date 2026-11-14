@@ -228,11 +228,18 @@ export function searchActivities(db, f = {}) {
       .all(...p, pageSize, (page - 1) * pageSize)
       .map(rowToActivity);
   }
-  for (const a of items) {
-    const r = db.prepare("SELECT COUNT(*) AS c, AVG(stars) AS avg FROM ratings WHERE activity_id = ?").get(a.id);
-    a.rating = { count: r.c, average: r.c ? Math.round(r.avg * 10) / 10 : 0 };
-    a.runCount = db.prepare("SELECT COUNT(*) AS c FROM runs WHERE activity_id = ?").get(a.id).c;
-    if (tokens.length) a.snippet = snippetFor(a, tokens);
+  // שלב 64: שתי שאילתות מקובצות לכל העמוד, במקום שתיים לכל פעולה
+  if (items.length) {
+    const ids = items.map((a) => a.id);
+    const ph = ids.map(() => "?").join(",");
+    const rat = new Map(db.prepare(`SELECT activity_id AS id, COUNT(*) AS c, AVG(stars) AS avg FROM ratings WHERE activity_id IN (${ph}) GROUP BY activity_id`).all(...ids).map((r) => [r.id, r]));
+    const runs = new Map(db.prepare(`SELECT activity_id AS id, COUNT(*) AS c FROM runs WHERE activity_id IN (${ph}) GROUP BY activity_id`).all(...ids).map((r) => [r.id, r.c]));
+    for (const a of items) {
+      const r = rat.get(a.id);
+      a.rating = { count: r ? r.c : 0, average: r ? Math.round(r.avg * 10) / 10 : 0 };
+      a.runCount = runs.get(a.id) ?? 0;
+      if (tokens.length) a.snippet = snippetFor(a, tokens);
+    }
   }
   return { items, total, page, pageSize };
 }

@@ -27,7 +27,7 @@ export const config = {
   // שלב 64: בפרודקשן בלי WEB_ORIGIN לא מתירים אף מקור חיצוני (האתר והשרת על אותו דומיין, ואין צורך ב-CORS)
   webOrigin: env.WEB_ORIGIN || (isProd ? "" : "http://localhost:3000"),
   // הכתובת הציבורית של האתר (למשל https://maoz.example.co.il), לקישורים בקבצי יומן
-  publicUrl: (env.PUBLIC_URL || "").replace(/\/+$/, ""),
+  publicUrl: (env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || "").replace(/\/+$/, ""),
   dbPath: env.DB_PATH || "./data/scout.db",
   jwtSecret: env.JWT_SECRET || (isProd ? "" : crypto.randomBytes(32).toString("hex")),
   // שלב 63: החלפת מפתח בלי לנתק את כולם: שמים את הישן ב-JWT_SECRET_PREVIOUS והחדש ב-JWT_SECRET (הישן רק נבדק, לא חותם).
@@ -71,6 +71,10 @@ export const config = {
   },
   // שלב 64: כמה פעולות בלי התחברות מותר ליצור מכל כתובת ביום (בנוסף למכסה הכללית)
   guestDailyPerIp: Math.max(1, Number(env.GUEST_DAILY_PER_IP ?? 40) || 40),
+  // שלב 66 (ממצאים 97–98): איך מוצג שם הכותב בדירוג ציבורי (first = שם פרטי בלבד, hidden = לא מוצג, full = כמו שהוזן),
+  // וכמה ימים נשמרים טקסטים חופשיים של אורחים (הערות ושמות בדירוגים, הערות בדיווחים שנסגרו). הכוכבים נשארים. 0 = לא למחוק.
+  ratingAuthorMode: ["first", "hidden", "full"].includes(env.RATING_AUTHOR_MODE) ? env.RATING_AUTHOR_MODE : "first",
+  guestTextRetentionDays: Math.max(0, Math.min(3650, Number(env.GUEST_TEXT_RETENTION_DAYS ?? 365) || 0)),
 };
 
 /** מפתח משנה לשימוש מסוים (HKDF), כדי שאסימון שנוצר לצורך אחד לא יתקבל בצורך אחר. */

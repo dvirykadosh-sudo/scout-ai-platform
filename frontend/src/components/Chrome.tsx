@@ -32,7 +32,7 @@ const ACCOUNT_LABEL_OUT = "התחברות והרשמה";
 
 const ENV_LOGO = process.env.NEXT_PUBLIC_LOGO_URL;
 // לוגו ברירת המחדל של השבט (אדמין יכול להחליף בלוח הבקרה)
-const DEFAULT_LOGO = "/logo-maoz.png";
+const DEFAULT_LOGO = "/logo-maoz-320.v1.webp"; // שלב 64: 21KB במקום 397KB
 
 let metaPromise: Promise<{ logoVersion: string | null }> | null = null;
 /** The logo the admin uploaded (or the one set in the environment). */

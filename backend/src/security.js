@@ -172,6 +172,16 @@ export function purgeOld(db, days = readSettings(db).ipRetentionDays) {
     codes: run("DELETE FROM verify_codes WHERE created_at < ?", new Date(Date.now() - 7 * 86400_000).toISOString()),
     blocks: run("DELETE FROM ip_blocks WHERE expires_at IS NOT NULL AND expires_at < ?", nowIso()),
   };
+  // שלב 66 (ממצא 98): טקסטים חופשיים של אורחים לא נשמרים לנצח. הכוכבים נשארים (כדי שממוצע הדירוג והמשוב לא ישתנו),
+  // אבל ההערה והשם בדירוג, וההערה בדיווח שנסגר, נמחקים אחרי GUEST_TEXT_RETENTION_DAYS (ברירת מחדל שנה).
+  const keep = config.guestTextRetentionDays;
+  if (keep > 0) {
+    const old = new Date(Date.now() - keep * 86400_000).toISOString();
+    out.ratingText = run("UPDATE ratings SET comment = NULL, author = NULL WHERE created_at < ? AND (comment IS NOT NULL OR author IS NOT NULL)", old);
+    out.flagNotes = run("UPDATE flags SET note = NULL WHERE status <> 'OPEN' AND note IS NOT NULL AND COALESCE(resolved_at, created_at) < ?", old);
+  }
+  // שאלות שמעוז לא ענה עליהן: 60 יום
+  out.eagleQuestions = run("DELETE FROM eagle_unanswered WHERE last_at < ?", new Date(Date.now() - 60 * 86400_000).toISOString());
   return out;
 }
 

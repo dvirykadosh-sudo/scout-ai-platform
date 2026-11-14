@@ -1,7 +1,7 @@
 // שלב 62: "שאל את מעוז". הנשר עונה על שאלות מתוך מה שבאמת קיים: דפי האתר, המתודות, הערכים, סוגי הפעולות,
 // המאגר והיומן של המדריך. כל תשובה מגיעה עם קישור "פתח". ניסוח בעזרת מודל (Claude) קורה רק כשמוגדר מפתח
 // ANTHROPIC_API_KEY, רק למשתמש מחובר, בכפוף למכסה יומית, ותמיד עם נפילה חזרה לתשובה המקומית.
-// שום שיחה לא נשמרת בשרת. פרטי היומן האישי מחושבים מקומית ולא נשלחים למודל.
+// שום שיחה לא נשמרת בשרת. (שלב 66: שאלה שלא נענתה נרשמת בטקסט מוסתר ובלי משתמש, ראו recordUnanswered.) פרטי היומן האישי מחושבים מקומית ולא נשלחים למודל.
 import { METHODS } from "./shared/constants.js";
 import { CHALLENGES, VALUES } from "./content.js";
 import { KINDS, KIND_IDS } from "./kinds.js";
@@ -50,7 +50,7 @@ export const SITE_KB = [
   { id: "requests", title: "בקשות לפעולות", keys: "בקשה לבקש לא מצאתי חסר במאגר להצביע", a: "משהו שלא מצאתי במאגר? אפשר להוסיף בקשה, ואחרים יצטרפו אליה.", links: [L("לבקשות", "/requests")] },
   { id: "cupboard", title: "מה יש בארון", keys: "ארון ציוד מה יש לי להפעיל מיד סינון לפי ציוד", a: "ב'מה יש בארון' מסמנים ציוד שיש לכם ורואים אילו פעולות אפשר להפעיל מיד.", links: [L("לארון", "/cupboard")] },
   { id: "install", title: "התקנה כאפליקציה", keys: "התקנה להתקין אפליקציה טלפון מסך הבית אופליין pwa", a: "אפשר להתקין את האתר כאפליקציה בטלפון. בדף ההתקנה יש הוראות לפי סוג המכשיר.", links: [L("להתקנה", "/install")] },
-  { id: "privacy", title: "פרטיות", keys: "פרטיות מידע נשמר נתונים אישיים מדיניות שיחות נשמרות", a: "בדף הפרטיות מפורט איזה מידע נשמר. השיחה שלי איתכם לא נשמרת בשרת.", links: [L("לדף הפרטיות", "/privacy")] },
+  { id: "privacy", title: "פרטיות", keys: "פרטיות מידע נשמר נתונים אישיים מדיניות שיחות נשמרות", a: "בדף הפרטיות מפורט איזה מידע נשמר. השיחה שלי איתכם לא נשמרת בשרת. רק שאלה שלא ידעתי לענות עליה נרשמת בלי שם ובלי פרטים אישיים, כדי שיוסיפו לי תשובה.", links: [L("לדף הפרטיות", "/privacy")] },
   { id: "methods", title: "ספריית המתודות", keys: "ספריית מתודות שיטות שיטה רשימת מתודות", a: `בספריית המתודות יש ${METHODS.length} מתודות עם הסבר, מתי להשתמש בכל אחת ודוגמה: ${METHODS.map((m) => m.name).join(", ")}.`, links: [L("לספריית המתודות", "/methods")] },
   { id: "values", title: "הערכים באתר", keys: "ערכים ערך מוביל רשימת הערכים מידות צופיות ערך מוביל לבחור ערך", a: `באתר ${VALUES.length} ערכים מובילים: ${VALUES.map((v) => v.label).join(", ")}. בכל פעולה בוחרים ערך מוביל, ובמאגר אפשר לסנן לפי ערך.`, links: [L("לערכים", "/values"), L("למאגר", "/library")] },
   { id: "kinds", title: "סוגי פעולות", keys: "סוגי פעולות סוג פעולת שיא ערך תוכן חברתית שטח היכרות סיכום", a: `יש ${KIND_IDS.length} סוגי פעולות: ${KIND_IDS.map((k) => KINDS[k].label).join(", ")}. לכל סוג יש מבנה משלו, ובעמוד הסוגים אפשר לראות מתי מתאים להפעיל כל אחד.`, links: [L("לסוגי הפעולות", "/types")] },
@@ -270,7 +270,7 @@ const cleanAnswer = (t) =>
  * יוצר את מנוע הנשר. fetchImpl ו-now ניתנים להחלפה בבדיקות.
  * מכסות: aiDaily למשתמש ביום, aiGlobal לכל האתר ביום (ב-env: EAGLE_AI_DAILY, EAGLE_AI_GLOBAL_DAILY).
  */
-export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, aiGlobal = 300, rng }) {
+export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, aiGlobal = 300, rng, logUnanswered = true }) {
   const perUser = new Map();
   const glob = { day: "", n: 0 };
   const cache = new Map();
@@ -386,11 +386,31 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
     return { answer: "לא מצאתי תשובה לזה. אפשר לנסות לנסח אחרת, לעיין במרכז העזרה, או לשאול אותי למשל על מצב במה, על מתודה או על ערך.", links: [L("למרכז העזרה", "/help")], cards: [], topic: "none", suggestions: STARTERS.slice(0, 3) };
   }
 
+  /**
+   * שלב 66 (ממצא 91): שאלה שהמאגר והידע לא ענו עליה בביטחון נרשמת (מאוחדת לפי ניסוח) כדי שהאדמין יראה מה חסר.
+   * נשמר רק טקסט מוסתר (בלי מיילים וטלפונים), עד 140 תווים, בלי משתמש ובלי כתובת. נמחק אחרי 60 יום.
+   */
+  function recordUnanswered(q) {
+    if (!logUnanswered) return;
+    try {
+      const text = safeText(maskPII(q), 140);
+      const key = norm(text);
+      if (key.length < 4) return;
+      const now = new Date().toISOString();
+      db.prepare("INSERT INTO eagle_unanswered (key, q, count, first_at, last_at) VALUES (?,?,1,?,?) ON CONFLICT(key) DO UPDATE SET count = count + 1, last_at = excluded.last_at").run(key, text, now, now);
+      const n = db.prepare("SELECT COUNT(*) AS c FROM eagle_unanswered").get().c;
+      if (n > 500) db.prepare("DELETE FROM eagle_unanswered WHERE id IN (SELECT id FROM eagle_unanswered ORDER BY count ASC, last_at ASC LIMIT ?)").run(n - 500);
+    } catch {
+      /* רישום הוא בונוס: לא מפיל תשובה */
+    }
+  }
+
   /** @param {{question:string, user:{id:number}|null}} p */
   async function ask({ question, user }) {
     const q = clip(question, 400);
     const ctxOut = {};
     const local = localAnswer(q, user, ctxOut);
+    if (ctxOut.confident === false) recordUnanswered(q);
     const base = { ...local, source: "local", aiLeft: user && ai?.key ? aiLeft(user.id) : null };
     const personal = ["week", "safety", "hello"].includes(local.topic) || /^write-/.test(local.topic || ""); // כתיבה: הרשימות והכפתורים מהמאגרים, לא מנוסחים מחדש
     // מודל: רק כשיש מפתח, משתמש מחובר, השאלה לא אישית ולא בטיחותית, ויש הצדקה (אין תשובה בטוחה, או שזו שאלת ייעוץ)

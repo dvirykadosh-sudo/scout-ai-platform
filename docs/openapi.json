@@ -1,0 +1,10794 @@
+{
+ "openapi": "3.0.3",
+ "info": {
+  "title": "מחולל פעולות, שבט מעוז",
+  "version": "66",
+  "description": "מפת הנתיבים שנוצרה אוטומטית מהשרת (backend/scripts/gen-openapi.mjs). שגיאות מוחזרות כ-{error:{code,message,fields?}}."
+ },
+ "paths": {
+  "/api/activities": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}": {
+   "delete": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/access": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/adapt": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/add-my-story": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/add-story": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/collaborators": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/collaborators/{userId}": {
+   "delete": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "userId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/duplicate": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/export/docx": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/feedback": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/flags": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/newbie": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/notes": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/questions": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/ratings": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/restore": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/review": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/run-suggestions": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/runs": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/safety": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/safety/apply": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/shorten": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/similar": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/stages/{index}/regenerate": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "index",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/summary": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/tags": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/upgrade-peak": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/versions": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/versions/{vid}/restore": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "vid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/whatsapp": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/emergency": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/generate": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/import": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/import-file": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/import-parsed": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/prompt": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/quick": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/adapt/conditions": {
+   "get": {
+    "tags": [
+     "adapt"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/access": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/access.csv": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/activities/{id}/approve": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/activities/{id}/merge": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/activities/{id}/reject": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/announcements": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/announcements/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/audit": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/audit.csv": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/audit/verify": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/backup/download": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/backup/mail": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/backups": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/backups/{name}": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "name",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/blocks": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/blocks/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/bugs/{id}": {
+   "patch": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/eagle/unanswered": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/eagle/unanswered/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/feature-feedback": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/feature-requests/{id}": {
+   "patch": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/featured": {
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/flags": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/flags/{id}/resolve": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/insights": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/logo": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/logs": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/mail/test": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/maintenance": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/pending": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/persist/save": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/persist/verify": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/pilot": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/pilot/report": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/report": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/report.csv": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/requests/{id}/resolve": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/restore": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/roles": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/drill": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/errors": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/expiring": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/expiry": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/flags": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/flags/{key}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "key",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "key",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/hardening": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/import-users": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/inactive": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/inactive/disable": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/invites": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/invites/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/lockouts": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/lockouts/release": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/nps": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/overview": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/pending": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/pending/{id}": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/purge": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/registration": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/revoke-all": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/settings": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/stamps": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/stamps/{id}": {
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/security/vitals": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/sessions": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/settings": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/stats": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/storage": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/system": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/system/history": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/users": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/users/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/users/{id}/purge-ip": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/users/{id}/sessions": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/users/{id}/sessions/{sid}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/users/export.csv": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/visitors": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/breaker/clear": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/bridges": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/bridges/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/contacts": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/contacts/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/groups": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/groups/import": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/inbox": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/inbox/{id}/reply": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/jobs": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/jobs/{id}/cancel": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/jobs/{id}/retry": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/jobs/broadcast": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/jobs/send": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/log": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/log.csv": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/rsvp": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/rsvp/{key}": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "key",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/rules": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/rules/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/rules/run": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/settings": {
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/stats": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/status": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/templates": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/templates/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/templates/preview": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/tools": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/wa/tools/{name}": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "name",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/write-methods": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/write-methods/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/write-templates": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/write-templates/{id}": {
+   "delete": {
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/admin/write-usage": {
+   "get": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/announcements": {
+   "get": {
+    "tags": [
+     "announcements"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/analyze": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/board": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/board/cell": {
+   "delete": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/booklet": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/comments/{id}": {
+   "delete": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/continue": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/drafts": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/drafts/{id}": {
+   "delete": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/drafts/{id}/share": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/drafts/{id}/versions": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/drafts/{id}/versions/{vid}": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "vid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/drafts/{id}/versions/{vid}/restore": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "vid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/dryrun": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/gear": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/growth": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/help": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/inclusion": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/inspire": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/learn-style": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/parents": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/questions": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/reflect": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/reflections": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/rewrite": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/save": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/schedule": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/script": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/shared/{token}": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/shared/{token}/comments": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/stations": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/swap": {
+   "post": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/templates": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/assist/traits": {
+   "get": {
+    "tags": [
+     "assist"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/2fa": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/2fa/email/request": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/change-password": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/extend": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/forgot": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/form-token": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/invite/{code}": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "parameters": [
+     {
+      "name": "code",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/login": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/logout": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/magic/consume": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/magic/request": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/me": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/options": {
+   "get": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/password-check": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/register": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/auth/reset": {
+   "post": {
+    "tags": [
+     "auth"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/by-equipment": {
+   "post": {
+    "tags": [
+     "by-equipment"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/challenges": {
+   "get": {
+    "tags": [
+     "challenges"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/ai": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/analyze": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/announce": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/check-reply": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/followups": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/followups/{id}": {
+   "delete": {
+    "tags": [
+     "chat"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "chat"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/group-messages": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/outreach": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/parse": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/ping": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/reply": {
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/safety-info": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/saved": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/saved/{id}": {
+   "delete": {
+    "tags": [
+     "chat"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/tokens": {
+   "get": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "chat"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/chat/tokens/{id}": {
+   "delete": {
+    "tags": [
+     "chat"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/client-error": {
+   "post": {
+    "tags": [
+     "client-error"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/collections/{cid}": {
+   "delete": {
+    "tags": [
+     "collections"
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/collections/{cid}/items": {
+   "post": {
+    "tags": [
+     "collections"
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/collections/{cid}/items/{aid}": {
+   "delete": {
+    "tags": [
+     "collections"
+    ],
+    "parameters": [
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "aid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/cost/estimate": {
+   "post": {
+    "tags": [
+     "cost"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/coverage": {
+   "get": {
+    "tags": [
+     "coverage"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/export/booklet": {
+   "post": {
+    "tags": [
+     "export"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/feature-requests": {
+   "get": {
+    "tags": [
+     "feature-requests"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "feature-requests"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/feature-requests/{id}/vote": {
+   "post": {
+    "tags": [
+     "feature-requests"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/featured": {
+   "get": {
+    "tags": [
+     "featured"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/feedback/{fid}": {
+   "delete": {
+    "tags": [
+     "feedback"
+    ],
+    "parameters": [
+     {
+      "name": "fid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/feedback/feature": {
+   "post": {
+    "tags": [
+     "feedback"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/flag-reasons": {
+   "get": {
+    "tags": [
+     "flag-reasons"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/flags": {
+   "get": {
+    "tags": [
+     "flags"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/gear": {
+   "get": {
+    "tags": [
+     "gear"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/hall": {
+   "get": {
+    "tags": [
+     "hall"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/health": {
+   "get": {
+    "tags": [
+     "health"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/health/data": {
+   "get": {
+    "tags": [
+     "health"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/icebreakers": {
+   "get": {
+    "tags": [
+     "icebreakers"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/kinds": {
+   "get": {
+    "tags": [
+     "kinds"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/logo": {
+   "get": {
+    "tags": [
+     "logo"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/comfort": {
+   "delete": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/eagle/ask": {
+   "post": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/eagle/draft": {
+   "post": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/eagle/info": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/insights": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/presence/draft/{id}": {
+   "post": {
+    "tags": [
+     "lux"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/presence/shared/{token}": {
+   "post": {
+    "tags": [
+     "lux"
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/today": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/trail": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/weather": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/wrapped": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/wrapped/tribe": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/backup-codes": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/disable": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/email/confirm": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/email/disable": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/email/disable-code": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/email/enable": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/enable": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/2fa/setup": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/activities": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/assist-groups": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/assist-groups/{id}": {
+   "delete": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/collections": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/contact": {
+   "put": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/delete": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/export": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/forgotten": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/gaps": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/learned": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/login-history": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/notifications": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/notifications/read": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/pilot": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/prices": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/purge-ip": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/reminders": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/reminders/{id}/dismiss": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/runs": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/schedule": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/schedule.ics": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/schedule/{id}": {
+   "delete": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/security": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/security-events": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/security-score": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/sessions": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/sessions/{id}": {
+   "delete": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/sessions/revoke-others": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/shared": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/style": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/survey": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/tagged": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/tags": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/terms": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/verify/confirm": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/verify/request": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/meta": {
+   "get": {
+    "tags": [
+     "meta"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/methods": {
+   "get": {
+    "tags": [
+     "methods"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/newbie/guide": {
+   "get": {
+    "tags": [
+     "newbie"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/notes/{nid}": {
+   "delete": {
+    "tags": [
+     "notes"
+    ],
+    "parameters": [
+     {
+      "name": "nid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/nps": {
+   "post": {
+    "tags": [
+     "nps"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/nps/dismiss": {
+   "post": {
+    "tags": [
+     "nps"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/nps/due": {
+   "get": {
+    "tags": [
+     "nps"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/peak-ideas": {
+   "get": {
+    "tags": [
+     "peak-ideas"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/plan": {
+   "post": {
+    "tags": [
+     "plan"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/plan/multi": {
+   "post": {
+    "tags": [
+     "plan"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/privacy-info": {
+   "get": {
+    "tags": [
+     "privacy-info"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/quality": {
+   "post": {
+    "tags": [
+     "quality"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/quick": {
+   "get": {
+    "tags": [
+     "quick"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/ratings/{ratingId}": {
+   "delete": {
+    "tags": [
+     "ratings"
+    ],
+    "parameters": [
+     {
+      "name": "ratingId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/reactions/{id}": {
+   "get": {
+    "tags": [
+     "reactions"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "reactions"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/report": {
+   "post": {
+    "tags": [
+     "report"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/requests": {
+   "get": {
+    "tags": [
+     "requests"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "requests"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/requests/{id}/vote": {
+   "post": {
+    "tags": [
+     "requests"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/runs/{id}": {
+   "delete": {
+    "tags": [
+     "runs"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/search/smart": {
+   "get": {
+    "tags": [
+     "search"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/search/suggest": {
+   "get": {
+    "tags": [
+     "search"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/status": {
+   "get": {
+    "tags": [
+     "status"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/stories": {
+   "get": {
+    "tags": [
+     "stories"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/ages": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/ai": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/analyze": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/build": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/dict": {
+   "get": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/diff": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/directions": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/fix-cliches": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/memories": {
+   "get": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/memories/{id}": {
+   "delete": {
+    "tags": [
+     "story"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "story"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/moments": {
+   "get": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/register": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/stories": {
+   "get": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/stories/{id}": {
+   "delete": {
+    "tags": [
+     "story"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "story"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "story"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/suggest": {
+   "get": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/story/voice-clean": {
+   "post": {
+    "tags": [
+     "story"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/style/analyze": {
+   "post": {
+    "tags": [
+     "style"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/style/extract": {
+   "post": {
+    "tags": [
+     "style"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/suggest/week": {
+   "get": {
+    "tags": [
+     "suggest"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/team/events": {
+   "get": {
+    "tags": [
+     "team"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "team"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/team/events/{id}": {
+   "delete": {
+    "tags": [
+     "team"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/team/events/{id}/substitute": {
+   "get": {
+    "tags": [
+     "team"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/topics/random": {
+   "get": {
+    "tags": [
+     "topics"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/topics/suggest": {
+   "get": {
+    "tags": [
+     "topics"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/values": {
+   "get": {
+    "tags": [
+     "values"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/vitals": {
+   "post": {
+    "tags": [
+     "vitals"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/wa/bridge/groups": {
+   "post": {
+    "tags": [
+     "wa"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/wa/bridge/heartbeat": {
+   "post": {
+    "tags": [
+     "wa"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/wa/bridge/inbound": {
+   "post": {
+    "tags": [
+     "wa"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/wa/bridge/next": {
+   "get": {
+    "tags": [
+     "wa"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/wa/bridge/result": {
+   "post": {
+    "tags": [
+     "wa"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/warmups": {
+   "get": {
+    "tags": [
+     "warmups"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/age-adapt": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/attendance/stats": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/backup": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/backup-plan": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/bridge": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/bulk": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/cheers": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/clean": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/age-copy": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/attendance": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/comments": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/comments/{cid}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "patch": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "cid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/duplicate": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/presence": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/share": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/short10": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/snapshot": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/versions": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/versions/{vid}": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "vid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/versions/{vid}/restore": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "vid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/emergency": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/expand": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/export/docx": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/export/pdf": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/export/sheet": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/export/text": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/game-rules": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/gaps": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/holidays": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/holidays/{key}": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "key",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/hooks": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/insights/{tool}": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "tool",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/keywords": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/analyze": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/apply-card": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/compare": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/draft": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/from-text": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/my-style": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/profiles": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/profiles/{id}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/profiles/{id}/export": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/profiles/import": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/profiles/merge": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/review": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/rewrite": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/lab/score": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/merge-plan": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/method-catalog": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/methods/search": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/next-series": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/prefs": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "put": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/prep": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/question-bank": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/question-bank/{id}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/questions": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/quiz": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/readability": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/readiness": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/restore": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/role-sets": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/safety": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/search": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/shared/{token}": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/shared/{token}/comments": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/shared/{token}/presence": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/short": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/similar": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/snippets": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/snippets/{id}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/split": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/stage-questions": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/stations": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/stats": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/story-ideas": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/suggest": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/swap": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/templates": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/title-ideas": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/translate-sheet": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/trash": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/trash/{id}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/trash/{id}/restore": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/tribe-methods": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/tribe-templates": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/upcoming": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/voice-check": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/year-mix": {
+   "get": {
+    "tags": [
+     "year-mix"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "responses": {
+   "Ok": {
+    "description": "הצלחה"
+   },
+   "Bad": {
+    "description": "קלט לא תקין"
+   },
+   "Auth": {
+    "description": "נדרשת התחברות"
+   }
+  }
+ }
+}

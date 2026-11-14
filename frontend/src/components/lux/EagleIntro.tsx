@@ -151,7 +151,7 @@ export function EagleIntro({ onClose }: { onClose: () => void }) {
 
       <header className="eg-top">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-maoz.png" alt="" width={44} height={44} />
+        <img src="/logo-maoz-320.v1.webp" alt="" width={44} height={44} />
         <span>שבט מעוז מציג</span>
         <button ref={skip} type="button" className="eg-skip" onClick={close}>
           <X size={16} aria-hidden="true" /> {i >= last ? "סגירה" : "דלגו"}

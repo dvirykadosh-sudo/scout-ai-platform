@@ -1,6 +1,7 @@
 "use client";
 
 // שלב 39 (261–270): בדיקת קול, בדיקת בטיחות, התאמה לגיל ושאלות לדיון אחרי כל שלב.
+import { escHtml, printDocument } from "@/lib/print";
 import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useToast } from "./Providers";
@@ -81,7 +82,7 @@ interface Emergency {
   contacts: { name: string; phone: string }[];
   national: { name: string; phone: string }[];
 }
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const esc = escHtml;
 
 /** 263, 264, 265 */
 export function SafetyModal({ open, onClose, snap, token, onAddStage }: { open: boolean; onClose: () => void; snap: Snap; token: string | null; onAddStage: (title: string, text: string) => void }) {
@@ -111,14 +112,10 @@ export function SafetyModal({ open, onClose, snap, token, onAddStage }: { open: 
     onClose();
   };
   const printCard = () => {
-    const w = window.open("", "_blank", "width=800,height=900");
-    if (!w) return toast("הדפדפן חסם את החלון. אפשרו חלונות קופצים ונסו שוב.", { kind: "error" });
     const phones = [...em.contacts, ...em.national].map((c) => `<li><strong>${esc(c.name)}</strong>: <span dir="ltr">${esc(c.phone)}</span></li>`).join("");
     const risks = (r?.risks ?? []).map((x) => `<li><strong>${esc(x.label)}</strong>: ${esc(x.suggestion)}</li>`).join("");
-    w.document.write(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>כרטיס בטיחות</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.6}h1{border-bottom:4px solid #9a3412;padding-bottom:6px}li{margin:6px 0}</style></head><body><h1>כרטיס בטיחות: ${esc(snap.title || "פעולה")}</h1><p>${r?.ratio.groupSize ? `${r.ratio.groupSize} חניכים · ` : ""}נדרשים לפחות ${r?.ratio.guidesNeeded ?? "?"} מדריכים (מדריך לכל ${r?.ratio.perGuide ?? "?"})</p><h2>הנחיות לפעולה</h2><ul>${risks || "<li>לא זוהו סיכונים מיוחדים</li>"}</ul><h2>טלפונים לחירום</h2><ul>${phones}</ul><h2>לפני שמתחילים</h2><ul><li>ספירת חניכים ורשימת נוכחות</li><li>ארגז עזרה ראשונה זמין</li><li>ידוע מי הרכז האחראי</li></ul></body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
+    const ok = printDocument(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>כרטיס בטיחות</title><style>body{font-family:Arial,sans-serif;padding:24px;line-height:1.6}h1{border-bottom:4px solid #9a3412;padding-bottom:6px}li{margin:6px 0}</style></head><body><h1>כרטיס בטיחות: ${esc(snap.title || "פעולה")}</h1><p>${r?.ratio.groupSize ? `${r.ratio.groupSize} חניכים · ` : ""}נדרשים לפחות ${r?.ratio.guidesNeeded ?? "?"} מדריכים (מדריך לכל ${r?.ratio.perGuide ?? "?"})</p><h2>הנחיות לפעולה</h2><ul>${risks || "<li>לא זוהו סיכונים מיוחדים</li>"}</ul><h2>טלפונים לחירום</h2><ul>${phones}</ul><h2>לפני שמתחילים</h2><ul><li>ספירת חניכים ורשימת נוכחות</li><li>ארגז עזרה ראשונה זמין</li><li>ידוע מי הרכז האחראי</li></ul></body></html>`);
+    if (!ok) toast("אי אפשר להדפיס מכאן. נסו לפתוח את הדף בדפדפן רגיל.", { kind: "error" });
   };
   return (
     <Modal open={open} onClose={onClose} title="בדיקת בטיחות" wide footer={<Close onClose={onClose} />}>

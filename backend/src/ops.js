@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { DatabaseSync } from "node:sqlite";
-import { persistHealthy, persistState } from "./persist.js";
+import { persistHealthy, persistState, verifyRemoteBackup } from "./persist.js";
 import { sendWeeklyReportIfDue } from "./routes-pilot.js";
 
 export const getSet = (db, key, def = "") => db.prepare("SELECT value FROM settings WHERE key = ?").get(key)?.value ?? def;
@@ -89,7 +89,7 @@ export async function mailBackupIfDue(db, mailer, config, { force = false } = {}
 
 /** התראות במייל: שמירה חיצונית תקועה, או מסד גדול מדי. פעם אחת לכל תקלה. */
 export function startOps({ db, dbFile, config, mailer }) {
-  let alerted = { persist: false, size: false };
+  let alerted = { persist: false, size: false, verify: false };
   const tick = async () => {
     try {
       recordSample(db, dbFile);
@@ -100,6 +100,18 @@ export function startOps({ db, dbFile, config, mailer }) {
         if (to && mailer?.hasTransport) mailer.enqueue("התראה: שמירת הנתונים תקועה", '<p dir="rtl">השמירה ל-GitHub לא הצליחה כבר יותר מרבע שעה. בדקו את הטוקן ב-Render. עד לתיקון, נתונים חדשים עלולים ללכת לאיבוד באיתחול.</p>', to);
       }
       if (!stuck) alerted.persist = false;
+      // שלב 64: בדיקת שחזור של הגיבוי שב-GitHub, פעם בשבוע (הראשונה שעה אחרי העלייה)
+      if (persistState.configured && !persistState.blocked) {
+        const lastV = persistState.lastVerifiedAt ? Date.parse(persistState.lastVerifiedAt) : Date.now() - 6 * 86400000 - 23 * 3600000;
+        if (Date.now() - lastV > 7 * 86400000) {
+          const v = await verifyRemoteBackup();
+          if (!v.ok && to && mailer?.hasTransport && !alerted.verify) {
+            alerted.verify = true;
+            mailer.enqueue("התראה: אי אפשר לשחזר את הגיבוי מ-GitHub", `<p dir="rtl">בדיקת השחזור השבועית נכשלה: ${String(v.error).replace(/[<>&]/g, "")}. עד שזה מתוקן, ייתכן שאי אפשר יהיה לשחזר את האתר אחרי הפעלה מחדש. פרטים: אדמין ← מצב המערכת.</p>`, to);
+          }
+          if (v.ok) alerted.verify = false;
+        }
+      }
       let bytes = 0;
       try {
         bytes = fs.statSync(dbFile).size;

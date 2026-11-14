@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS runs (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_runs_user ON runs(user_id, activity_id);
+CREATE INDEX IF NOT EXISTS idx_runs_activity ON runs(activity_id);
 CREATE TABLE IF NOT EXISTS activity_versions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
@@ -231,6 +232,16 @@ CREATE TABLE IF NOT EXISTS verify_codes (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_verify_codes_user ON verify_codes(user_id, kind);
+-- שלב 66 (ממצא 91): שאלות שמעוז לא ידע לענות עליהן. טקסט מוסתר (בלי מיילים וטלפונים), בלי משתמש ובלי כתובת, מאוחד לפי ניסוח, ונמחק אחרי 60 יום.
+CREATE TABLE IF NOT EXISTS eagle_unanswered (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL UNIQUE,
+  q TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 1,
+  first_at TEXT NOT NULL,
+  last_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_eagle_unanswered_last ON eagle_unanswered(last_at);
 CREATE TABLE IF NOT EXISTS email_queue (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   to_addr TEXT NOT NULL,
@@ -621,11 +632,20 @@ export function openDb(file = config.dbPath) {
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
+  // שלב 64: ב-WAL מספיק NORMAL (מהיר יותר, ובטוח מקריסת תהליך), והמתנה של עד 5 שניות במקום שגיאה כשהמסד תפוס
+  db.exec("PRAGMA synchronous = NORMAL;");
+  db.exec("PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA);
   db.exec(WA_SCHEMA); // שלב 58: מנוע הוואטסאפ
   migrate(db);
+  // שלב 64: גרסת הסכמה (PRAGMA user_version). כשמוסיפים מיגרציה חדשה מעלים את המספר, וכך אפשר לראות באדמין באיזו גרסה המסד.
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   return db;
 }
+
+/** גרסת הסכמה הנוכחית. מעלים בכל פעם שמוסיפים עמודה או טבלה ב-migrate / SCHEMA. */
+export const SCHEMA_VERSION = 66;
+export const schemaVersion = (db) => db.prepare("PRAGMA user_version").get().user_version;
 
 const columnsOf = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
 

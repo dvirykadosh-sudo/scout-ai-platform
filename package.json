@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "מחולל פעולות - שבט מעוז",
-  "engines": { "node": ">=22.13" },
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "setup": "node run.mjs setup",
     "build:prod": "node run.mjs build-prod",
@@ -12,6 +14,9 @@
     "start": "node run.mjs",
     "dev": "node run.mjs dev",
     "test": "npm test --prefix backend",
-    "typecheck": "npm run typecheck --prefix frontend"
+    "typecheck": "npm run typecheck --prefix frontend",
+    "lint:setup": "npm install --prefix tools/lint",
+    "lint": "node tools/lint/node_modules/eslint/bin/eslint.js -c tools/lint/eslint.config.mjs backend/src backend/test",
+    "docs:api": "node backend/scripts/gen-openapi.mjs"
   }
 }

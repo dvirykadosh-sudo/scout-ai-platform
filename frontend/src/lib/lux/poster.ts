@@ -175,28 +175,39 @@ export async function posterPng(svg: string, format: PosterFormat): Promise<Blob
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("png"))), "image/png"));
 }
 
-let logoCache: string | null = null;
-/** הלוגו כ-data URI (כדי שייכנס לתוך ה-SVG וה-PNG). מחזיר "" אם אין. */
-export async function logoDataUri(): Promise<string> {
-  if (logoCache !== null) return logoCache;
-  for (const u of ["/api/logo", "/logo-maoz.png"]) {
+let logoPromise: Promise<string> | null = null;
+/**
+ * הלוגו כ-data URI (כדי שייכנס לתוך ה-SVG וה-PNG). מחזיר "" אם אין.
+ * שלב 65: בקשה אחת משותפת לכל הכרזות בעמוד (קודם כל כרזה ביקשה בנפרד), ובלי לפנות ל-/api/logo כשאין לוגו מותאם (404 בכל פעם).
+ * ברירת המחדל היא גרסת ה-WebP הקטנה (39KB) ולא ה-PNG (397KB).
+ */
+export function logoDataUri(): Promise<string> {
+  logoPromise ??= loadLogoDataUri();
+  return logoPromise;
+}
+async function loadLogoDataUri(): Promise<string> {
+  let custom = false;
+  try {
+    const m = (await (await fetch("/api/meta")).json()) as { logoVersion?: string | number | null };
+    custom = m.logoVersion != null;
+  } catch {
+    /* אין מידע: נשתמש בלוגו המובנה */
+  }
+  for (const u of custom ? ["/api/logo", "/logo-maoz-640.v1.webp", "/logo-maoz.png"] : ["/logo-maoz-640.v1.webp", "/logo-maoz.png"]) {
     try {
       const r = await fetch(u);
       if (!r.ok) continue;
       const b = await r.blob();
-      const d = await new Promise<string>((res, rej) => {
+      return await new Promise<string>((res, rej) => {
         const f = new FileReader();
         f.onload = () => res(String(f.result));
         f.onerror = () => rej(new Error("read"));
         f.readAsDataURL(b);
       });
-      logoCache = d;
-      return d;
     } catch {
       /* next */
     }
   }
-  logoCache = "";
   return "";
 }
 

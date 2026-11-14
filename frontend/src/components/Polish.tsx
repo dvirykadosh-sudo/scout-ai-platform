@@ -194,7 +194,7 @@ export function Splash() {
   return (
     <div className="splash" aria-hidden="true">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo-maoz.png" alt="" width={160} height={160} />
+      <img src="/logo-maoz-320.v1.webp" alt="" width={160} height={160} />
       <p>שבט מעוז</p>
     </div>
   );

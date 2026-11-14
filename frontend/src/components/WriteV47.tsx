@@ -5,17 +5,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useToast } from "./Providers";
 import { Field, Modal } from "./ui";
+import { escHtml, printDocument } from "@/lib/print";
 import type { Block, Snap } from "./WriteParts";
 
 const docBody = (s: Snap) => ({ title: s.title, meta: s.meta, blocks: s.blocks });
 const Close = ({ onClose }: { onClose: () => void }) => (<button type="button" className="btn" onClick={onClose}>סגירה</button>);
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const esc = escHtml;
 const plain = (t: string) => t.replace(/[#>*|_`]/g, " ").replace(/\s+/g, " ").trim();
 
 export function printHtml(title: string, body: string, toast: ReturnType<typeof useToast>) {
-  const w = window.open("", "_blank", "width=900,height=1000");
-  if (!w) return toast("הדפדפן חסם את החלון. אפשרו חלונות קופצים ונסו שוב.", { kind: "error" });
-  w.document.write(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+  const ok = printDocument(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
 body{font-family:Arial,sans-serif;padding:20px;line-height:1.5}h1{border-bottom:4px solid #9a3412;padding-bottom:6px;color:#1f2937}
 table{border-collapse:collapse}td{border:1px solid #333;text-align:center}
 .cw td{width:34px;height:34px;position:relative;font-size:18px}.cw td.b{background:#222}.cw td sup{position:absolute;top:1px;right:3px;font-size:10px}
@@ -24,9 +23,7 @@ table{border-collapse:collapse}td{border:1px solid #333;text-align:center}
 .mem{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.mem div{border:2px solid #9a3412;border-radius:10px;padding:10px;min-height:90px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;break-inside:avoid}
 .line{border-bottom:1px solid #333;height:26px;margin:6px 0}.pg{page-break-after:always}@media print{button{display:none}}
 </style></head><body>${body}</body></html>`);
-  w.document.close();
-  w.focus();
-  w.print();
+  if (!ok) toast("אי אפשר להדפיס מכאן. נסו לפתוח את הדף בדפדפן רגיל.", { kind: "error" });
 }
 
 /* ───── 326, 327: מפת תחנות ───── */

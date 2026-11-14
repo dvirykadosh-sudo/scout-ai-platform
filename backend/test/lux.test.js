@@ -460,7 +460,9 @@ describe("שאל את מעוז: HTTP, ולידציה ומודל אופציונל
     assert.equal(b.topic, "stage");
     assert.ok(b.links.every((l) => l.href.startsWith("/")));
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((x) => x.name);
-    assert.ok(!tables.some((n) => /eagle/i.test(n)), "אין טבלת שיחות");
+    // שלב 66: שאלה שנענתה לא נשמרת בשום מקום. היחידה שקיימת היא רשימת שאלות שלא נענו (ראו hardening66.test.js)
+    assert.deepEqual(tables.filter((n) => /eagle/i.test(n)), ["eagle_unanswered"], "אין טבלת שיחות, רק רשימת שאלות שלא נענו");
+    assert.equal(db.prepare("SELECT COUNT(*) AS c FROM eagle_unanswered WHERE q LIKE '%מצב במה%'").get().c, 0, "שאלה שנענתה לא נרשמת");
   });
   it("ולידציה: קצר, ארוך, שדות זרים וסוג שגוי", async () => {
     assert.equal((await post("א")).status, 400);
@@ -662,6 +664,7 @@ describe("מעוז עוזר לכתוב: בלי מפתח ובלי מודל", () =
     assert.equal(doc.body.meta.value, "אחריות");
     assert.equal(doc.body.blocks.reduce((s, b) => s + (b.minutes || 0), 0), 45, "הדקות בבלוקים מסתכמות בזמן שביקשו");
     assert.ok(doc.body.blocks.every((b) => b.text === ""), "מעוז לא ממציא תוכן: הטקסט ריק, יש רק רמזים");
+    assert.ok(doc.body.blocks.every((b) => b.hint.includes("אחריות")), "הרמזים מותאמים לנושא שנבחר");
     assert.equal((await j(`/api/write/docs/${r.body.id}`, { headers: auth(other) })).status, 404);
     const bad = (body) => j("/api/lux/eagle/draft", { method: "POST", headers: auth(t), body: JSON.stringify(body) });
     assert.equal((await bad({ title: "א" })).status, 400);

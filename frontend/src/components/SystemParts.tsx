@@ -12,7 +12,10 @@ type Sys = {
   dbBytes: number | null;
   integrity: string;
   counts: { users: number; activities: number; writeDocs: number };
-  persist: { configured: boolean; lastGoodAt: number | null; lastSavedAt: number | null; lastError: string | null; saves: number; blocked?: string | null; failStreak?: number; encrypted?: boolean | null };
+  schema?: { version: number; expected: number };
+  ai?: { used: number; cap: number; blocked: number; configured: boolean };
+  serverErrors?: { at: string; kind: string; message: string; where?: string; count: number; path?: string }[];
+  persist: { lastVerifiedAt?: string | null; verifyOk?: boolean | null; verifyError?: string | null; configured: boolean; lastGoodAt: number | null; lastSavedAt: number | null; lastError: string | null; saves: number; blocked?: string | null; failStreak?: number; encrypted?: boolean | null };
   warnings: string[];
 };
 
@@ -55,6 +58,23 @@ export function AdminSystem() {
       setBusy(false);
     }
   };
+  const verifyNow = async () => {
+    try {
+      const r = await api<{ ok: boolean; error?: string }>("/api/admin/persist/verify", { method: "POST", token });
+      toast(r.ok ? "הגיבוי ב-GitHub נפתח ונבדק: אפשר לשחזר ממנו ✓" : `אי אפשר לשחזר מהגיבוי: ${r.error}`, r.ok ? undefined : { kind: "error" });
+      load();
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+  };
+  const mailTest = async () => {
+    try {
+      const r = await api<{ ok: boolean; to: string; mode: string }>("/api/admin/mail/test", { method: "POST", token });
+      toast(`מייל בדיקה נשלח אל ${r.to} (ערוץ: ${r.mode}). בדקו שהוא הגיע, כולל בתיקיית הספאם.`);
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+  };
   const saveNow = async () => {
     try {
       await api("/api/admin/persist/save", { method: "POST", token });
@@ -94,8 +114,28 @@ export function AdminSystem() {
             שמירה חיצונית (GitHub): {s.persist.configured ? `פעילה, שמירה תקינה אחרונה ${ago(s.persist.lastGoodAt)}` : "לא מוגדרת"}
             {s.persist.lastError ? ` · שגיאה אחרונה: ${s.persist.lastError}` : ""}
           </li>
+          {s.persist.configured && (
+            <li>
+              הצפנה: {s.persist.encrypted ? "הצילום ב-GitHub מוצפן ✓" : s.persist.encrypted === false ? "הצילום אינו מוצפן" : "תיבדק בשמירה הבאה"} · בדיקת שחזור:{" "}
+              {s.persist.verifyOk == null ? "עדיין לא רצה (רצה אוטומטית פעם בשבוע)" : s.persist.verifyOk ? `תקינה ✓ (${fmtDate(s.persist.lastVerifiedAt ?? "")})` : `נכשלה: ${s.persist.verifyError}`}
+            </li>
+          )}
+          {s.ai && <li>קריאות AI היום: {s.ai.used} מתוך {s.ai.cap}{s.ai.configured ? "" : " (אין מפתח, המחולל המקומי פעיל)"}</li>}
+          {s.schema && <li>גרסת מסד הנתונים: {s.schema.version}{s.schema.version === s.schema.expected ? "" : ` (צפויה ${s.schema.expected})`}</li>}
           <li>השרת עלה: {fmtDate(s.startedAt)}</li>
         </ul>
+      )}
+      {s?.serverErrors && s.serverErrors.length > 0 && (
+        <details style={{ marginBlock: 8 }}>
+          <summary>שגיאות שרת אחרונות ({s.serverErrors.length})</summary>
+          <ul dir="ltr" style={{ textAlign: "left" }}>
+            {s.serverErrors.slice(0, 10).map((e, i) => (
+              <li key={i}>
+                {fmtDate(e.at)} · {e.kind}{e.path ? ` ${e.path}` : ""} · {e.message}{e.count > 1 ? ` (×${e.count})` : ""}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {s?.clientIp && (
         <details style={{ marginBlock: 8 }}>
@@ -120,8 +160,78 @@ export function AdminSystem() {
             שמור ב-GitHub עכשיו
           </button>
         )}
+        <button className="btn" onClick={mailTest}>
+          ✉ שלח מייל בדיקה
+        </button>
+        {s?.persist.configured && (
+          <button className="btn" onClick={verifyNow}>
+            בדוק שאפשר לשחזר מהגיבוי
+          </button>
+        )}
       </div>
       <p className="muted">מומלץ להוריד גיבוי פעם בשבוע. הקובץ (‎.db‎) מכיל את כל הנתונים, כולל סיסמאות מוצפנות, אז שמרו אותו פרטי.</p>
+    </section>
+  );
+}
+
+// שלב 66 (ממצא 91): מה שואלים את מעוז ואין לו תשובה. טקסט מוסתר, בלי משתמש ובלי כתובת, נמחק אחרי 60 יום.
+type Unanswered = { id: number; q: string; count: number; firstAt: string; lastAt: string };
+export function AdminEagleGaps() {
+  const { token } = useAuth();
+  const toast = useToast();
+  const [rows, setRows] = useState<Unanswered[] | null>(null);
+  const [logging, setLogging] = useState(true);
+  const load = useCallback(() => {
+    api<{ items: Unanswered[]; logging: boolean }>("/api/admin/eagle/unanswered", { token })
+      .then((r) => {
+        setRows(r.items);
+        setLogging(r.logging);
+      })
+      .catch(() => setRows([]));
+  }, [token]);
+  useEffect(load, [load]);
+  const remove = async (id?: number) => {
+    if (id == null && !window.confirm("למחוק את כל הרשימה?")) return;
+    try {
+      await api(id == null ? "/api/admin/eagle/unanswered" : `/api/admin/eagle/unanswered/${id}`, { method: "DELETE", token });
+      load();
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+  };
+  return (
+    <section aria-labelledby="eagle-gaps-title" className="card glass">
+      <h2 id="eagle-gaps-title" className="section-title">
+        שאלות שמעוז לא ידע לענות עליהן{rows?.length ? ` (${rows.length})` : ""}
+      </h2>
+      <p className="muted">
+        הרשימה עוזרת להבין מה כדאי להוסיף למאגר הידע. נשמר רק נוסח השאלה (בלי מיילים וטלפונים), בלי שם משתמש ובלי כתובת, ונמחק אחרי 60 יום.
+        {!logging && " הרישום כבוי כרגע (EAGLE_LOG_UNANSWERED=0)."}
+      </p>
+      {rows === null ? (
+        <p className="hint">טוען…</p>
+      ) : rows.length === 0 ? (
+        <p className="hint">אין שאלות שלא נענו.</p>
+      ) : (
+        <>
+          <ul className="plain-list">
+            {rows.map((r) => (
+              <li key={r.id} style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+                <span>
+                  <strong>{r.count > 1 ? `${r.count}× ` : ""}</strong>
+                  {r.q} <span className="muted">· {fmtDate(r.lastAt)}</span>
+                </span>
+                <button type="button" className="btn btn-small" onClick={() => remove(r.id)} aria-label={`מחיקת השאלה: ${r.q}`}>
+                  הסרה
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="btn" onClick={() => remove()}>
+            ניקוי הרשימה
+          </button>
+        </>
+      )}
     </section>
   );
 }

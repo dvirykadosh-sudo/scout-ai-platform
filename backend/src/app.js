@@ -40,7 +40,8 @@ import { registerV56Routes } from "./routes-v56.js";
 import { cleanDict } from "./human-voice.js";
 import { persistHealthy, persistState } from "./persist.js";
 import { guestDailyCap, takeDaily } from "./guest-limits.js";
-import { scrubContact } from "./guest-guard.js";
+import { recordServerError } from "./server-errors.js";
+import { publicAuthor, scrubContact } from "./guest-guard.js";
 import compression from "compression";
 import { registerAccountV52Routes, regSettings } from "./routes-accounts-v52.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
@@ -101,8 +102,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // שלב 64: הגופנים מתארחים באתר, ללא Google
+        fontSrc: ["'self'", "data:"],
         imgSrc: ["'self'", "data:", "blob:"],
         mediaSrc: ["'self'", "blob:"],
         connectSrc: ["'self'"],
@@ -260,8 +261,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   if (serveStatic) app.use(express.static(path.join(here, "..", "public")));
 
-  // ההרשמה העצמית פתוחה לכולם (ללא תלות ב-SIGNUP_CODE)
-  const signupOpen = () => true;
 
   // ── לוגו השבט: מועלה על ידי האדמין, נשמר כקובץ ליד מסד הנתונים ──
   const logoFile = dbFile === ":memory:" ? null : path.join(path.dirname(path.resolve(dbFile)), "logo.bin");
@@ -287,9 +286,14 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   // שלב 63: מזהה הפעלה אטום (בלי שעת העלייה של השרת). הלקוח משווה בו כדי לזהות שהאתר התעדכן.
   const BOOT_ID = crypto.randomBytes(6).toString("hex");
   app.get("/api/health", (req, res) => res.json({ ok: true, time: nowIso(), boot: BOOT_ID, maintenance: maintenanceMessage(db), persist: persistState.configured ? (persistState.blocked ? "blocked" : persistHealthy() ? "ok" : "stuck") : "off" }));
-  app.get("/api/methods", (req, res) => res.json(METHODS));
-  app.get("/api/meta", (req, res) =>
-    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: signupOpen(), signupNeedsCode: false, logoVersion: logo?.v ?? null }),
+  // שלב 64: תוכן שמשתנה רק בעדכון גרסה או בהגדרת אדמין: אפשר לשמור דקה בדפדפן (בקשה של מחובר נשארת no-store)
+  const shortCache = (req, res, next) => {
+    if (!res.getHeader("Cache-Control")) res.set("Cache-Control", "public, max-age=60");
+    next();
+  };
+  app.get("/api/methods", shortCache, (req, res) => res.json(METHODS));
+  app.get("/api/meta", shortCache, (req, res) =>
+    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: true, signupNeedsCode: false, logoVersion: logo?.v ?? null }),
   );
 
   app.get("/api/logo", (req, res) => {
@@ -375,7 +379,9 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     if (!getActivity(db, id)) return res.status(404).json(fail("NOT_FOUND", "הפעולה לא נמצאה"));
     const items = db
       .prepare("SELECT id, stars, comment, author, age_used AS ageUsed, created_at AS createdAt FROM ratings WHERE activity_id = ? ORDER BY id DESC LIMIT 100")
-      .all(id);
+      .all(id)
+      // שלב 66: שם הכותב בדירוג ציבורי מוצג כשם פרטי בלבד (RATING_AUTHOR_MODE). המלא נשאר במסד לצורכי ניהול
+      .map((r) => ({ ...r, author: publicAuthor(r.author, config.ratingAuthorMode) }));
     res.json({ ...ratingSummary(id), items });
   });
 
@@ -732,7 +738,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
   registerOpsRoutes(app, { db, dbFile, config, mailer, fail, requireUser, requireAdmin, audit, limiter });
   registerWriteExportRoutes(app, { limiter, fail, requireUser, getLogo: () => logo, db, publicUrl: config.publicUrl });
-  registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin, signupOpen });
+  registerAccountRoutes(app, { db, mailer, limiter, fail, requireUser, requireAdmin });
   registerAccountV52Routes(app, { db, mailer, limiter, fail, requireUser, requireAdmin });
 
   // מחיקה אוטומטית של יומני כניסות, מבקרים וחיבורים ישנים (לפי ההגדרה), פעם בכמה שעות
@@ -787,7 +793,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     res.download(path.join(bdir, name), name);
   });
 
-  registerSystemRoutes(app, { db, dbFile, config, fail, requireAdmin, audit });
+  registerSystemRoutes(app, { db, dbFile, config, fail, requireAdmin, audit, mailer, limiter });
 
   // ── errors ──
   app.use("/api", (req, res) => res.status(404).json(fail("NOT_FOUND", "הכתובת לא נמצאה")));
@@ -802,6 +808,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     if (err?.type === "entity.parse.failed") return res.status(400).json(fail("BAD_JSON", "גוף הבקשה אינו JSON תקין"));
     if (err?.type === "entity.too.large") return res.status(413).json(fail("TOO_LARGE", "הבקשה גדולה מדי"));
     console.error(err);
+    recordServerError({ db, mailer, config }, "http500", err, { path: req.path.replace(/\/\d+/g, "/:id").slice(0, 80), method: req.method, requestId: res.getHeader("X-Request-Id") || undefined });
     res.status(500).json(fail("SERVER_ERROR", "אירעה שגיאה בשרת"));
   });
 

@@ -143,10 +143,12 @@ const loadImg = (src: string) =>
 export async function extractTribe(version: string): Promise<TribePal | null> {
   let im: HTMLImageElement;
   try {
+    // שלב 64: אם אין לוגו מותאם (builtin) לא מבקשים אותו מהשרת (זה היה מחזיר 404 בכל טעינה ראשונה ביום)
+    if (version === "builtin") throw new Error("builtin");
     im = await loadImg(`/api/logo?v=${encodeURIComponent(version)}`);
   } catch {
     try {
-      im = await loadImg("/logo-maoz.png");
+      im = await loadImg("/logo-maoz-320.v1.webp");
     } catch {
       return null;
     }

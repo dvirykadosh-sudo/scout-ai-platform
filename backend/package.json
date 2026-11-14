@@ -5,7 +5,7 @@
   "type": "module",
   "description": "מחולל פעולות - שבט מעוז: שרת",
   "engines": {
-    "node": ">=22.5"
+    "node": ">=22.13"
   },
   "scripts": {
     "start": "node src/server.js",
