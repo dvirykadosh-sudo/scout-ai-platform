@@ -11,6 +11,7 @@ import type { Activity } from "@/lib/types";
 import { useLogoUrl } from "../Chrome";
 import { PageTitle, Skeleton } from "../ui";
 import { PosterPanel } from "./Poster";
+import { useTabIndicator } from "../v21/useTabIndicator";
 
 type ThemeKey = "classic" | "purple" | "blue" | "tribe";
 type Align = "left" | "center" | "right";
@@ -27,6 +28,7 @@ export function ExportStudio() {
   const [a, setA] = useState<Activity | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"doc" | "cards" | "poster">("doc");
+  const ti = useTabIndicator(tab);
   const [theme, setTheme] = useState<ThemeKey>("tribe");
   const [eco, setEco] = useState(false);
   const [wm, setWm] = useState(0.3);
@@ -142,7 +144,8 @@ export function ExportStudio() {
         </aside>
 
         <div className="lux-studio-main">
-          <div role="tablist" aria-label="סוג התצוגה" className="tabs no-print">
+          <div role="tablist" aria-label="סוג התצוגה" className={`tabs no-print ${ti.cls}`} ref={ti.ref} data-switch={ti.sw}>
+            {ti.ind}
             {(
               [
                 ["doc", "מסמך"],

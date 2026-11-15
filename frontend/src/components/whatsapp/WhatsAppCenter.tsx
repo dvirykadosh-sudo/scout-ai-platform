@@ -20,6 +20,7 @@ import { Rules } from "./Rules";
 import { SendLog } from "./SendLog";
 import { Templates } from "./Templates";
 import { WaSettings } from "./WaSettings";
+import { useTabIndicator } from "../v21/useTabIndicator";
 
 const TABS = [
   { id: "overview", label: "סקירה" },
@@ -87,6 +88,7 @@ export function WhatsAppCenter() {
   const { status, error, forbidden, reload } = useWaStatus(admin ? token : null);
   const { act, busy } = useAct();
   const [tab, setTab] = useState<TabId>("overview");
+  const ti = useTabIndicator(tab);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -125,7 +127,8 @@ export function WhatsAppCenter() {
     body = (
       <>
         {error && <Alert>{error}</Alert>}
-        <div className="wa-tabs" role="tablist" aria-label="מרכז הוואטסאפ" onKeyDown={onKey}>
+        <div className={`wa-tabs ${ti.cls}`} role="tablist" aria-label="מרכז הוואטסאפ" onKeyDown={onKey} ref={ti.ref} data-switch={ti.sw}>
+          {ti.ind}
           {TABS.map((t) => (
             <button
               key={t.id}

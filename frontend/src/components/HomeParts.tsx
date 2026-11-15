@@ -3,7 +3,7 @@
 // דף הבית מסודר: שלוש פעולות עיקריות, כל הכלים מקופלים, ולשוניות שמפרידות בין יצירה, השראה והשבוע שלי.
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { api, fmtDate } from "@/lib/api";
 import { useAuth } from "./Providers";
 
@@ -107,6 +107,45 @@ export function HomeTabs({ create, ideas, week, active, setActive }: { create: R
   const [seen, setSeen] = useState<Set<TabId>>(new Set([active]));
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   useEffect(() => setSeen((s) => (s.has(active) ? s : new Set(s).add(active))), [active]);
+
+  // שלב 67: אינדיקטור פעיל חלק. נמדד מהלשונית הפעילה ונכתב כמשתני CSS ישירות על הרשימה (בלי רינדור חוזר).
+  // עד המדידה הראשונה (וכשהתנועה כבויה) ללשונית הפעילה נשאר הרקע הקיים, ולכן כלום לא נעלם.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [live, setLive] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const first = useRef(true);
+  const measure = useCallback(() => {
+    const list = listRef.current;
+    const btn = refs.current[active];
+    if (!list || !btn) return;
+    list.style.setProperty("--ind-x", `${btn.offsetLeft}px`);
+    list.style.setProperty("--ind-y", `${btn.offsetTop}px`);
+    list.style.setProperty("--ind-w", `${btn.offsetWidth}px`);
+    list.style.setProperty("--ind-h", `${btn.offsetHeight}px`);
+    list.style.setProperty("--ind-r", getComputedStyle(btn).borderTopLeftRadius || "14px");
+    setLive(true);
+  }, [active]);
+  useEffect(() => {
+    measure();
+    const list = listRef.current;
+    const ro = typeof ResizeObserver !== "undefined" && list ? new ResizeObserver(measure) : null;
+    if (ro && list) ro.observe(list);
+    window.addEventListener("resize", measure);
+    document.fonts?.ready.then(measure).catch(() => {});
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [measure]);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setSwitching(true);
+    const t = window.setTimeout(() => setSwitching(false), 800);
+    return () => window.clearTimeout(t);
+  }, [active]);
   const pick = (t: TabId) => {
     setActive(t);
   };
@@ -121,7 +160,8 @@ export function HomeTabs({ create, ideas, week, active, setActive }: { create: R
   const panels: Record<TabId, ReactNode> = { create, ideas, week };
   return (
     <section aria-label="אזורי דף הבית">
-      <div role="tablist" aria-label="אזורי דף הבית" className="home-tabs">
+      <div role="tablist" aria-label="אזורי דף הבית" className={`home-tabs${live ? " v21-live" : ""}`} ref={listRef} data-switch={switching ? "1" : undefined}>
+        <span className="v21-ind" aria-hidden="true" />
         {TABS.map((t, i) => (
           <button
             key={t.id}

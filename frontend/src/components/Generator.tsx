@@ -13,6 +13,7 @@ import { useKinds } from "@/lib/kinds";
 import { StylePicker } from "./StylePicker";
 import { Field } from "./ui";
 import { ActivitySkeleton } from "./lux/ActivitySkeleton";
+import { GlassProgress, useEstimatedProgress } from "./v21/GlassProgress";
 
 const STEPS = ["פרטי הפעולה", "מצבים פדגוגיים", "שיטות וזמנים", "סגנון כתיבה", "סקירה ויצירה"];
 const LAST = STEPS.length - 1;
@@ -64,6 +65,7 @@ export function Generator() {
   const [sel, setSel] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const estProgress = useEstimatedProgress(busy); // שלב 67: הערכה בלבד, השרת לא מדווח התקדמות
   const [result, setResult] = useState<Activity | null>(null);
   const [exporting, setExporting] = useState(false);
   const [style, setStyle] = useState<StyleSettings>(DEFAULT_STYLE);
@@ -451,6 +453,7 @@ export function Generator() {
     return (
       <div aria-live="polite">
         <h2 className="section-title">יוצר את הפעולה...</h2>
+        <GlassProgress value={estProgress} label="התקדמות יצירת הפעולה (הערכה)" estimated />
         <ActivitySkeleton stages={5} label="הפעולה נוצרת, זה לוקח כמה שניות" />
       </div>
     );
@@ -498,6 +501,7 @@ export function Generator() {
         else create();
       }}
     >
+      <GlassProgress value={Math.round((step / LAST) * 100)} label={`התקדמות בשלבי הטופס: שלב ${step + 1} מתוך ${STEPS.length}`} />
       <ol className="stepper" aria-label="שלבי יצירת הפעולה">
         {STEPS.map((label, i) => (
           <li key={label} className={`${i < step ? "done" : ""} ${i === step ? "current" : ""}`}>

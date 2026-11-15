@@ -9,6 +9,7 @@ import type { Activity } from "@/lib/types";
 import { useAuth, useToast } from "./Providers";
 import { PolishTab } from "./StoryPolish56";
 import { Field, Modal, Skeleton } from "./ui";
+import { useTabIndicator } from "./v21/useTabIndicator";
 
 export interface Parts { situation: string; turn: string; feeling: string; learning: string; place: string; person: string; want: string }
 export interface Version { at: string; label: string; text: string }
@@ -35,6 +36,7 @@ export function StoryStudio() {
   const { token, ready } = useAuth();
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("build");
+  const ti = useTabIndicator(tab);
   const [draft, setDraftRaw] = useState<Draft>(EMPTY_DRAFT);
   const [values, setValues] = useState<ValueRow[]>([]);
   const setDraft: SetDraft = useCallback((fn) => setDraftRaw((d) => ({ ...fn(d), dirty: true })), []);
@@ -65,7 +67,8 @@ export function StoryStudio() {
       <p className="hint st-intro">
         הכלי מסדר, שואל ובודק, אבל הסיפור הוא שלכם: הוא לא ממציא אירועים, שמות או ציטוטים. הבדיקות הן כללים ולא הבנה של משמעות, ולכן הן הצעות.
       </p>
-      <div className="actions" role="tablist" aria-label="חלקי הסטודיו">
+      <div className={`actions ${ti.cls}`} role="tablist" aria-label="חלקי הסטודיו" ref={ti.ref} data-switch={ti.sw}>
+        {ti.ind}
         {TABS.map(([k, label]) => (
           <button key={k} type="button" role="tab" id={`st-tab-${k}`} aria-selected={tab === k} className={tab === k ? "btn btn-primary" : "btn"} onClick={() => setTab(k)}>
             {label}

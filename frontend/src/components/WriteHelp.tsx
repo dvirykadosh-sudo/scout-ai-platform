@@ -7,6 +7,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useToast } from "./Providers";
 import { Modal } from "./ui";
 import { KIND_LABEL, type Block, type Snap } from "./WriteParts";
+import { useTabIndicator } from "./v21/useTabIndicator";
 
 export type InsertMode = "append" | "cursor" | "replace-sentence" | "replace-all";
 export interface InsertFn {
@@ -97,6 +98,7 @@ type Tab = "suggest" | "swap" | "bridge";
 export function HelpModal({ open, onClose, snap, blockId, token, onInsert }: { open: boolean; onClose: () => void; snap: Snap; blockId: string | null; token: string | null; onInsert: InsertFn }) {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("suggest");
+  const ti = useTabIndicator(tab);
   const [sug, setSug] = useState<SuggestRes | null>(null);
   const [shown, setShown] = useState<string[]>([]);
   const [swap, setSwap] = useState<SwapRes | null>(null);
@@ -183,7 +185,8 @@ export function HelpModal({ open, onClose, snap, blockId, token, onInsert }: { o
 
   return (
     <Modal open={open} onClose={onClose} title={`עזרה במתודות: ${stageName(block, idx)}`} wide footer={<button type="button" className="btn" onClick={onClose}>סגירה</button>}>
-      <div className="write-tabs" role="tablist" aria-label="סוגי עזרה">
+      <div className={`write-tabs ${ti.cls}`} role="tablist" aria-label="סוגי עזרה" ref={ti.ref} data-switch={ti.sw}>
+        {ti.ind}
         {([["suggest", "הצעות לשלב"], ["swap", "החלפת מתודה"], ["bridge", "מעבר לשלב הבא"]] as [Tab, string][]).map(([id, label]) => (
           <button key={id} type="button" role="tab" id={`wh-tab-${id}`} aria-selected={tab === id} aria-controls="wh-panel" className={`btn btn-small ${tab === id ? "btn-primary" : ""}`} onClick={() => setTab(id)}>
             {label}

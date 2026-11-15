@@ -1,0 +1,418 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   שלב 67 – שפת עיצוב חדשה (בהשראת "Dashboard V21" ו-Spatial Liquid Glass).
+   כל הקלאסים כאן מתחילים ב-v21-, ואף כלל קיים לא נערך: הכל תוספת.
+   • הצבע בא מערכות הצבעים (--pal-*) דרך המשתנים הקיימים (--accent, --btn-bg, --on-accent, --ok ...), ולכן 5 הערכות עובדות.
+   • ניגודיות גבוהה (html.hc): שחור-צהוב שטוח, בלי גרדיאנטים, זוהר, זכוכית או תלת-ממד.
+   • חיסכון (html.saver) והפחתת תנועה (prefers-reduced-motion: reduce): בלי אנימציות, בלי טשטוש כבד, בלי perspective או rotate.
+     כל תנועה מוגדרת רק בתוך prefers-reduced-motion: no-preference.
+   • RTL: רק מאפיינים לוגיים (inset-inline-*), חוץ מאינדיקטור הלשוניות שנמדד בפיקסלים פיזיים (ראו הערה שם).
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --v21-r: 22px;
+  --v21-lift: -5px;
+  --v21-deep-a: #130e26;
+  --v21-deep-b: #1e1245;
+  --v21-violet: #7c3aed;
+  --v21-ink: #f7f3ff;
+  --v21-ink-2: #d6cdf0;
+  --v21-glow: color-mix(in srgb, var(--pal-a) 55%, transparent);
+}
+
+/* ───── כרטיס Bento: משטח, גבול עדין, פינות 22px והרמה בריחוף ───── */
+.v21-card {
+  position: relative;
+  min-width: 0;
+  border-radius: var(--v21-r);
+  border: 1px solid var(--line);
+  background: var(--glass);
+  color: var(--text);
+  box-shadow: var(--sh-1, 0 1px 2px rgba(17, 24, 39, 0.06), 0 12px 28px -16px rgba(17, 24, 39, 0.28));
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-card { transition: transform 0.28s cubic-bezier(0.2, 0.85, 0.25, 1), box-shadow 0.28s; }
+  html:not(.hc):not(.saver) .v21-card:hover { transform: translateY(var(--v21-lift)); box-shadow: var(--sh-2, 0 18px 36px -18px rgba(17, 24, 39, 0.42)); }
+}
+
+/* ───── רשת כרטיסי סטטיסטיקה ───── */
+.v21-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 192px), 1fr)); gap: 14px; margin: 0 0 18px; padding: 0; list-style: none; }
+.v21-stat { display: flex; flex-direction: column; gap: 6px; padding: 18px; }
+.v21-stat-label { margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--muted); }
+.v21-stat-num { display: block; font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 800; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+.v21-stat-sub { font-size: 0.84rem; color: var(--muted); }
+.v21-stat-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 6px; flex-wrap: wrap; }
+
+/* ───── Hero כהה עמוק: מדד זוהר וגרף ───── */
+.v21-hero-dark {
+  --text: var(--v21-ink); --muted: var(--v21-ink-2); --ok: #86efac; --danger: #fecdd3; --link: #fed7aa; --line: rgba(255, 255, 255, 0.16);
+  color: var(--v21-ink);
+  border-color: rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(420px 220px at 88% 0%, color-mix(in srgb, var(--pal-a) 34%, transparent), transparent 70%),
+    radial-gradient(380px 260px at 0% 100%, rgba(124, 58, 237, 0.42), transparent 70%),
+    linear-gradient(160deg, var(--v21-deep-b), var(--v21-deep-a));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 30px 60px -34px rgba(0, 0, 0, 0.8);
+}
+.v21-hero-dark .v21-stat-num { color: #fff; text-shadow: 0 0 24px var(--v21-glow); }
+.v21-hero-dark .db-spark .line { stroke: #fdba74; filter: drop-shadow(0 0 5px rgba(253, 186, 116, 0.7)); }
+.v21-hero-dark .db-spark .area { fill: rgba(253, 186, 116, 0.14); }
+.v21-hero-dark .db-spark .bar { fill: rgba(253, 186, 116, 0.5); }
+.v21-hero-dark .db-spark .bar.now { fill: #fdba74; }
+.v21-hero-dark .v21-ring-bg { stroke: rgba(255, 255, 255, 0.16); }
+.v21-hero-dark .v21-ring-s1 { stop-color: #fdba74; }
+.v21-hero-dark .v21-ring-s2 { stop-color: #f97316; }
+
+/* ───── Hero גרדיאנט המותג: הצבע והטקסט מתוך כפתור ההדגשה הקיים (הניגודיות נבדקה בכל הערכות) ───── */
+.v21-hero-brand {
+  --text: var(--on-accent); --muted: var(--on-accent); --link: var(--on-accent);
+  color: var(--on-accent);
+  border-color: transparent;
+  background: radial-gradient(360px 200px at 100% 0%, rgba(255, 255, 255, 0.28), transparent 70%), var(--btn-bg);
+  box-shadow: 0 22px 44px -24px var(--v21-glow);
+}
+.v21-hero-brand .v21-pill { background: rgba(0, 0, 0, 0.14); color: inherit; border-color: currentColor; }
+.v21-hero-brand .db-spark .line { stroke: currentColor; }
+.v21-hero-brand .db-spark .area { fill: rgba(255, 255, 255, 0.2); }
+.v21-hero-brand .db-spark .bar { fill: currentColor; opacity: 0.5; }
+.v21-hero-brand .db-spark .bar.now { opacity: 1; }
+.v21-hero-brand .v21-ring-bg { stroke: rgba(0, 0, 0, 0.2); }
+.v21-hero-brand .v21-ring-s1, .v21-hero-brand .v21-ring-s2 { stop-color: currentColor; }
+
+/* ───── Pills: שינוי וסטטוס. החץ והמילה לקורא מסך משלימים את הצבע ───── */
+.v21-pill {
+  --v21-tone: var(--muted);
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 0.8rem; font-weight: 700; line-height: 1.45; white-space: nowrap;
+  color: var(--v21-tone);
+  background: color-mix(in srgb, var(--v21-tone) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--v21-tone) 34%, transparent);
+}
+.v21-pill-up { --v21-tone: var(--ok); }
+.v21-pill-down { --v21-tone: var(--danger); }
+.v21-pill-flat { --v21-tone: var(--muted); }
+.v21-pill-brand { --v21-tone: var(--link); }
+.v21-pill-mark { font-size: 0.66em; }
+
+/* ───── טבעת התקדמות (Donut) ───── */
+.v21-ring { position: relative; flex: none; display: grid; place-items: center; }
+.v21-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.v21-ring-bg { fill: none; stroke: color-mix(in srgb, var(--text) 14%, transparent); }
+.v21-ring-fg { fill: none; stroke-linecap: round; }
+.v21-ring-s1 { stop-color: var(--accent-2); }
+.v21-ring-s2 { stop-color: var(--accent); }
+.v21-ring-num { position: relative; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.saver) .v21-ring-fg { transition: stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1); }
+}
+
+/* ───── לשוניות Pill עם אינדיקטור פעיל חלק (HomeTabs) ─────
+   האינדיקטור נמדד בפיקסלים פיזיים (offsetLeft) ומוצב עם left:0, ולכן הוא נכון גם ב-RTL.
+   עד שהמדידה מסתיימת, ובכל מצב שבו התנועה כבויה, ללשונית הפעילה נשאר הרקע הקיים שלה. */
+.home-tabs, .v21-live { position: relative; }
+.v21-ind { display: none; }
+html:not(.hc):not(.saver) .v21-live .v21-ind {
+  display: block; position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  width: var(--ind-w); height: var(--ind-h);
+  transform: translate(var(--ind-x), var(--ind-y));
+  border-radius: var(--ind-r, 14px); background: var(--btn-bg);
+  box-shadow: 0 12px 28px -14px var(--v21-glow);
+}
+html:not(.hc):not(.saver) .v21-live [role="tab"] { position: relative; z-index: 1; }
+/* הלשונית הפעילה שומרת רקע וצבע משלה (אותו צבע כמו האינדיקטור), כדי שניגודיות הטקסט תהיה ניתנת למדידה גם בלי האינדיקטור.
+   בזמן מעבר הרקע שלה מופיע רק כשהאינדיקטור הגיע אליה (עיכוב), ובלי תנועה הכול מיידי */
+html:not(.hc):not(.saver) .v21-live [role="tab"][aria-selected="true"] {
+  background: var(--btn-bg) !important; box-shadow: none !important; border-color: transparent !important; color: var(--on-accent) !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-live [role="tab"][aria-selected="true"] { transition: background 0s linear 0.34s, color 0.1s linear 0.12s; }
+  html:not(.hc):not(.saver) .v21-live .v21-ind { transition: transform 0.4s cubic-bezier(0.3, 1.15, 0.4, 1), width 0.4s cubic-bezier(0.3, 1.15, 0.4, 1), height 0.4s; }
+  /* פס shimmer דק מתחת ללשוניות בכל מעבר. דקורטיבי בלבד: התוכן עצמו מופיע מיד, בלי עיכוב */
+  html:not(.hc):not(.saver) .v21-live[data-switch="1"]::after {
+    content: ""; position: absolute; inset-inline: 0; bottom: -2px; height: 2px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent) no-repeat;
+    background-size: 38% 100%;
+    animation: v21-sweep 0.75s cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  }
+  html:not(.hc):not(.saver) .home-tabs ~ [role="tabpanel"]:not([hidden]) { animation: v21-panel-in 0.34s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
+}
+@keyframes v21-sweep { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+@keyframes v21-panel-in { from { transform: translateY(10px); } }
+
+/* ───── ניגודיות גבוהה: שחור-צהוב שטוח ───── */
+html.hc .v21-card, html.hc .v21-hero-dark, html.hc .v21-hero-brand {
+  background: #000; color: #ffeb00; border: 2px solid #ffeb00; box-shadow: none; border-radius: 12px; transform: none;
+  --text: #ffeb00; --muted: #ffeb00; --ok: #ffeb00; --danger: #ffeb00; --link: #ffeb00; --on-accent: #ffeb00;
+}
+html.hc .v21-stat-num, html.hc .v21-hero-dark .v21-stat-num { color: #ffeb00; text-shadow: none; }
+html.hc .v21-pill, html.hc .v21-hero-brand .v21-pill { background: #000; color: #ffeb00; border: 1px solid #ffeb00; }
+html.hc .v21-ring-bg { stroke: #555; }
+html.hc .v21-ring-fg { stroke: #ffeb00; }
+html.hc .v21-ring-num { color: #ffeb00; }
+html.hc .v21-hero-dark .db-spark .line, html.hc .v21-hero-brand .db-spark .line { stroke: #ffeb00; filter: none; }
+
+/* ───── חיסכון בנתונים ובתנועה ───── */
+html.saver .v21-card, html.saver .v21-hero-dark, html.saver .v21-hero-brand { transform: none !important; transition: none !important; }
+html.saver .v21-hero-dark .db-spark .line { filter: none; }
+@media print { .v21-ind, .home-tabs::after { display: none !important; } .v21-card, .v21-hero-dark, .v21-hero-brand { background: #fff !important; color: #000 !important; box-shadow: none !important; border: 1px solid #999; } }
+
+/* ═══════════ 2. מרחב תלת-ממדי בעמוד הבית: כרטיס פיקוד, ליבת מעוז ומנהרת כרטיסים ═══════════ */
+
+/* זוהר אטמוספרי: כתום במרכז, סגול בצדדים. שכבה מאחורי הכרטיסים, בלי טשטוש יקר (גרדיאנטים בלבד) */
+.v21-stage, .v21-tunnel { position: relative; isolation: isolate; }
+.v21-atmos {
+  position: absolute; inset: -34px -12px; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(520px 300px at 50% 52%, color-mix(in srgb, var(--pal-a) 34%, transparent), transparent 70%),
+    radial-gradient(420px 260px at 12% 28%, rgba(124, 58, 237, 0.4), transparent 72%),
+    radial-gradient(420px 260px at 90% 82%, color-mix(in srgb, var(--pal-b) 22%, transparent), transparent 72%);
+  /* מסכה: ההילה דועכת לאפס בכל קצה של התיבה, כדי שלא יופיע מלבן חד */
+  -webkit-mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 55%, transparent 100%);
+}
+.v21-atmos-soft { inset: -10px -6px; opacity: 0.7; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-atmos { animation: v21-breathe 9s ease-in-out infinite; }
+  @keyframes v21-breathe { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.035); } }
+}
+
+/* זכוכית חלבית עמוקה, משותפת לכרטיס הפיקוד ולכרטיסי המנהרה. בסיס אטום (שטוח), והשקיפות והטשטוש רק במצב התלת-ממד */
+.v21-command, .v21-tcard-link {
+  --focus: #fde047;
+  color: var(--v21-ink);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 55%, rgba(124, 58, 237, 0.2)), #1b1040;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), inset 0 -1px 0 rgba(255, 255, 255, 0.06), 0 40px 80px -40px rgba(0, 0, 0, 0.85);
+}
+.v21-stage { perspective: 1100px; margin: 0 0 22px; padding: 6px 0; }
+.v21-command { position: relative; border-radius: 30px; padding: clamp(16px, 3vw, 30px); transform-style: preserve-3d; }
+.v21-cmd-title { margin: 0 0 12px; text-align: center; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; color: var(--v21-ink-2); }
+
+.v21-cmd-grid { position: relative; display: grid; grid-template-columns: 1fr 26% 1fr; align-items: stretch; min-height: 290px; }
+.v21-links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.v21-link { fill: none; stroke: var(--pal-b); stroke-opacity: 0.6; stroke-width: 1.4; stroke-linecap: round; vector-effect: non-scaling-stroke; stroke-dasharray: 3 6; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-link { animation: v21-flow 2.4s linear infinite; }
+  @keyframes v21-flow { to { stroke-dashoffset: -18; } }
+}
+
+.v21-nodes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-rows: repeat(3, 1fr); gap: 10px; align-items: center; }
+/* הרווח מהקווים הוא פיזי: צד ימין = הקצה השמאלי של הצמתים הימניים, ולהפך */
+.v21-nodes-r { padding-left: 12px; }
+.v21-nodes-l { padding-right: 12px; }
+.v21-node {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 10px 14px;
+  border-radius: 18px; text-align: start; font: inherit; text-decoration: none; cursor: pointer;
+  color: var(--v21-ink); background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: background 0.25s, border-color 0.25s, transform 0.25s;
+}
+.v21-node:hover { background: rgba(255, 255, 255, 0.14); border-color: color-mix(in srgb, var(--pal-a) 65%, transparent); }
+.v21-node-ic { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; color: var(--pal-ink); background: linear-gradient(135deg, var(--pal-a), var(--pal-b)); }
+.v21-node-tx { min-width: 0; }
+.v21-node-tx strong { display: block; font-size: 0.98rem; line-height: 1.25; }
+.v21-node-tx span { display: block; font-size: 0.8rem; line-height: 1.3; color: var(--v21-ink-2); }
+
+/* ליבת מעוז: Squircle זוהר עם שתי טבעות פעימה */
+.v21-core-wrap { display: grid; place-items: center; }
+.v21-core { position: relative; display: grid; justify-items: center; gap: 10px; padding: 6px; border: 0; background: none; color: var(--v21-ink); font: inherit; cursor: pointer; border-radius: 28px; transition: transform 0.3s; }
+.v21-core:hover { transform: scale(1.04); }
+.v21-core-sq {
+  position: relative; width: 112px; height: 112px; display: grid; place-items: center; border-radius: 34%; color: var(--pal-ink);
+  background: radial-gradient(circle at 35% 25%, #fff 0%, var(--pal-b) 38%, var(--pal-a) 100%);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.6), inset 0 -8px 18px rgba(0, 0, 0, 0.18), 0 0 46px 6px var(--v21-glow), 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+}
+.v21-core-ring { position: absolute; top: 6px; left: 50%; width: 112px; height: 112px; margin-left: -56px; border-radius: 34%; border: 1.5px solid color-mix(in srgb, var(--pal-b) 70%, transparent); opacity: 0.5; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-core-ring { animation: v21-pulse 3.2s ease-out infinite; }
+  html:not(.hc):not(.saver) .v21-core-ring-2 { animation-delay: 1.6s; }
+  @keyframes v21-pulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.7); opacity: 0; } }
+}
+.v21-core-tx { display: grid; justify-items: center; gap: 1px; text-align: center; }
+.v21-core-tx strong { font-size: 1.3rem; line-height: 1.1; }
+.v21-core-tx span { font-size: 0.88rem; color: var(--v21-ink-2); }
+
+/* מצב התלת-ממד: רק במסך רחב, עם תנועה מותרת, בלי ניגודיות גבוהה ובלי חיסכון */
+@media (min-width: 760px) and (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-command {
+    transform: rotateX(calc(7deg + var(--py, 0) * -2.5deg)) rotateY(calc(-4deg + var(--px, 0) * -4deg));
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 55%, rgba(124, 58, 237, 0.2)), rgba(27, 16, 64, 0.8);
+    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+    transition: transform 0.28s ease-out;
+  }
+  /* בערכת נושא בהירה הזכוכית נשארת עמוקה (אחרת היא הופכת לאפורה), עם שקיפות קטנה יותר */
+  html.light:not(.hc):not(.saver) .v21-command, html[data-panel="light"]:not(.hc):not(.saver) .v21-command, html:not(.hc):not(.saver) [data-panel="light"] .v21-command {
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 55%, rgba(124, 58, 237, 0.2)), rgba(27, 16, 64, 0.95);
+  }
+  html:not(.hc):not(.saver) .v21-core { transform: translateZ(46px); }
+  html:not(.hc):not(.saver) .v21-core:hover { transform: translateZ(60px) scale(1.04); }
+  html:not(.hc):not(.saver) .v21-node { transform: translateZ(16px); }
+  html:not(.hc):not(.saver) .v21-node:hover { transform: translateZ(26px); }
+}
+
+/* מנהרת כרטיסים */
+.v21-tunnel-wrap { margin: 0 0 22px; }
+.v21-tunnel { perspective: 1100px; padding: 8px 0 24px; }
+.v21-tunnel-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; direction: ltr; transform-style: preserve-3d; }
+.v21-tcard { direction: rtl; --ry0: 0deg; --tz0: 0px; }
+.v21-tcard-link { display: flex; flex-direction: column; gap: 8px; min-height: 168px; height: 100%; padding: 16px; border-radius: 22px; text-decoration: none; }
+.v21-tcard-link:hover .v21-tcard-title { text-decoration: underline; text-underline-offset: 3px; }
+.v21-tcard-kind { align-self: flex-start; padding: 2px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; color: var(--pal-ink); background: linear-gradient(135deg, var(--pal-a), var(--pal-b)); }
+.v21-tcard-title { font-size: 1.05rem; line-height: 1.3; }
+.v21-tcard-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+.v21-tcard-meta span { padding: 2px 9px; border-radius: 999px; font-size: 0.78rem; color: var(--v21-ink-2); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); }
+@media (max-width: 899px) { .v21-tunnel-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .v21-tunnel-list { grid-template-columns: minmax(0, 1fr); } .v21-tcard-link { min-height: 0; } }
+@media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-tcard { transform: translateZ(var(--tz, var(--tz0))) rotateY(var(--ry, var(--ry0))); transition: transform 0.4s cubic-bezier(0.2, 0.85, 0.25, 1); }
+  html:not(.hc):not(.saver) .v21-tcard-1 { --ry0: 34deg; --tz0: -130px; }
+  html:not(.hc):not(.saver) .v21-tcard-2 { --ry0: 16deg; --tz0: -34px; }
+  html:not(.hc):not(.saver) .v21-tcard-3 { --ry0: -16deg; --tz0: -34px; }
+  html:not(.hc):not(.saver) .v21-tcard-4 { --ry0: -34deg; --tz0: -130px; }
+  html:not(.hc):not(.saver) .v21-tcard:hover, html:not(.hc):not(.saver) .v21-tcard:focus-within { --ry: 0deg; --tz: 24px; z-index: 2; }
+  html:not(.hc):not(.saver) .v21-tcard-link { background: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 55%, rgba(124, 58, 237, 0.2)), rgba(27, 16, 64, 0.82); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); }
+  html.light:not(.hc):not(.saver) .v21-tcard-link, html[data-panel="light"]:not(.hc):not(.saver) .v21-tcard-link { background: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 55%, rgba(124, 58, 237, 0.2)), rgba(27, 16, 64, 0.95); }
+}
+
+/* מסכים צרים: ליבה למעלה, והצמתים כאריחים קטנים (אייקון ותווית), בלי קווים */
+@media (max-width: 759px) {
+  .v21-cmd-grid { grid-template-columns: minmax(0, 1fr); min-height: 0; gap: 12px; }
+  .v21-links { display: none; }
+  .v21-core-wrap { order: -1; }
+  .v21-core-sq { width: 88px; height: 88px; }
+  .v21-core-ring { top: 6px; width: 88px; height: 88px; margin-left: -44px; }
+  .v21-nodes { grid-template-rows: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 0; }
+  .v21-node { flex-direction: column; justify-content: center; gap: 6px; min-height: 84px; padding: 10px 6px; text-align: center; }
+  .v21-node-tx strong { font-size: 0.86rem; }
+  .v21-node-tx span { display: none; }
+}
+
+/* ניגודיות גבוהה וחיסכון: בלי זוהר, בלי טשטוש ובלי תלת-ממד */
+html.hc .v21-atmos, html.saver .v21-atmos, html.hc .v21-links, html.hc .v21-core-ring { display: none; }
+html.saver .v21-core-ring { animation: none; }
+html.hc .v21-command, html.hc .v21-tcard-link, html.hc .v21-node { background: #000; color: #ffeb00; border: 2px solid #ffeb00; box-shadow: none; transform: none; --focus: #ffeb00; }
+html.hc .v21-cmd-title, html.hc .v21-node-tx span, html.hc .v21-core-tx span, html.hc .v21-tcard-meta span { color: #ffeb00; }
+html.hc .v21-node-ic, html.hc .v21-tcard-kind { background: #000; color: #ffeb00; border: 1px solid #ffeb00; }
+html.hc .v21-core { color: #ffeb00; }
+html.hc .v21-core-sq { background: #ffeb00; color: #000; box-shadow: none; }
+html.hc .v21-tcard-meta span { background: #000; border-color: #ffeb00; }
+html.saver .v21-command, html.saver .v21-tcard, html.saver .v21-core, html.saver .v21-node { transform: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; transition: none !important; }
+@media print { .v21-stage, .v21-tunnel-wrap { display: none; } }
+
+/* ═══════════ 3. קפסולת התקדמות זכוכית (GlassProgress) ═══════════ */
+.v21-gp {
+  --focus: #fde047;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px 16px;
+  margin: 0 0 14px; padding: 14px 20px; border-radius: 28px; color: var(--v21-ink);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 55%, rgba(124, 58, 237, 0.2)), #1b1040;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 24px 44px -28px rgba(0, 0, 0, 0.8);
+}
+.v21-gp-num { min-width: 3.3ch; text-align: center; font-size: clamp(2.2rem, 8vw, 3.4rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 26px var(--v21-glow); }
+.v21-gp-num small { margin-inline-start: 2px; font-size: 0.4em; font-weight: 700; color: var(--v21-ink-2); text-shadow: none; }
+.v21-gp-track { position: relative; display: block; height: 16px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4); }
+.v21-gp-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--pal-a), var(--pal-b)); box-shadow: 0 0 18px var(--v21-glow), inset 0 1px 1px rgba(255, 255, 255, 0.6); }
+.v21-gp-note { grid-column: 1 / -1; font-size: 0.8rem; color: var(--v21-ink-2); }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.saver) .v21-gp-track i { transition: width 0.5s cubic-bezier(0.3, 0.8, 0.3, 1); }
+  html:not(.hc):not(.saver) .v21-gp-track::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%) no-repeat; background-size: 40% 100%; animation: v21-sweep 1.8s linear infinite; }
+}
+html.hc .v21-gp { background: #000; color: #ffeb00; border: 2px solid #ffeb00; box-shadow: none; }
+html.hc .v21-gp-num, html.hc .v21-gp-num small, html.hc .v21-gp-note { color: #ffeb00; text-shadow: none; }
+html.hc .v21-gp-track { background: #000; border: 1px solid #ffeb00; box-shadow: none; }
+html.hc .v21-gp-track i { background: #ffeb00; box-shadow: none; }
+@media print { .v21-gp { display: none; } }
+
+/* ═══════════ 4. שכבה גלובלית לכל העמודים ═══════════ */
+
+/* 4א. תאורת עומק (Atmospheric Radial Glow) מאחורי כל האתר: שכבה קבועה אחת, גרדיאנטים בלבד */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60vw 42vh at 50% -6%, color-mix(in srgb, var(--pal-a) 20%, transparent), transparent 70%),
+    radial-gradient(46vw 40vh at 0% 100%, rgba(124, 58, 237, 0.2), transparent 70%),
+    radial-gradient(40vw 34vh at 100% 70%, color-mix(in srgb, var(--pal-b) 12%, transparent), transparent 70%);
+}
+html.hc body::before, html.saver body::before { display: none; }
+@media print { body::before { display: none; } }
+
+/* 4ב. כותרות עמוד: פס מבטא קצר מתחת לכותרת (PageTitle) */
+@media screen {
+  html:not(.hc) .page-title h1::after { content: ""; display: block; width: 56px; height: 4px; margin-top: 10px; border-radius: 999px; background: var(--btn-bg); }
+}
+
+/* 4ג. כל כרטיסי .card: פינות 22px והארה פנימית עדינה בשפה העליונה. ההרמה בריחוף רק לכרטיסי פריט ברשימות ובגריד */
+html:not(.hc) .card { border-radius: var(--v21-r); box-shadow: var(--sh-1, 0 1px 2px rgba(17, 24, 39, 0.06), 0 12px 28px -16px rgba(17, 24, 39, 0.28)), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) :is(.list, .grid-list, .cards) > li.card { transition: transform 0.28s cubic-bezier(0.2, 0.85, 0.25, 1), box-shadow 0.28s; }
+  html:not(.hc):not(.saver) :is(.list, .grid-list, .cards) > li.card:hover { transform: translateY(var(--v21-lift)); }
+}
+
+/* 4ד. מודאלים: זכוכית עמוקה, רקע מטושטש וכניסה חלקה. במובייל נשאר גיליון תחתון קיים */
+@media (min-width: 721px) {
+  html:not(.hc) dialog.modal { border-radius: 26px; border-color: var(--line); box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 0 40px 90px -30px rgba(0, 0, 0, 0.75); }
+  html:not(.hc):not(.saver) dialog.modal::backdrop { -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%); }
+}
+@media (min-width: 721px) and (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) dialog.modal[open] { animation: v21-modal-in 0.28s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
+}
+@keyframes v21-modal-in { from { transform: translateY(14px) scale(0.98); } }
+
+/* 4ה. טפסים: פינות עגולות יותר והילה בפוקוס (המסגרת המקורית של הפוקוס נשארת) */
+html:not(.hc) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), html:not(.hc) select, html:not(.hc) textarea { border-radius: 14px; }
+html:not(.hc):not(.saver) input:focus-visible, html:not(.hc):not(.saver) select:focus-visible, html:not(.hc):not(.saver) textarea:focus-visible { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent); }
+
+/* 4ו. שלד טעינה (Skeleton): shimmer בגוון המותג בכל מקום שיש שלד */
+html:not(.hc) .skeleton-line, html:not(.hc) .lux-sk {
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent-2) 30%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+  background-size: 200% 100%;
+}
+.skeleton-line { border-radius: 999px; }
+
+/* 4ז. תוספות לרכיבי הסטטיסטיקה */
+.v21-stat-num small { font-size: 0.45em; font-weight: 700; color: var(--muted); }
+.v21-stat-text { display: block; font-size: clamp(1.1rem, 2.6vw, 1.5rem); line-height: 1.25; }
+.v21-kpi-delta { margin-top: 6px; padding-top: 0; }
+
+/* ═══════════ 5. שדרוג הרכיבים הקיימים לשפת V21 ═══════════ */
+
+/* 5א. דשבורד: כרטיסי KPI, כרטיס הפעולה הבאה וקפסולת ההתקדמות */
+.db-card { border-radius: var(--v21-r); border: 1px solid rgba(17, 24, 39, 0.06); }
+.db-kpi-ic + h2 { padding-inline-end: 46px; } /* כותרת ארוכה לא נוגעת באייקון */
+.db-card.v21-hero-dark h2, .db-card.v21-hero-dark .db-kpi-sub { color: var(--v21-ink-2); }
+.db-card.v21-hero-dark .db-kpi-num { color: #fff; text-shadow: 0 0 24px var(--v21-glow); }
+.db-card.v21-hero-dark { border-color: rgba(255, 255, 255, 0.14); }
+.db-card.v21-hero-dark .db-kpi-ic { background: rgba(255, 255, 255, 0.12); color: #fdba74; }
+.v21-feature { position: relative; overflow: hidden; box-shadow: 0 24px 44px -24px var(--v21-glow); }
+.v21-feature::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(340px 190px at 100% 0%, rgba(255, 255, 255, 0.3), transparent 70%); }
+.db-bar { height: 14px; box-shadow: inset 0 2px 3px rgba(17, 24, 39, 0.16); }
+.db-bar > i { box-shadow: 0 0 14px rgba(234, 88, 12, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.55); }
+html.hc .db-card.v21-hero-dark, html.hc .v21-feature { background: #000 !important; color: #ffeb00; box-shadow: none; }
+html.hc .db-card.v21-hero-dark h2, html.hc .db-card.v21-hero-dark .db-kpi-sub, html.hc .db-card.v21-hero-dark .db-kpi-num { color: #ffeb00; text-shadow: none; }
+html.hc .v21-feature::before { display: none; }
+html.hc .db-bar > i { box-shadow: none; }
+
+/* 5ב. Coverflow: כרטיסים בזכוכית עמוקה וכפתורי ניווט קפסולה */
+.cf-item > .card { border-radius: 24px; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 0 26px 44px -26px rgba(0, 0, 0, 0.6); }
+.cf-btn { border-radius: 999px; }
+html.hc .cf-item > .card { box-shadow: none; }
+
+/* 5ג. "מבט מהיר" בעמוד פעולה: אריחי Bento קטנים */
+.glance-cell { border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .glance-cell { transition: transform 0.25s cubic-bezier(0.2, 0.85, 0.25, 1); }
+  html:not(.hc):not(.saver) .glance-cell:hover { transform: translateY(-3px); }
+}
+html.hc .glance-cell { box-shadow: none; }
+
+/* 5ד. מצב שטח: פס הזמן כקפסולת זכוכית (דקורטיבי, והטיימר עצמו לא השתנה) */
+.field-bar { border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35); }
+.field-bar span { border-radius: inherit; box-shadow: 0 0 16px var(--v21-glow); }
+html.hc .field-bar, html.hc .field-bar span { box-shadow: none; }
+
+/* 5ה. לשוניות כפתור (.actions / .tabs / .write-tabs / .wa-tabs) מקבלות מסגרת קפסולה עדינה כשהאינדיקטור פעיל */
+html:not(.hc):not(.saver) .v21-live { border-radius: 999px; }
+
+/* 5ו. טבעת "היום" בכרטיס TodayCard: זוהר עדין בצבע המותג (דקורטיבי; בניגודיות גבוהה ובחיסכון נשארת שטוחה) */
+html:not(.hc):not(.saver) .lux-pring .fg { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--pal-a) 65%, transparent)); }
+@media print { .lux-pring .fg { filter: none; } }

@@ -19,6 +19,8 @@ import { AdminAccessLog, AdminBlocks, AdminSecurityOverview, AdminSecuritySettin
 import { ChangePassword, LoginForm } from "./AuthForms";
 import { useAuth, useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
+import { StatStrip } from "./v21/StatStrip";
+import { StatPill } from "./v21/StatPill";
 
 function BarList({ title, data }: { title: string; data: Record<string, number> }) {
   const rows = Object.entries(data).sort((a, b) => b[1] - a[1]);
@@ -146,24 +148,21 @@ function Dashboard() {
             <h2 id="stats-title" className="section-title">
               סטטיסטיקות
             </h2>
-            <ul className="stat-tiles">
-              <li className="card glass">
-                <span className="stat-num">{stats.total}</span>
-                <span>פעולות במאגר</span>
-              </li>
-              <li className="card glass">
-                <span className="stat-num">{stats.generatedLast7Days}</span>
-                <span>נוצרו ב-7 הימים האחרונים</span>
-              </li>
-              <li className="card glass">
-                <span className="stat-num">{stats.emailQueue.find((x) => x.status === "SENT")?.c ?? 0}</span>
-                <span>מיילים שנשלחו</span>
-              </li>
-              <li className="card glass">
-                <span className="stat-num">{(stats.emailQueue.find((x) => x.status === "FAILED")?.c ?? 0) + (stats.emailQueue.find((x) => x.status === "PENDING")?.c ?? 0)}</span>
-                <span>מיילים ממתינים או שנכשלו</span>
-              </li>
-            </ul>
+            <StatStrip
+              className="stat-tiles"
+              label="סטטיסטיקות המאגר והמיילים"
+              tiles={(() => {
+                const sent = stats.emailQueue.find((x) => x.status === "SENT")?.c ?? 0;
+                const waiting = (stats.emailQueue.find((x) => x.status === "FAILED")?.c ?? 0) + (stats.emailQueue.find((x) => x.status === "PENDING")?.c ?? 0);
+                const share = stats.total > 0 ? Math.round((stats.generatedLast7Days / stats.total) * 100) : 0;
+                return [
+                  { key: "total", hero: "dark" as const, label: "פעולות במאגר", value: stats.total, pill: <StatPill tone="brand" srPrefix="">בכל המאגר</StatPill> },
+                  { key: "new7", hero: "brand" as const, label: "נוצרו ב-7 הימים האחרונים", value: stats.generatedLast7Days, pill: <StatPill tone="brand" srPrefix="">{share}% מהמאגר</StatPill> },
+                  { key: "sent", label: "מיילים שנשלחו", value: sent, ring: { value: sent + waiting > 0 ? sent / (sent + waiting) : 0, label: "שיעור המיילים שנשלחו" } },
+                  { key: "wait", label: "מיילים ממתינים או שנכשלו", value: waiting, pill: waiting > 0 ? <StatPill tone="down" srPrefix="דורש בדיקה">דורש בדיקה</StatPill> : <StatPill tone="up" srPrefix="תקין">תקין</StatPill> },
+                ];
+              })()}
+            />
             <div className="grid-list">
               <BarList title="לפי שכבת גיל" data={stats.byAgeGroup} />
               <BarList title="לפי ערך מוביל" data={stats.byValue} />

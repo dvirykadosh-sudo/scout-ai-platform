@@ -7,6 +7,8 @@ import { AGE_GROUPS } from "@/lib/constants";
 import type { PlanResponse } from "@/lib/types";
 import { useToast } from "./Providers";
 import { Field } from "./ui";
+import { StatStrip } from "./v21/StatStrip";
+import { StatPill } from "./v21/StatPill";
 
 export function PlanPage() {
   const toast = useToast();
@@ -86,6 +88,18 @@ export function PlanPage() {
               </Link>
             </div>
           )}
+          <StatStrip
+            label="סיכום התכנון"
+            tiles={(() => {
+              const filled = plan.slots.filter((s) => s.activity).length;
+              const covered = plan.coverage.filter((c) => c.planned > 0).length;
+              return [
+                { key: "weeks", hero: "dark" as const, label: "שבועות בתכנון", value: plan.slots.length, sub: `${filled} מהם עם פעולה מתאימה`, ring: { value: plan.slots.length ? filled / plan.slots.length : 0, label: "שבועות שיש להם פעולה מתאימה" } },
+                { key: "values", hero: "brand" as const, label: "ערכים מכוסים", value: `${covered}/${plan.coverage.length}`, ring: { value: plan.coverage.length ? covered / plan.coverage.length : 0, label: "ערכים מכוסים בתכנון" } },
+                { key: "missing", label: "ערכים בלי פעולה במאגר", value: plan.missing.length, pill: plan.missing.length > 0 ? <StatPill tone="down" srPrefix="דורש תשומת לב">כדאי ליצור</StatPill> : <StatPill tone="up" srPrefix="תקין">הכל מכוסה</StatPill> },
+              ];
+            })()}
+          />
           <div className="table-wrap" tabIndex={0} role="region" aria-label="תכנון שבועי">
             <table className="plan-table">
               <caption className="sr-only">תכנון שבועי</caption>

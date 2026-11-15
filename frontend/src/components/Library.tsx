@@ -15,6 +15,7 @@ import { useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
 import { RecentlyViewed, SmartFallback, VoiceSearchButton } from "./Discover54";
 import { PosterThumb } from "./lux/Poster";
+import { LibraryStats } from "./v21/LibraryStats";
 
 const PAGE_SIZE = 6;
 const SAVED_KEY = "scout.savedSearches";
@@ -380,6 +381,8 @@ export function Library() {
       <p className="count" role="status" aria-live="polite">
         {loading ? "טוען..." : data ? `נמצאו ${data.total} פעולות` : ""}
       </p>
+
+      {data && !loading && <LibraryStats items={data.items} total={data.total} />}
 
       {error && (
         <div className="error-box" role="alert">

@@ -15,6 +15,8 @@ import { SecurityPanel } from "./SecurityPanel";
 import { STAFF_LABEL } from "@/lib/staff";
 import type { Collection } from "./CollectionModal";
 import { Field, Skeleton } from "./ui";
+import { StatStrip } from "./v21/StatStrip";
+import { StatPill } from "./v21/StatPill";
 
 function MyRuns() {
   const { token } = useAuth();
@@ -210,6 +212,21 @@ function MyActivities() {
           עוד לא יצרתם פעולות. <Link href="/">אפשר ליצור את הראשונה</Link>. כשאתם מחוברים, כל פעולה שתיצרו תישמר כאן.
         </p>
       ) : (
+        <>
+        {(() => {
+          const live = items.filter((a) => a.status !== "ARCHIVED");
+          const pending = live.filter((a) => a.status === "PENDING").length;
+          return live.length > 0 ? (
+            <StatStrip
+              label="סיכום הפעולות שלי"
+              tiles={[
+                { key: "live", hero: "dark", label: "פעולות פעילות", value: live.length },
+                { key: "min", hero: "brand", label: "משך ממוצע", value: <>{Math.round(live.reduce((s, a) => s + a.durationMin, 0) / live.length)}<small> דק'</small></> },
+                { key: "ok", label: "אושרו לפרסום", value: live.length - pending, ring: { value: (live.length - pending) / live.length, label: "שיעור הפעולות שאושרו" }, pill: pending > 0 ? <StatPill tone="brand" srPrefix="">{pending} ממתינות</StatPill> : undefined },
+              ]}
+            />
+          ) : null;
+        })()}
         <ul className="plain-list">
           {items.map((a) => (
             <li key={a.id}>
@@ -245,6 +262,7 @@ function MyActivities() {
             </li>
           ))}
         </ul>
+        </>
       )}
     </section>
   );

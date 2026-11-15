@@ -13,13 +13,14 @@ import type { ReactNode } from "react";
 const lift = { y: -5 };
 const spring = { type: "spring" as const, stiffness: 300, damping: 22 };
 
-export function KpiCard({ label, value, sub, icon: Icon, chart }: { label: string; value: number | string; sub: string; icon: LucideIcon; chart: ReactNode }) {
+export function KpiCard({ label, value, sub, icon: Icon, chart, delta, hero }: { label: string; value: number | string; sub: string; icon: LucideIcon; chart: ReactNode; /** שלב 67: תגית שינוי או סטטוס מתחת למדד */ delta?: ReactNode; /** שלב 67: כרטיס Hero כהה עם מדד זוהר */ hero?: boolean }) {
   return (
-    <motion.section className="db-card tw:flex tw:flex-col" whileHover={lift} transition={spring} aria-label={label}>
+    <motion.section className={"db-card tw:flex tw:flex-col" + (hero ? " v21-hero-dark" : "")} whileHover={lift} transition={spring} aria-label={label}>
       <span className="db-kpi-ic" aria-hidden="true"><Icon size={20} /></span>
       <h2>{label}</h2>
       <span className="db-kpi-num">{value}</span>
       <span className="db-kpi-sub">{sub}</span>
+      {delta && <span className="v21-stat-row v21-kpi-delta">{delta}</span>}
       {chart}
     </motion.section>
   );
@@ -27,7 +28,7 @@ export function KpiCard({ label, value, sub, icon: Icon, chart }: { label: strin
 
 export function FeaturedCard({ next, days }: { next: ScheduleItem | null; days: number }) {
   return (
-    <motion.section className="db-card db-feature tw:bg-linear-to-br tw:from-orange-500 tw:to-amber-500 tw:rounded-3xl" whileHover={lift} transition={spring} aria-label="הפעולה הבאה שלך">
+    <motion.section className="db-card db-feature v21-feature tw:bg-linear-to-br tw:from-orange-500 tw:to-amber-500 tw:rounded-3xl" whileHover={lift} transition={spring} aria-label="הפעולה הבאה שלך">
       <h2>הפעולה הבאה שלך</h2>
       {next ? (
         <>

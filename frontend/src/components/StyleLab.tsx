@@ -7,6 +7,7 @@ import { useToast } from "./Providers";
 import { Field, Modal } from "./ui";
 import { printHtml } from "./WriteV47";
 import type { Snap } from "./WriteParts";
+import { useTabIndicator } from "./v21/useTabIndicator";
 
 const docBody = (s: Snap) => ({ title: s.title, meta: s.meta, blocks: s.blocks });
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -26,6 +27,7 @@ type Tab = (typeof TABS)[number][0];
 export function StyleLabModal({ open, onClose, snap, token, onInsert }: { open: boolean; onClose: () => void; snap: Snap; token: string | null; onInsert: (t: string) => void }) {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("analyze");
+  const ti = useTabIndicator(tab);
   const [an, setAn] = useState<Analysis | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [busy, setBusy] = useState(false);
@@ -92,7 +94,8 @@ export function StyleLabModal({ open, onClose, snap, token, onInsert }: { open: 
 
   return (
     <Modal open={open} onClose={onClose} title="מעבדת סגנון ופירוק" wide footer={<button type="button" className="btn" onClick={onClose}>סגירה</button>}>
-      <div className="actions" role="tablist" aria-label="חלקי המעבדה">
+      <div className={`actions ${ti.cls}`} role="tablist" aria-label="חלקי המעבדה" ref={ti.ref} data-switch={ti.sw}>
+        {ti.ind}
         {TABS.map(([k, label]) => (<button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "btn btn-primary" : "btn"} onClick={() => setTab(k)}>{label}</button>))}
       </div>
 

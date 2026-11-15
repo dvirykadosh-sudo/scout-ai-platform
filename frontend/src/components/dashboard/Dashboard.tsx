@@ -10,6 +10,7 @@ import { SidePanel } from "./SidePanel";
 import { inMonth, nextDays, nextOwn, percent, toEvents, weekCounts } from "./dash-calc";
 import { DOW_LONG, MONTHS, daysBetween, fmtShort, monthKey, weekdayOf } from "./dates";
 import { useDashboardData } from "./useDashboardData";
+import { StatPill, deltaPill } from "../v21/StatPill";
 
 const QUICK = [
   { href: "/", label: "פעולה חכמה חדשה", icon: Sparkles },
@@ -62,6 +63,11 @@ export function Dashboard() {
   const past30 = schedule.filter((s) => s.date < today && daysBetween(s.date, today) <= 30).length;
   const logPending = reminders.filter((r) => r.type === "log").length;
   const events = toEvents(schedule, team, reminders);
+  // שלב 67: תגיות שינוי. משווים רק כשיש מה להשוות (תקופה קודמת ריקה מקבלת "חדש", לא אחוז מומצא)
+  const [ty, tm] = [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
+  const prevYm = tm === 1 ? `${ty - 1}-12` : `${ty}-${String(tm - 1).padStart(2, "0")}`;
+  const prevMonthN = inMonth(dates, prevYm);
+  const prev14 = dates.filter((d) => d < today && daysBetween(d, today) <= 14).length;
 
   return (
     <div className="db-shell tw:rounded-3xl tw:backdrop-blur-xl">
@@ -79,10 +85,10 @@ export function Dashboard() {
         {error && <p role="alert" className="db-card" style={{ marginBottom: 14 }}>{error}</p>}
 
         <div className="db-grid">
-          <KpiCard label="פעולות ביומן החודש" value={monthN} sub={`ב${MONTHS[Number(today.slice(5, 7)) - 1]}`} icon={CalendarCheck2} chart={<MiniBars values={weekCounts(dates, today, 8, "past")} />} />
-          <KpiCard label="ב-14 הימים הקרובים" value={next14} sub="פעולות מתוכננות" icon={CalendarClock} chart={<MiniBars values={weekCounts(dates, today, 8, "future")} highlight={0} />} />
-          <KpiCard label="אירועי שבט קרובים" value={teamDates.length} sub="בלוח הצוות" icon={CalendarHeart} chart={<MiniLine values={weekCounts(teamDates, today, 8, "future")} />} />
-          <KpiCard label="דורש טיפול" value={open} sub={`${reminders.length} תזכורות · ${unread} התראות`} icon={BellRing} chart={<MiniLine values={nextDays(reminders.map((r) => r.date), today, 7)} />} />
+          <KpiCard label="פעולות ביומן החודש" value={monthN} sub={`ב${MONTHS[Number(today.slice(5, 7)) - 1]}`} icon={CalendarCheck2} hero delta={deltaPill(monthN, prevMonthN, "מול חודש קודם")} chart={<MiniBars values={weekCounts(dates, today, 8, "past")} />} />
+          <KpiCard label="ב-14 הימים הקרובים" value={next14} sub="פעולות מתוכננות" icon={CalendarClock} delta={deltaPill(next14, prev14, "מול 14 הימים שעברו")} chart={<MiniBars values={weekCounts(dates, today, 8, "future")} highlight={0} />} />
+          <KpiCard label="אירועי שבט קרובים" value={teamDates.length} sub="בלוח הצוות" icon={CalendarHeart} delta={<StatPill tone="brand" srPrefix="">{teamDates.length ? "בלוח הצוות" : "אין אירועים"}</StatPill>} chart={<MiniLine values={weekCounts(teamDates, today, 8, "future")} />} />
+          <KpiCard label="דורש טיפול" value={open} sub={`${reminders.length} תזכורות · ${unread} התראות`} icon={BellRing} delta={open > 0 ? <StatPill tone="down" srPrefix="דורש טיפול">{open} פתוחים</StatPill> : <StatPill tone="up" srPrefix="מעודכן">הכל מעודכן</StatPill>} chart={<MiniLine values={nextDays(reminders.map((r) => r.date), today, 7)} />} />
 
           <FeaturedCard next={next} days={next ? daysBetween(today, next.date) : 0} />
           <ProgressCard title="הכנה לשבוע הקרוב" pct={percent(week - prepPending, week)} note={week ? `${week} פעולות ב-7 הימים הקרובים, ${prepPending} עוד לא הוכנו` : "אין פעולות ב-7 הימים הקרובים"} />

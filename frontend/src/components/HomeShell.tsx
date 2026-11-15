@@ -10,6 +10,7 @@ import { LastDocHero } from "./Polish";
 import { HomeHow } from "./lux/HomeHow";
 import { TodayCard } from "./lux/TodayCard";
 import { Skeleton } from "./ui";
+import { SpatialCommand } from "./v21/SpatialCommand";
 
 // שלב 66 (ממצא 89): מה שאינו חלק מהמסך הראשון נטען אחרי שהדף עלה, כדי שהטופס יופיע מהר ויהיה אינטראקטיבי קודם.
 // רובם מופיעים ממילא רק אחרי שליפת נתונים או בלשונית אחרת. כפתור הסיור והבאנרים יופיעו רגע אחרי שהדף נטען.
@@ -20,21 +21,23 @@ const TourButton = dynamic(() => import("./WriteFinal").then((m) => m.TourButton
 const RemindersBanner = dynamic(() => import("./RemindersBanner").then((m) => m.RemindersBanner), { ssr: false });
 const ThisWeek = dynamic(() => import("./ThisWeek").then((m) => m.ThisWeek), { ssr: false });
 const HomeInspiration = dynamic(() => import("./HomeHero").then((m) => m.HomeInspiration), { ssr: false });
+// שלב 67: מנהרת הכרטיסים התלת-ממדית נטענת אחרי הדף, כמו שאר מה שמתחת לקפל
+const HomeTunnel = dynamic(() => import("./v21/HomeTunnel").then((m) => m.HomeTunnel), { ssr: false });
 
 /** מבנה דף הבית: ברכה, שלוש פעולות עיקריות, ולשוניות שמפרידות בין האזורים. */
 export function HomeShell() {
   const [tab, setTab] = useHomeTab();
+  const goCreate = () => {
+    setTab("create");
+    window.setTimeout(() => document.getElementById("step-title")?.focus(), 80);
+  };
   return (
     <>
       <HomeWelcome />
       <LastDocHero />
       <TodayCard />
-      <HomeMenu
-        onCreate={() => {
-          setTab("create");
-          window.setTimeout(() => document.getElementById("step-title")?.focus(), 80);
-        }}
-      />
+      <SpatialCommand onCreate={goCreate} />
+      <HomeMenu onCreate={goCreate} />
       <div className="home-tour">
         <TourButton kind="home" />
       </div>
@@ -62,6 +65,7 @@ export function HomeShell() {
           </>
         }
       />
+      <HomeTunnel />
       <HomeHow />
     </>
   );

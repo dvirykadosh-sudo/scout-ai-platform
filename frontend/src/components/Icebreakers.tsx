@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useToast } from "./Providers";
 import { Field } from "./ui";
+import { StatStrip } from "./v21/StatStrip";
+import { StatPill } from "./v21/StatPill";
 
 interface Game {
   name: string;
@@ -97,6 +99,17 @@ export function Icebreakers() {
       )}
       <div role="region" aria-live="polite" aria-label="משחקים מוצעים">
         {games && games.length === 0 && <p>אין משחקים שמתאימים לסינון. נסו להקל עליו.</p>}
+        {games && games.length > 0 && (
+          <StatStrip
+            label="סיכום המשחקים המוצעים"
+            tiles={[
+              { key: "n", hero: "dark", label: "משחקים מוצעים", value: games.length },
+              { key: "min", hero: "brand", label: "משך ממוצע", value: <>{Math.round(games.reduce((s, g) => s + g.minutes, 0) / games.length)}<small> דק'</small></> },
+              { key: "gear", label: "בלי ציוד", value: games.filter((g) => !g.equipment).length, ring: { value: games.filter((g) => !g.equipment).length / games.length, label: "שיעור המשחקים בלי ציוד" } },
+              { key: "move", label: "תנועתיים", value: games.filter((g) => g.energetic).length, pill: <StatPill tone="flat" srPrefix="">{games.filter((g) => !g.energetic).length} רגועים</StatPill> },
+            ]}
+          />
+        )}
         <ul className="list">
           {games?.map((g) => (
             <li key={g.name} className="card glass">

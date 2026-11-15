@@ -8,6 +8,7 @@ import { useAuth, useToast } from "./Providers";
 import { ExtensionTab, FollowTab } from "./ChatFollow57";
 import { MessagesTab, ReplyTab } from "./ChatTools57";
 import { Field, Skeleton } from "./ui";
+import { useTabIndicator } from "./v21/useTabIndicator";
 
 export interface Variant { id: string; label?: string; text: string; slots?: string[]; neverHits?: { word: string }[]; words?: number }
 export interface Replies { suppressed?: boolean; reason?: string; safe?: string[]; intent?: string; label?: string; variants?: Variant[]; avoid?: string[]; tip?: string | null }
@@ -55,6 +56,7 @@ export async function copyText(text: string, toast: ReturnType<typeof useToast>,
 export function ChatHelper() {
   const { token, ready } = useAuth();
   const [tab, setTab] = useState<Tab>("analyze");
+  const ti = useTabIndicator(tab);
   const [gender, setGender] = useState<{ kid: Gender; guide: Gender }>({ kid: "n", guide: "n" });
   useEffect(() => {
     try { const p = JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); setGender({ kid: ["m", "f"].includes(p.kid) ? p.kid : "n", guide: ["m", "f"].includes(p.guide) ? p.guide : "n" }); } catch { /* ignore */ }
@@ -85,7 +87,8 @@ export function ChatHelper() {
           <li>הכלי הוא עזר לשיקול דעת, לא תחליף. הוא <strong>לא תופס הכול</strong>: שפה עקיפה, סלנג ועקיצות יכולים לחמוק, ושום סימן אזהרה לא אומר שהכול בסדר.</li>
         </ul>
       </section>
-      <div className="actions" role="tablist" aria-label="חלקי עוזר השיחות">
+      <div className={`actions ${ti.cls}`} role="tablist" aria-label="חלקי עוזר השיחות" ref={ti.ref} data-switch={ti.sw}>
+        {ti.ind}
         {TABS.map(([k, label]) => (
           <button key={k} type="button" role="tab" id={`ch-tab-${k}`} aria-selected={tab === k} className={tab === k ? "btn btn-primary" : "btn"} onClick={() => setTab(k)}>{label}</button>
         ))}

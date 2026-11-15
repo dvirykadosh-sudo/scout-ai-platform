@@ -10,6 +10,7 @@ import { calmMotion, useCountUp } from "@/lib/lux/motion";
 import { useAuth, useToast } from "../Providers";
 import { PageTitle, Skeleton } from "../ui";
 import { Eagle, EmptyState, type EagleMood } from "./illus";
+import { useTabIndicator } from "../v21/useTabIndicator";
 
 interface Mix {
   label: string;
@@ -364,6 +365,7 @@ export function Wrapped() {
   const [w, setW] = useState<W | null>(null);
   const [t, setT] = useState<Tribe | null>(null);
   const [tab, setTab] = useState<"me" | "tribe">("me");
+  const ti = useTabIndicator(tab);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!token) return;
@@ -390,7 +392,8 @@ export function Wrapped() {
   return (
     <div className="lux-wrapped">
       <PageTitle lead="הסיפור של השנה שלכם, מהנתונים שכבר קיימים באתר.">סיכום השנה</PageTitle>
-      <div className="actions no-print" role="tablist" aria-label="סוג הסיכום">
+      <div className={`actions no-print ${ti.cls}`} role="tablist" aria-label="סוג הסיכום" ref={ti.ref} data-switch={ti.sw}>
+        {ti.ind}
         {(["me", "tribe"] as const).map((k) => (
           <button key={k} type="button" role="tab" id={`wr-tab-${k}`} aria-selected={tab === k} aria-controls="wr-panel" className={`chip ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}>
             {k === "me" ? "הסיכום שלי" : "סיכום השבט"}
