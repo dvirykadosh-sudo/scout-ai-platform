@@ -1,6 +1,8 @@
 import { FlipStages } from "./Depth3D";
 import { AgeBadge, ageLevel } from "./Polish";
 import { KIND_LABELS } from "@/lib/kind-labels";
+import { StatPill } from "./v21/StatPill";
+import { StatStrip } from "./v21/StatStrip";
 import type { Activity } from "@/lib/types";
 
 export function StageTable({ stages }: { stages: Activity["stages"] }) {
@@ -97,5 +99,24 @@ export function ActivityGlance({ a }: { a: Activity }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+/** שלב 69 (V21): פס סטטיסטיקה עם שני כרטיסי Hero בראש הפעולה. לא מודפס. */
+export function ActivityStats({ a }: { a: Activity }) {
+  const total = a.stages.reduce((s, x) => s + x.minutes, 0) || a.durationMin || 1;
+  const sit = a.stages.filter((s) => /דיון|סיכום|שיחה/.test(s.name)).reduce((s, x) => s + x.minutes, 0);
+  const noGear = /^(אין|ללא)/.test(a.equipment.trim());
+  return (
+    <div className="no-print">
+      <StatStrip
+        label="הפעולה במספרים"
+        tiles={[
+          { key: "time", hero: "dark", label: "משך הפעולה", value: a.durationMin, sub: `דקות · ${a.stages.length} שלבים`, ring: { value: Math.min(1, Math.max(0, (total - sit) / total)), label: "חלק הזמן בפעילות מעשית ולא בשיחה" } },
+          { key: "group", hero: "brand", label: "משתתפים", value: a.groupSize, sub: a.ageGroup },
+          { key: "gear", label: "ציוד", value: noGear ? "אין" : "נדרש", sub: noGear ? undefined : a.equipment.length > 60 ? `${a.equipment.slice(0, 57)}...` : a.equipment, pill: noGear ? <StatPill tone="up" srPrefix="יתרון">אפשר להתחיל מיד</StatPill> : undefined },
+        ]}
+      />
+    </div>
   );
 }

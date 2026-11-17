@@ -1,0 +1,79 @@
+/* שלב 69: סטודיו ייצוא בנייד, מד דופק פדגוגי, ארגז כלי שטח וסריקת מערך. */
+
+/* ── סטודיו ייצוא: ב-390px הרשת לא מורחבת בגלל תוכן הטבלה ('1fr' שווה minmax(auto, 1fr) ומתרחב לפי התוכן) ── */
+.lux-studio { min-width: 0; max-width: 100%; }
+.lux-studio-grid { grid-template-columns: 300px minmax(0, 1fr); }
+@media (max-width: 900px) {
+  .lux-studio-grid { grid-template-columns: minmax(0, 1fr); }
+}
+.lux-studio-side, .lux-studio-main { min-width: 0; max-width: 100%; }
+.lux-studio-main { overflow-x: clip; }
+.lux-studio-main [role="tablist"] { flex-wrap: wrap; max-width: 100%; }
+.lux-studio-main img, .lux-studio-main svg, .lux-studio-main canvas { max-width: 100%; }
+.studio-page { max-width: 100%; }
+.studio-table th, .studio-table td, .studio-meta dd, .studio-title { overflow-wrap: anywhere; min-width: 0; }
+.lux-card-prev { min-width: 0; }
+.lux-card-prev p { overflow-wrap: anywhere; }
+
+/* ── מד דופק פדגוגי בעורך ── */
+.v21-pulse { display: grid; gap: 14px; margin-block: 14px; }
+.pulse-card { padding: 16px; display: grid; gap: 10px; }
+.pulse-card > * { margin: 0; }
+.pulse-live { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--pal-a); margin-inline-start: 8px; vertical-align: middle; }
+.pulse-svg { display: block; width: 100%; height: auto; max-height: 230px; overflow: visible; }
+.pulse-grid { stroke: var(--line); stroke-width: 1; }
+.pulse-floor { stroke: currentColor; stroke-opacity: 0.5; stroke-width: 1; stroke-dasharray: 2 4; }
+.pulse-energy { stroke: var(--pal-a); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.pulse-att { stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 7 5; stroke-linecap: round; }
+.pulse-en-dot { fill: var(--pal-a); }
+.pulse-att-dot { fill: currentColor; }
+.pulse-num { fill: currentColor; font-size: 12px; font-weight: 700; }
+.pulse-drop line { stroke: #fbbf24; stroke-width: 1.5; stroke-dasharray: 3 3; }
+.pulse-drop polygon { fill: #fbbf24; }
+html.light .pulse-drop line { stroke: #b45309; }
+html.light .pulse-drop polygon { fill: #b45309; }
+.pulse-legend { font-size: 0.9rem; }
+.pulse-drops { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pulse-drops li { border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+.pulse-drops li p { margin: 0; }
+.pulse-drops .btn { justify-self: start; white-space: normal; text-align: start; }
+html.hc .pulse-energy { stroke: #ffd400; }
+html.hc .pulse-en-dot { fill: #ffd400; }
+html.hc .pulse-drop line { stroke: #fff; }
+html.hc .pulse-drop polygon { fill: #fff; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .pulse-live { animation: pulse-beat 1.6s ease-in-out infinite; }
+  html:not(.hc):not(.saver) .pulse-energy, html:not(.hc):not(.saver) .pulse-att { transition: d 0.35s ease; }
+}
+@keyframes pulse-beat {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.5); opacity: 0.45; }
+}
+@media print { .v21-pulse { display: none !important; } }
+
+/* ── ארגז כלי שטח ── */
+.field-toolbox { display: grid; gap: 10px; margin-block: 16px; }
+.f69-tool { border: 1px solid var(--line); border-radius: 16px; padding: 0 14px; }
+.f69-tool > summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.f69-body { display: grid; gap: 12px; padding-block: 6px 16px; min-width: 0; }
+.f69-body > * { margin: 0; }
+.f69-fs { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; min-width: 0; }
+.f69-field, .f69-range { display: grid; gap: 4px; }
+.f69-meter { position: relative; height: 28px; border-radius: 999px; border: 1px solid var(--line); overflow: hidden; }
+.f69-meter-fill { display: block; height: 100%; background: var(--pal-a); }
+.f69-meter-limit { position: absolute; top: 0; bottom: 0; width: 3px; background: currentColor; }
+.f69-big { font-size: 1.6rem; font-weight: 800; }
+.f69-big small { font-size: 1rem; font-weight: 500; }
+.f69-groups { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.f69-groups li { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 4px; overflow-wrap: anywhere; }
+html.hc .f69-meter-fill { background: #ffd400; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .f69-meter-fill { transition: width 0.12s linear; }
+}
+@media print { .field-toolbox { display: none !important; } }
+
+/* ── סריקת מערך מצולם ── */
+.f69-scan { padding: 16px; display: grid; gap: 12px; }
+.f69-scan > * { margin: 0; }
+.f69-prev { max-width: 100%; max-height: 320px; object-fit: contain; border-radius: 12px; border: 1px solid var(--line); justify-self: start; }
+.f69-transcript pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }

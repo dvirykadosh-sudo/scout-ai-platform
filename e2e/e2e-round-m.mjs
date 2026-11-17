@@ -44,7 +44,7 @@ await step("82. register with email and phone", async () => {
   await A.getByLabel("סיסמה", { exact: true }).fill(PW);
   await A.getByLabel("מייל (לא חובה)").fill(EMAIL);
   await A.getByLabel("טלפון (לא חובה)").fill(PHONE_IN);
-  await A.getByLabel("קוד הרשמה של השבט").fill(CODE);
+  { const cf = A.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
   await A.getByLabel("קראתי ואני מאשר").check();
   const r = await axe(A);
   ok(r.violations.length === 0, "axe register " + axeMsg(r));

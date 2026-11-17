@@ -93,13 +93,13 @@ export function createAiRouter({ keys = {}, models = {}, order, fetchImpl = (...
     st[id].why = why;
   };
 
-  async function callGemini(p, model, { system, user, json, maxTokens, temperature, timeoutMs }) {
+  async function callGemini(p, model, { system, user, json, maxTokens, temperature, timeoutMs, image }) {
     const res = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",
       headers: { "x-goog-api-key": p.key, "content-type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: user }] }],
+        contents: [{ role: "user", parts: [...(image ? [{ inline_data: { mime_type: image.mime, data: image.data } }] : []), { text: user }] }],
         generationConfig: { maxOutputTokens: maxTokens, temperature, ...(json ? { responseMimeType: "application/json" } : {}) },
       }),
       signal: AbortSignal.timeout(timeoutMs),
@@ -150,7 +150,9 @@ export function createAiRouter({ keys = {}, models = {}, order, fetchImpl = (...
      */
     async chat(o) {
       const opt = { json: false, maxTokens: 450, temperature: 0.6, timeoutMs: 15_000, ...o, system: redact(o.system), user: redact(o.user) };
-      const pool = o.only ? ids.filter((id) => o.only.includes(id)) : ids;
+      let pool = o.only ? ids.filter((id) => o.only.includes(id)) : ids;
+      // שלב 69: תמונה נשלחת רק ל-Gemini (Groq לא מקבל תמונות, ו-Anthropic בתשלום)
+      if (o.image) pool = pool.filter((id) => id === "gemini");
       let lastErr = null;
       for (const id of pool) {
         if (usableNow(id) !== "ready") continue;

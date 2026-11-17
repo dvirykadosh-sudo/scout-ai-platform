@@ -7,6 +7,8 @@ import { api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
 import { Field, Skeleton } from "./ui";
 import { PosterGlyph } from "./lux/Poster";
+import { StatPill } from "./v21/StatPill";
+import { StatStrip } from "./v21/StatStrip";
 
 const clean = (l: string) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, "").trim();
 const lines = (t: string) => t.split(/\n+/).map(clean).filter((l) => l.length > 3);
@@ -52,6 +54,14 @@ export function CardsPage() {
           <Link href={`/library/${a.id}`}>חזרה לפעולה</Link>
         </p>
         <h1>כרטיסים להדפסה: {a.title}</h1>
+        <StatStrip
+          label="הכרטיסים במספרים"
+          tiles={[
+            { key: "cards", hero: "dark", label: "כרטיסים", value: items.length, sub: `${Math.ceil(items.length / 8)} עמודי הדפסה`, ring: { value: items.length ? (items.length % 8 || 8) / 8 : 0, label: "מילוי העמוד האחרון בהדפסה" } },
+            { key: "act", hero: "brand", label: "משך הפעולה", value: a.durationMin, sub: `דקות · ${a.stages.length} שלבים` },
+            { key: "kind", label: "סוג הכרטיסים", value: heading, pill: items.length === 0 ? <StatPill tone="down" srPrefix="דורש תשומת לב">אין טקסט מתאים</StatPill> : <StatPill tone="up" srPrefix="תקין">מוכן להדפסה</StatPill> },
+          ]}
+        />
         <fieldset className="card glass">
           <legend>סוג הכרטיסים</legend>
           <div className="actions" role="radiogroup" aria-label="סוג הכרטיסים">

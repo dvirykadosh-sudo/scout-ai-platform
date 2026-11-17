@@ -193,7 +193,7 @@ async function loadLogoDataUri(): Promise<string> {
   } catch {
     /* אין מידע: נשתמש בלוגו המובנה */
   }
-  for (const u of custom ? ["/api/logo", "/logo-maoz-640.v1.webp", "/logo-maoz.png"] : ["/logo-maoz-640.v1.webp", "/logo-maoz.png"]) {
+  for (const u of custom ? ["/api/logo", "/logo-maoz-640.v1.webp"] : ["/logo-maoz-640.v1.webp"]) {
     try {
       const r = await fetch(u);
       if (!r.ok) continue;

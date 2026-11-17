@@ -3353,7 +3353,7 @@ describe("תחנות, גיבוי, מוכנות ומתודות שבט: סבב 188
 describe("סימן מים בקובצי Word", () => {
   it("מסמך Word כולל לוגו צף מאחורי הטקסט", async () => {
     const { fadePng } = await import("../src/watermark.js");
-    const png = fs.readFileSync(new URL("../../frontend/public/logo-maoz.png", import.meta.url));
+    const png = fs.readFileSync(new URL("../src/assets/logo-maoz.png", import.meta.url));
     const faded = fadePng(png, 0.12);
     assert.ok(faded && faded.length > 1000, "PNG מוחלש");
     const { default: JSZip } = await import("jszip");

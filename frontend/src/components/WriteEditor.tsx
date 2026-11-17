@@ -15,6 +15,8 @@ import { BackupPlanModal, ReadinessModal, StationsModal, TourButton, TribeMethod
 import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
 import { MoreToolsModal, OutdoorHint } from "./WriteV36";
 import { EditorProgress } from "./Polish";
+import { WritePulse } from "./v21/WritePulse";
+import type { TransitionGame } from "@/lib/pulse";
 import { StageModeModal } from "./Depth3D2";
 import { ToolboxModal } from "./WriteV51";
 import { StyleLabModal } from "./StyleLab";
@@ -196,6 +198,12 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   }, [flush]);
 
   // ───── עריכה ─────
+  // שלב 69: משחק מעבר מהצעת מד הדופק נכנס כשלב רגיל אחרי השלב שנבחר (אפשר לבטל ב"בטל")
+  const insertGame = (after: number, g: TransitionGame) => {
+    const b: Block = { ...emptyBlock("body"), title: `משחק מעבר: ${g.title}`, minutes: g.minutes, text: g.text };
+    h.set((s) => ({ ...s, blocks: [...s.blocks.slice(0, after + 1), b, ...s.blocks.slice(after + 1)] }));
+    toast(`נוסף שלב "משחק מעבר: ${g.title}"`, { kind: "success" });
+  };
   const setBlock = (id: string, patch: Partial<Block>, coalesce = false) => h.set((s) => ({ ...s, blocks: s.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }), coalesce);
   const move = (from: number, to: number) => {
     if (to < 0 || to >= state.blocks.length || from === to) return;
@@ -908,6 +916,8 @@ export function WriteEditor({ initial }: { initial: Doc }) {
 
       <PrepPanel equipment={state.meta.equipment ?? []} review={state.meta.review ?? []} onEquipment={(equipment) => h.set((s) => ({ ...s, meta: { ...s.meta, equipment } }))} onReview={(review) => h.set((s) => ({ ...s, meta: { ...s.meta, review } }))} />
       <SimilarNotice title={state.title} text={flatten(state)} docId={initial.id} token={token} />
+
+      <WritePulse blocks={state.blocks} total={total} onInsert={insertGame} />
 
       <ol className="write-blocks">
         {state.blocks.map((b, idx) => {

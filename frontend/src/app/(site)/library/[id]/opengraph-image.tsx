@@ -63,6 +63,6 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
     );
   } catch (e) {
     console.warn("[og-image]", (e as Error).message);
-    return Response.redirect(new URL("/logo-maoz.png", siteUrl()), 302);
+    return Response.redirect(new URL("/logo-maoz-640.v1.webp", siteUrl()), 302);
   }
 }

@@ -204,6 +204,9 @@ describe("שלב 58: מפת הנתיבים", () => {
   "GET /api/lux/spar/scenarios", // תרחישי התרגול של סימולטור החניכים: תוכן קבוע ובדוי, בלי נתונים אישיים
   "POST /api/lux/spar/turn", // תור בסימולטור: בלי מצב ובלי שמירה בשרת, הגבלת קצב ואורך. גרסה מקומית לאורחים; מודל AI רק למחוברים ובמכסה
   "POST /api/lux/presence/shared/:token", // נוכחות באורחים בטיוטה משותפת. ההרשאה היא טוקן השיתוף, כמו GET /api/assist/shared/:token
+  "GET /api/field/rooms/:code", // שלב 69: מצב חדר סנכרון צוות לפי קוד בן שש תווים, בלי שמות; הגבלת קצב. מדריך מחליף מצטרף בלי חשבון
+  "GET /api/field/rooms/:code/stream", // שלב 69: SSE של אותו חדר; מוגבל במספר מחוברים ובקצב
+  "POST /api/field/rooms/:code/state", // שלב 69: עדכון שלב וטיימר רק ממי שמחובר כרגע לחדר (מזהה חיבור), הגבלת קצב
   "POST /api/assist/stations",
   "POST /api/assist/swap",
   "POST /api/auth/2fa",

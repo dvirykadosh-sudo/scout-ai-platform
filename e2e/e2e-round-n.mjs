@@ -48,7 +48,7 @@ await step("100+97. register needs the terms box, weak password hint shows", asy
   await A.getByText(/כדאי לשפר/).waitFor({ timeout: 6000 });
   ok(true, "weak password hint shown");
   await A.getByLabel("סיסמה", { exact: true }).fill(PW);
-  await A.getByLabel("קוד הרשמה של השבט").fill(CODE);
+  { const cf = A.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
   await A.getByRole("button", { name: /^הרשמה$/ }).last().click();
   await A.getByText("כדי להירשם יש לאשר").waitFor({ timeout: 6000 });
   ok(true, "blocked without terms");

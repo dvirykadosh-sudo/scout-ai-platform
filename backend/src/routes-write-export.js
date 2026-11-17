@@ -42,7 +42,7 @@ const docZ = z.object({
 export function findLogo(getLogo) {
   const up = getLogo?.();
   if (up?.buf && /png|jpeg/.test(up.type)) return { buf: up.buf, type: up.type.includes("png") ? "png" : "jpg" };
-  for (const p of [path.join(here, "..", "public", "logo-maoz.png"), path.join(here, "..", "..", "frontend", "public", "logo-maoz.png")]) {
+  for (const p of [path.join(here, "assets", "logo-maoz.png"), path.join(here, "..", "public", "logo-maoz.png"), path.join(here, "..", "..", "frontend", "public", "logo-maoz.png")]) {
     try {
       if (fs.existsSync(p)) return { buf: fs.readFileSync(p), type: "png" };
     } catch {

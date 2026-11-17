@@ -7,6 +7,8 @@ import { api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
 import { useToast } from "./Providers";
 import { Field, Skeleton } from "./ui";
+import { StatPill } from "./v21/StatPill";
+import { StatStrip } from "./v21/StatStrip";
 
 export function SubstituteBrief() {
   const { id } = useParams<{ id: string }>();
@@ -58,6 +60,16 @@ export function SubstituteBrief() {
       <p>
         {a.ageGroup} · {a.groupSize} משתתפים · {a.durationMin} דקות · ערך מוביל: {a.leadingValue}
       </p>
+      <div className="no-print">
+        <StatStrip
+          label="הפעולה במספרים"
+          tiles={[
+            { key: "time", hero: "dark", label: "משך הפעולה", value: a.durationMin, sub: `דקות · ${a.stages.length} שלבים` },
+            { key: "group", hero: "brand", label: "משתתפים", value: a.groupSize, sub: a.ageGroup },
+            { key: "gear", label: "ציוד", value: /^(אין|ללא)/.test(a.equipment.trim()) ? "אין" : "נדרש", pill: /^(אין|ללא)/.test(a.equipment.trim()) ? <StatPill tone="up" srPrefix="יתרון">אפשר להתחיל מיד</StatPill> : undefined },
+          ]}
+        />
+      </div>
       <section className="card glass no-print" aria-labelledby="sub-share">
         <h2 id="sub-share" className="section-title">
           שליחה למחליף

@@ -6,6 +6,7 @@ import { ApiError, api, errorMessage, parseImportFile, storageGet, type ParsedDo
 import { AGE_GROUPS } from "@/lib/constants";
 import type { Activity } from "@/lib/types";
 import { useAuth, useToast } from "./Providers";
+import { ScanSheet } from "./ScanSheet";
 import { Field } from "./ui";
 
 interface Item {
@@ -17,6 +18,7 @@ interface Item {
   error?: string;
   saved?: number;
   saving?: boolean;
+  transcript?: string;
 }
 
 export function ImportFiles() {
@@ -50,6 +52,9 @@ export function ImportFiles() {
     setItems((l) => [...l, ...next]);
     setBusy(false);
   };
+
+  const addScanned = (file: string, d: ParsedDoc, transcript?: string) =>
+    setItems((l) => [...l, { key: `${file}-${Math.random()}`, file, draft: d, title: d.title, age: d.ageGroup ?? defaultAge, transcript }]);
 
   const patch = (key: string, p: Partial<Item>) => setItems((l) => l.map((i) => (i.key === key ? { ...i, ...p } : i)));
 
@@ -103,6 +108,8 @@ export function ImportFiles() {
         {busy && <p role="status">קורא את הקבצים...</p>}
       </section>
 
+      <ScanSheet onDraft={addScanned} />
+
       {items.length > 0 && (
         <section aria-label="תוצאות הקריאה">
           {pending > 1 && (
@@ -124,6 +131,14 @@ export function ImportFiles() {
                     <p>
                       זוהו {it.draft.stages.length} שלבים, כ-{it.draft.durationMin} דקות.
                     </p>
+                    {it.transcript && (
+                      <details className="f69-transcript">
+                        <summary>הטקסט שנקרא מהדף (לבדיקה)</summary>
+                        <pre dir="auto" tabIndex={0}>
+                          {it.transcript}
+                        </pre>
+                      </details>
+                    )}
                     {it.draft.warnings.length > 0 && (
                       <ul className="bullets warn-box" aria-label="דברים לבדוק">
                         {it.draft.warnings.map((w) => (

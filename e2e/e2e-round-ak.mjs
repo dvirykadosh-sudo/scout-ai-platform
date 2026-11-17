@@ -99,7 +99,7 @@ await step("approval flow", async () => {
   await P.getByLabel("שם להצגה").fill("ממתין בדיקה");
   await P.locator("#reg-user").fill("wait" + stamp);
   await P.locator("#reg-pass").fill("Str0ng-e2e-pw-26");
-  await P.getByLabel("קוד הרשמה של השבט").fill(CODE);
+  { const cf = P.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
   await P.getByLabel(/קראתי ואני מאשר/).check();
   await P.waitForTimeout(2300);
   await P.getByRole("button", { name: "הרשמה", exact: true }).last().click();

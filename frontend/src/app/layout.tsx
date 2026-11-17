@@ -27,6 +27,7 @@ import "../styles/lux-flow.css";
 import "../styles/lux-eagle.css";
 import "../styles/v21.css";
 import "../styles/maoz68.css";
+import "../styles/maoz69.css";
 import { Providers } from "@/components/Providers";
 import { EagleIntroGate } from "@/components/lux/EagleIntroGate";
 import { PwaSupport } from "@/components/PwaSupport";
@@ -45,7 +46,7 @@ export const metadata: Metadata = {
   applicationName: "מחולל פעולות",
   alternates: { canonical: "./" },
   robots: INDEXING ? { index: true, follow: true, googleBot: { index: true, follow: true, "max-snippet": -1, "max-image-preview": "large" } } : { index: false, follow: false },
-  openGraph: { type: "website", locale: "he_IL", siteName: "מחולל פעולות | שבט מעוז", description: DESC, images: [{ url: "/logo-maoz.png", width: 512, height: 512, alt: "לוגו שבט מעוז" }] },
+  openGraph: { type: "website", locale: "he_IL", siteName: "מחולל פעולות | שבט מעוז", description: DESC, images: [{ url: "/logo-maoz-640.v1.webp", width: 640, height: 640, type: "image/webp", alt: "לוגו שבט מעוז" }] },
   twitter: { card: "summary", description: DESC },
   verification: { ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}), ...(BING ? { other: { "msvalidate.01": BING } } : {}) },
 };
@@ -58,7 +59,7 @@ const initScript = `try{var d=document.documentElement;if(localStorage.getItem('
 const SITE_LD = () => {
   const base = siteUrl();
   return [
-    { "@context": "https://schema.org", "@type": "Organization", name: "שבט מעוז", alternateName: "מחולל פעולות", url: base, logo: `${base}/logo-maoz.png`, areaServed: "ראשון לציון" },
+    { "@context": "https://schema.org", "@type": "Organization", name: "שבט מעוז", alternateName: "מחולל פעולות", url: base, logo: `${base}/logo-maoz-640.v1.webp`, areaServed: "ראשון לציון" },
     { "@context": "https://schema.org", "@type": "WebSite", name: "מחולל פעולות | שבט מעוז", url: base, inLanguage: "he", potentialAction: { "@type": "SearchAction", target: `${base}/library?q={search_term_string}`, "query-input": "required name=search_term_string" } },
   ];
 };

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, downloadDocx, errorMessage, storageGet, storageSet, ApiError } from "@/lib/api";
 import { AGE_GROUPS, DEFAULT_STYLE, METHODS, ROLES, STYLE_OPTIONS, type StyleKey, type StyleSettings } from "@/lib/constants";
 import type { Activity } from "@/lib/types";
-import { ActivityBody, ActivityMeta } from "./ActivityView";
+import { ActivityBody, ActivityMeta, ActivityStats } from "./ActivityView";
 import { useAuth, useToast } from "./Providers";
 import { LivePreview } from "./LivePreview";
 import { useKinds } from "@/lib/kinds";
@@ -467,6 +467,7 @@ export function Generator() {
         </h2>
         <p className="hint">{result.source === "ai" ? "הפעולה נוצרה בעזרת AI ונשמרה במאגר." : result.source === "external" ? "הפעולה יובאה מה-AI החיצוני ונשמרה במאגר." : "הפעולה נוצרה ממחולל התבניות המובנה ונשמרה במאגר."}</p>
         <ActivityMeta a={result} />
+        <ActivityStats a={result} />
         <ActivityBody a={result} />
         <div className="actions">
           <button type="button" className="btn btn-primary" onClick={exportWord} disabled={exporting}>

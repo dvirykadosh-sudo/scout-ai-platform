@@ -36,6 +36,7 @@ import { registerWriteV53Routes } from "./routes-write-v53.js";
 import { registerV54Routes } from "./routes-v54.js";
 import { registerWaRoutes } from "./wa/index.js";
 import { registerV57Routes } from "./routes-v57.js";
+import { registerV69Routes } from "./routes-v69.js";
 import { registerLuxRoutes } from "./routes-lux.js";
 import { registerV56Routes } from "./routes-v56.js";
 import { cleanDict } from "./human-voice.js";
@@ -734,6 +735,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerV56Routes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion, audit, config });
   registerV57Routes(app, { db, limiter, fail, requireUser, audit, config });
   registerLuxRoutes(app, { db, limiter, fail, requireUser, optionalAuth });
+  registerV69Routes(app, { db, limiter, fail, requireUser });
   // שלב 58: מנוע הוואטסאפ (תור, תבניות, בוט, גשר מקומי). בבדיקות אין טיימרים.
   registerWaRoutes(app, { db, limiter, fail, requireAdmin, audit, notifyAdmins, publicUrl: config.publicUrl }, { startScheduler: config.nodeEnv !== "test" });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });

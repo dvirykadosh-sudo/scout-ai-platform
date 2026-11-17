@@ -7,7 +7,7 @@ import { ApiError, api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
 import { ActivityActions } from "./ActivityActions";
 import { DiscussionQuestions, ReviewPanel, SummaryBox } from "./ActivityInsights";
-import { ActivityBody, ActivityMeta } from "./ActivityView";
+import { ActivityBody, ActivityMeta, ActivityStats } from "./ActivityView";
 import { PosterPanel } from "./lux/Poster";
 import { FeedbackPanel } from "./FeedbackPanel";
 import { TagsPanel } from "./CommunityParts";
@@ -84,6 +84,7 @@ export function ActivityPage({ initial = null }: { initial?: Activity | null }) 
           <RatingBadge average={rating.average} count={rating.count} />
         </p>
         <ActivityMeta a={a} />
+        <ActivityStats a={a} />
         <ActivityBody a={a} />
         <ActivityActions activity={a} onChanged={load} onDeleted={() => router.push("/library")} />
         <PosterPanel a={a} />

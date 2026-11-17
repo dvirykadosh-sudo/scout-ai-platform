@@ -17,7 +17,6 @@ const nextConfig = {
       { source: "/icon-192.png", headers: week },
       { source: "/icon-512.png", headers: week },
       { source: "/icon-maskable-512.png", headers: week },
-      { source: "/logo-maoz.png", headers: [{ key: "Cache-Control", value: "public, max-age=86400" }] },
     ];
   },
 };

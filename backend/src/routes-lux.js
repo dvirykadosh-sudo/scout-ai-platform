@@ -243,6 +243,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
     aiGlobal: Number(process.env.EAGLE_AI_GLOBAL_DAILY) || 300,
     logUnanswered: process.env.EAGLE_LOG_UNANSWERED !== "0",
   });
+  app.locals.luxEagle = eagle; // שלב 69: נתיב הסריקה משתמש באותו נתב ובאותה מכסה יומית
   const eagleLim = limiter(60_000, 20);
   const askSchema = z.object({ q: z.string().trim().min(2).max(400) }).strict();
   app.get("/api/lux/eagle/info", lim, (req, res) => {

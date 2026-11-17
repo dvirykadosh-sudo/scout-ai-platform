@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
+import { FieldToolbox, type TeamSnap } from "./field/FieldToolbox";
 import { Walkie } from "./maoz/Walkie";
 import { useA11y } from "./Providers";
 import { Skeleton } from "./ui";
@@ -159,6 +160,19 @@ export function FieldMode() {
     alarmed.current = false;
     endAt.current = Date.now() + secs * 1000; // continues automatically if the timer is already running
     setAnnounce(`שלב ${i + 1} מתוך ${a.stages.length}: ${st.name}, ${st.minutes} דקות`);
+  };
+
+  // שלב 69: מצב שהגיע מחדר צוות (מדריך אחר הזיז שלב או הפעיל/השהה טיימר)
+  const applyRemote = (s: TeamSnap) => {
+    if (!a) return;
+    const i = Math.min(Math.max(0, s.idx), a.stages.length - 1);
+    setIdx(i);
+    setRemaining(s.remaining);
+    setTimeUp(false);
+    alarmed.current = false;
+    endAt.current = Date.now() + s.remaining * 1000;
+    setRunning(s.running);
+    setAnnounce(`סנכרון צוות: שלב ${i + 1}, ${s.running ? "הטיימר פועל" : "הטיימר מושהה"}`);
   };
 
   const toggle = () => {
@@ -400,6 +414,8 @@ export function FieldMode() {
           </div>
         )}
       </section>
+
+      <FieldToolbox activityId={a.id} snapshot={{ idx, running, remaining }} onRemote={applyRemote} onUnlock={ensureAudio} />
 
       <details className="field-keys">
         <summary>קיצורי מקלדת</summary>

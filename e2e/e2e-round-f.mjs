@@ -27,10 +27,10 @@ const register = async (p, user, display) => {
   await p.getByLabel("שם להצגה").fill(display);
   await p.getByLabel("שם משתמש").fill(user);
   await p.getByLabel("סיסמה", { exact: true }).fill("password99");
-  await p.getByLabel("קוד הרשמה של השבט").fill(CODE);
+  { const cf = p.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
   await p.getByLabel("קראתי ואני מאשר").check();
-  await p.getByRole("button", { name: /הרשמה|יצירת חשבון/ }).last().click();
-  await p.getByText("הפעולות שלי").first().waitFor({ timeout: 8000 });
+  await p.getByRole("button", { name: /^(הרשמה|יצירת חשבון)$/ }).last().click();
+  await p.getByText("הפעולות שלי").or(p.getByRole("heading", { name: "פרטיות", exact: true })).first().waitFor({ timeout: 8000 });
 };
 const owner = "own" + stamp, partner = "par" + stamp;
 await register(page, owner, "בעלת הפעולה");

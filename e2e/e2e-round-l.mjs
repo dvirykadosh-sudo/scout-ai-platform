@@ -99,10 +99,10 @@ await page.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנש
 await page.getByLabel("שם להצגה").fill("כותבת ל");
 await page.getByLabel("שם משתמש").fill("lown" + stamp);
 await page.getByLabel("סיסמה", { exact: true }).fill("password99");
-await page.getByLabel("קוד הרשמה של השבט").fill(CODE);
+{ const cf = page.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
 await page.getByLabel("קראתי ואני מאשר").check();
-await page.getByRole("button", { name: /הרשמה|יצירת חשבון/ }).last().click();
-await page.getByText("הפעולות שלי").first().waitFor({ timeout: 8000 });
+await page.getByRole("button", { name: /^(הרשמה|יצירת חשבון)$/ }).last().click();
+await page.getByText("הפעולות שלי").or(page.getByRole("heading", { name: "פרטיות", exact: true })).first().waitFor({ timeout: 8000 });
 await page.goto(B + "/assistant", { waitUntil: "networkidle" });
 await box.fill(DRAFT);
 
