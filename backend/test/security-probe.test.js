@@ -201,6 +201,8 @@ describe("שלב 58: מפת הנתיבים", () => {
   "POST /api/assist/shared/:token/comments",
   "GET /api/lux/eagle/info", // רשימת שאלות פתיחה לנשר: תוכן קבוע, בלי נתונים אישיים
   "POST /api/lux/eagle/ask", // הנשר עונה גם לאורחים על האתר והמאגר הציבורי בלבד; בלי שמירה, עם הגבלת קצב. מודל וניתוח היומן רק למחוברים
+  "GET /api/lux/spar/scenarios", // תרחישי התרגול של סימולטור החניכים: תוכן קבוע ובדוי, בלי נתונים אישיים
+  "POST /api/lux/spar/turn", // תור בסימולטור: בלי מצב ובלי שמירה בשרת, הגבלת קצב ואורך. גרסה מקומית לאורחים; מודל AI רק למחוברים ובמכסה
   "POST /api/lux/presence/shared/:token", // נוכחות באורחים בטיוטה משותפת. ההרשאה היא טוקן השיתוף, כמו GET /api/assist/shared/:token
   "POST /api/assist/stations",
   "POST /api/assist/swap",

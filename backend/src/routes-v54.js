@@ -1,4 +1,5 @@
 // שלב 54 (423–452): ניטור ואמינות, דגלי תכונות, חיפוש חכם, כיסוי המאגר, תגובות, שביעות רצון, חותמות איכות ואומדן עלות.
+import { aiConfigured } from "./ai-router.js";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -104,7 +105,7 @@ export function registerV54Routes(app, { db, dbFile, limiter, fail, requireUser,
     try { last = listBackups(backupDirFor(dbFile))[0]?.createdAt ?? null; } catch { /* ignore */ }
     res.json({
       ok: dbOk, version: PKG.version || "1", startedAt: bootedAt?.toISOString?.() ?? null, uptimeSec: Math.round(process.uptime()), time: nowIso(),
-      db: { ok: dbOk, latencyMs: Math.round(ms * 10) / 10 }, lastBackupAt: last, ai: !!config.ai?.key, email: !!mailer?.hasTransport, maintenance: maintenanceMessage(db) || null,
+      db: { ok: dbOk, latencyMs: Math.round(ms * 10) / 10 }, lastBackupAt: last, ai: aiConfigured(), email: !!mailer?.hasTransport, maintenance: maintenanceMessage(db) || null,
     });
   });
 

@@ -1,0 +1,139 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   שלב 68 – מעוז בשטח: מכשיר קשר (דיבור), סימולטור חניכים, וגל הקול.
+   כל הקלאסים מתחילים ב-maoz-. צבעים רק ממשתני העיצוב הקיימים, ולכן כהה / בהיר / 5 ערכות עובדים לבד.
+   ניגודיות גבוהה (html.hc): שחור-צהוב שטוח. חיסכון והפחתת תנועה: גל הקול סטטי. הדפסה: האזור מוסתר (no-print).
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.maoz-lab { padding: clamp(14px, 3vw, 22px); margin-top: 18px; }
+.maoz-lab .section-title { margin-top: 0; }
+
+/* ───── לשוניות (משתמשות באינדיקטור החלק של v21) ───── */
+.maoz-tabs { display: inline-flex; flex-wrap: wrap; gap: 6px; padding: 6px; margin: 10px 0 14px; border-radius: 999px; border: 1px solid var(--line); background: color-mix(in srgb, var(--text) 5%, transparent); }
+.maoz-tab { min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
+.maoz-tab[aria-selected="true"] { background: var(--btn-bg); color: var(--on-accent); }
+.maoz-tab:focus-visible, .maoz-ptt:focus-visible, .maoz-chip:focus-visible, .maoz-sc:focus-visible, .maoz-type input:focus-visible, .maoz-compose textarea:focus-visible, .maoz-log:focus-visible, .maoz-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.maoz-panel { min-width: 0; }
+
+/* ───── מכשיר קשר ───── */
+.maoz-walkie { display: grid; gap: 12px; min-width: 0; }
+.maoz-walkie-top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.maoz-ptt { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 58px; padding: 10px 26px; border-radius: 999px; border: 0; background: var(--btn-bg); color: var(--on-accent); font: inherit; font-weight: 800; font-size: 1.05rem; cursor: pointer; box-shadow: 0 12px 28px -14px var(--v21-glow); }
+.maoz-ptt:disabled { opacity: 0.55; cursor: not-allowed; }
+.maoz-ptt[aria-pressed="true"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 45%, transparent), 0 12px 28px -14px var(--v21-glow); }
+.maoz-walkie.is-field .maoz-ptt { min-height: 84px; font-size: 1.5rem; padding-inline: 34px; flex: 1 1 260px; }
+.maoz-status { margin: 0; color: var(--muted); font-size: 0.92rem; }
+.maoz-heard { margin: 0; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 6%, transparent); overflow-wrap: anywhere; }
+.maoz-lbl { font-weight: 700; color: var(--muted); }
+.maoz-err { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--danger-bg); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 50%, transparent); }
+.maoz-type { display: flex; gap: 8px; }
+.maoz-type input { flex: 1 1 auto; min-width: 0; min-height: 46px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass); color: var(--text); font: inherit; }
+.maoz-walkie.is-field .maoz-type input { min-height: 58px; font-size: 1.15rem; }
+.maoz-auto { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; font-size: 0.92rem; }
+.maoz-auto input { width: 20px; height: 20px; accent-color: var(--accent); }
+.maoz-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.maoz-chip { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; font-size: 0.92rem; cursor: pointer; }
+.maoz-chip:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.maoz-chip:disabled { opacity: 0.6; cursor: progress; }
+.maoz-reply { display: grid; gap: 10px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: color-mix(in srgb, var(--text) 5%, transparent); }
+.maoz-answer { margin: 0; line-height: 1.7; white-space: pre-line; font-size: 1.02rem; overflow-wrap: anywhere; }
+.maoz-walkie.is-field .maoz-answer { font-size: 1.3rem; line-height: 1.75; }
+.maoz-note { margin: 0; font-size: 0.84rem; color: var(--muted); }
+.maoz-items { margin: 0; padding-inline-start: 1.4em; display: grid; gap: 6px; line-height: 1.6; }
+.maoz-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.maoz-card { display: block; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass); color: var(--text); text-decoration: none; }
+a.maoz-card:hover { border-color: var(--accent); }
+.maoz-card strong { display: block; }
+.maoz-card span { display: block; margin-top: 2px; font-size: 0.86rem; color: var(--muted); }
+.maoz-card .maoz-snip { color: var(--text); font-size: 0.95rem; line-height: 1.55; }
+.maoz-walkie.is-field .maoz-card .maoz-snip { font-size: 1.15rem; }
+.eg-card .eg-snip { font-size: 0.8rem; opacity: 0.95; line-height: 1.45; }
+.maoz-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.maoz-privacy { margin: 0; font-size: 0.8rem; line-height: 1.5; color: var(--muted); }
+
+/* ───── גל קול ───── */
+.maoz-wave { flex: 1 1 160px; min-width: 120px; height: 46px; display: flex; align-items: center; justify-content: center; gap: 3px; direction: ltr; }
+.maoz-wave i { display: block; width: 4px; height: 100%; border-radius: 3px; background: var(--accent); transform: scaleY(0.14); opacity: 0.55; }
+.maoz-wave[data-phase="listening"] i { transform: scaleY(var(--h)); opacity: 1; }
+.maoz-wave[data-phase="speaking"] i { transform: scaleY(calc(var(--h) * 0.8)); opacity: 1; background: var(--accent-2); }
+.maoz-wave[data-phase="thinking"] i { transform: scaleY(0.38); opacity: 0.8; }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .maoz-wave i { transition: opacity 0.3s; }
+  html:not(.hc):not(.saver) .maoz-wave[data-phase="listening"] i { animation: maoz-bar 0.8s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -70ms); }
+  html:not(.hc):not(.saver) .maoz-wave[data-phase="speaking"] i { animation: maoz-bar 1.15s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -90ms); }
+  html:not(.hc):not(.saver) .maoz-wave[data-phase="thinking"] i { animation: maoz-think 1.2s ease-in-out infinite; animation-delay: calc(var(--i) * -45ms); }
+  html:not(.hc):not(.saver) .maoz-wave[data-phase="idle"] i { animation: maoz-idle 4s ease-in-out infinite; animation-delay: calc(var(--i) * -140ms); }
+  html:not(.hc):not(.saver) .maoz-ptt[aria-pressed="true"] { animation: maoz-ring 1.4s ease-out infinite; }
+}
+@keyframes maoz-bar { from { transform: scaleY(0.16); } to { transform: scaleY(var(--h)); } }
+@keyframes maoz-think { 0%, 100% { transform: scaleY(0.2); } 50% { transform: scaleY(0.7); } }
+@keyframes maoz-idle { 0%, 100% { transform: scaleY(0.12); } 50% { transform: scaleY(0.24); } }
+@keyframes maoz-ring { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } to { box-shadow: 0 0 0 16px transparent; } }
+
+/* ───── סימולטור חניכים ───── */
+.maoz-spar { display: grid; gap: 12px; min-width: 0; }
+.maoz-scs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.maoz-sc { display: flex; flex-direction: column; gap: 6px; width: 100%; height: 100%; padding: 14px; text-align: start; border-radius: 16px; border: 1px solid var(--line); background: var(--glass); color: var(--text); font: inherit; cursor: pointer; }
+.maoz-sc:hover { border-color: var(--accent); }
+.maoz-sc span { font-size: 0.92rem; line-height: 1.55; }
+.maoz-sc small { color: var(--muted); font-size: 0.82rem; }
+.maoz-spar-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.maoz-spar-head .hint { margin: 4px 0 0; }
+.maoz-log { display: flex; flex-direction: column; gap: 8px; min-height: 160px; max-height: min(52vh, 420px); overflow-y: auto; overscroll-behavior: contain; padding: 12px; border-radius: 16px; border: 1px solid var(--line); background: color-mix(in srgb, var(--text) 4%, transparent); }
+.maoz-line { margin: 0; padding: 8px 12px; border-radius: 14px; max-width: 90%; line-height: 1.55; overflow-wrap: anywhere; }
+.maoz-line.is-me { align-self: flex-start; background: color-mix(in srgb, var(--accent) 22%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+.maoz-line.is-kid { align-self: flex-end; background: var(--glass); border: 1px solid var(--line); }
+.maoz-who { display: block; font-size: 0.78rem; font-weight: 800; color: var(--muted); }
+.maoz-typing { color: var(--muted); }
+.maoz-tip { margin: 0; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--line); line-height: 1.55; }
+.maoz-compose { display: grid; gap: 8px; }
+.maoz-compose textarea { width: 100%; min-height: 84px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass); color: var(--text); font: inherit; resize: vertical; }
+.maoz-compose-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.maoz-report { display: grid; gap: 10px; padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.maoz-report h3 { margin: 0; }
+.maoz-report p { margin: 0; line-height: 1.6; }
+.maoz-report-top { display: flex; align-items: center; gap: 16px; }
+.maoz-level { font-size: 1.25rem; font-weight: 800; }
+.maoz-axes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.maoz-axes li { display: grid; grid-template-columns: minmax(96px, 150px) 1fr 2.6em; align-items: center; gap: 10px; }
+.maoz-axes b { font-variant-numeric: tabular-nums; text-align: end; }
+.maoz-axis-bar { display: block; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--text) 14%, transparent); overflow: hidden; }
+.maoz-axis-bar i { display: block; height: 100%; border-radius: inherit; background: var(--btn-bg); }
+
+@media (max-width: 520px) {
+  .maoz-tabs { display: flex; width: 100%; }
+  .maoz-tab { flex: 1 1 0; padding-inline: 8px; }
+  .maoz-line { max-width: 96%; }
+  .maoz-axes li { grid-template-columns: 1fr 2.6em; }
+  .maoz-axes li > span:first-child { grid-column: 1 / -1; }
+  .maoz-axes li > .maoz-axis-bar { grid-column: 1; }
+}
+
+/* ───── מצב שטח: אזור מכשיר הקשר ───── */
+.field-walkie { margin: 16px 0; padding: 14px; border-radius: 16px; border: 2px solid var(--line); }
+.field-walkie-h { margin: 0 0 10px; font-size: 1rem; }
+.field-walkie-h .btn { width: 100%; }
+.field-walkie .hint { margin: 0 0 10px; }
+
+/* ───── ניגודיות גבוהה ───── */
+html.hc .maoz-tabs, html.hc .maoz-reply, html.hc .maoz-log, html.hc .maoz-report, html.hc .maoz-tip, html.hc .maoz-heard { background: #000; border: 2px solid #ffeb00; box-shadow: none; }
+html.hc .maoz-tab { color: #ffeb00; border-color: #ffeb00; }
+html.hc .maoz-tab[aria-selected="true"], html.hc .maoz-ptt { background: #ffeb00; color: #000; box-shadow: none; }
+html.hc .maoz-ptt[aria-pressed="true"] { background: #fff; outline: 4px solid #ffeb00; }
+html.hc .maoz-chip, html.hc .maoz-sc, html.hc .maoz-card, html.hc .maoz-type input, html.hc .maoz-compose textarea { background: #000; color: #ffeb00; border: 2px solid #ffeb00; }
+html.hc .maoz-chip:hover:not(:disabled), html.hc a.maoz-card:hover, html.hc .maoz-sc:hover { background: #ffeb00; color: #000; }
+html.hc .maoz-card span, html.hc .maoz-card .maoz-snip, html.hc .maoz-sc small, html.hc .maoz-note, html.hc .maoz-privacy, html.hc .maoz-status, html.hc .maoz-who, html.hc .maoz-lbl, html.hc .maoz-typing { color: #ffeb00; }
+html.hc a.maoz-card:hover span, html.hc a.maoz-card:hover .maoz-snip, html.hc .maoz-sc:hover small { color: #000; }
+html.hc .maoz-line.is-me, html.hc .maoz-line.is-kid { background: #000; border: 1px solid #ffeb00; }
+html.hc .maoz-err { background: #000; color: #fff; border: 2px solid #fff; }
+html.hc .maoz-wave i, html.hc .maoz-axis-bar i { background: #ffeb00; }
+html.hc .maoz-axis-bar { background: #000; border: 1px solid #ffeb00; }
+html.hc .field-walkie { border-color: #ffeb00; }
+html.saver .maoz-wave i, html.saver .maoz-ptt { animation: none !important; transition: none !important; }
+
+/* ───── תצוגה בהירה ───── */
+html.light .maoz-reply, html.light [data-panel="light"] .maoz-reply { background: #fbfaff; border-color: #cfc8e2; }
+html.light .maoz-log { background: #faf8ff; border-color: #cfc8e2; }
+html.light .maoz-line.is-kid { background: #fff; border-color: #d9d4e6; }
+html.light .maoz-type input, html.light .maoz-compose textarea { background: #fff; border-color: #a9a2c0; }
+
+@media print { .maoz-lab, .field-walkie { display: none !important; } }

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { config } from "./config.js";
 import { METHOD_NAMES, MIDOT, STAGE_LAYERS, STAGE_NAMES } from "./shared/constants.js";
 import { DEFAULT_STYLE, HUMAN_RULES, styleGuide } from "./style.js";
-import { requireAiBudget } from "./ai-budget.js";
+import { aiReady, sharedRouter } from "./ai-router.js";
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -312,21 +312,9 @@ function modelPayload(input, total) {
 }
 
 async function callModel(input, total) {
-  requireAiBudget();
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": config.ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({
-      model: config.ai.model,
-      max_tokens: 6000,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: JSON.stringify(modelPayload(input, total)) }],
-    }),
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!res.ok) throw new Error(`AI HTTP ${res.status}`);
-  const data = await res.json();
-  const raw = data?.content?.[0]?.text || "";
+  // שלב 68: נתב רב-שכבתי. Gemini ו-Groq בחינם אם הוגדרו להם מפתחות, אחר כך Anthropic (עם התקרה היומית שלו)
+  const out = await sharedRouter().chat({ system: SYSTEM_PROMPT, user: JSON.stringify(modelPayload(input, total)), json: true, maxTokens: 6000, temperature: 0.7, timeoutMs: 60_000 });
+  const raw = out.text || "";
   const start = raw.indexOf("{");
   const end = raw.lastIndexOf("}");
   if (start < 0 || end < 0) throw new Error("AI returned no JSON");
@@ -457,7 +445,7 @@ export async function generateActivity(input) {
   const total = input.methods.reduce((s, m) => s + m.minutes, 0);
   let draft = null;
   let source = "fallback";
-  if (config.ai.key) {
+  if (aiReady()) {
     for (let attempt = 0; attempt < 2 && !draft; attempt++) {
       try {
         draft = await callModel(input, total);

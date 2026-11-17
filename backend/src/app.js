@@ -8,6 +8,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { ZodError } from "zod";
+import { aiConfigured } from "./ai-router.js";
 import { apportion, buildExternalPrompt, generateActivity, normalizeDraft, parseExternal } from "./ai.js";
 import { analyzeSample, extractText } from "./style.js";
 import { getActivity, insertActivity, rowToActivity, searchActivities, snapshotOf, updateActivity } from "./activities.js";
@@ -293,7 +294,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   };
   app.get("/api/methods", shortCache, (req, res) => res.json(METHODS));
   app.get("/api/meta", shortCache, (req, res) =>
-    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: !!config.ai.key, signupOpen: true, signupNeedsCode: false, logoVersion: logo?.v ?? null }),
+    res.json({ ageGroups: AGE_GROUPS, grades: GRADES, genderGroups: GENDER_GROUPS, roles: ROLES, stageNames: STAGE_NAMES, stageLayers: STAGE_LAYERS, midot: MIDOT, aiEnabled: aiConfigured(), signupOpen: true, signupNeedsCode: false, logoVersion: logo?.v ?? null }),
   );
 
   app.get("/api/logo", (req, res) => {

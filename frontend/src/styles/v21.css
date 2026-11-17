@@ -416,3 +416,40 @@ html:not(.hc):not(.saver) .v21-live { border-radius: 999px; }
 /* 5ו. טבעת "היום" בכרטיס TodayCard: זוהר עדין בצבע המותג (דקורטיבי; בניגודיות גבוהה ובחיסכון נשארת שטוחה) */
 html:not(.hc):not(.saver) .lux-pring .fg { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--pal-a) 65%, transparent)); }
 @media print { .lux-pring .fg { filter: none; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   שלב 68 – Specular Glow: כתם אור שעוקב אחרי העכבר / האצבע על כרטיסי Bento, כרטיס הפיקוד, צמתיו וכרטיסי המנהרה.
+   המשתנים --mx, --my (פיקסלים בתוך הכרטיס) ו---sg (0/1) נכתבים ב-SpecularGlow.tsx. הכתם דקורטיבי (pointer-events:none),
+   עדין (אלפא נמוכה) כדי שניגודיות הטקסט לא תיפגע, ונעלם בהפחתת תנועה, בחיסכון ובניגודיות גבוהה.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.v21-node, .v21-tcard-link { position: relative; }
+.v21-card, .v21-command, .v21-node, .v21-tcard-link { --sg: 0; --mx: 50%; --my: 0px; --sg-c: rgba(255, 255, 255, 0.2); }
+html.light .v21-card:not(.v21-hero-dark):not(.v21-hero-brand), html[data-panel="light"] .v21-card:not(.v21-hero-dark):not(.v21-hero-brand), [data-panel="light"] .v21-card:not(.v21-hero-dark):not(.v21-hero-brand) {
+  --sg-c: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver) .v21-card::after,
+  html:not(.hc):not(.saver) .v21-command::after,
+  html:not(.hc):not(.saver) .v21-node::after,
+  html:not(.hc):not(.saver) .v21-tcard-link::after {
+    content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none;
+    opacity: var(--sg);
+    background: radial-gradient(240px circle at var(--mx) var(--my), var(--sg-c), transparent 64%);
+    transition: opacity 0.28s ease-out;
+  }
+}
+@media print { .v21-card::after, .v21-command::after, .v21-node::after, .v21-tcard-link::after { display: none !important; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   שלב 68 – View Transitions: מעבר בין עמודים (דעיכה והחלקה קלה) ובין לשוניות (רק אזור התוכן).
+   מופעל רק מ-ViewTransitions.tsx ורק כשהתנועה מותרת. כאן רק משך הזמן והתנועה; הדעיכה ההדדית היא ברירת המחדל של הדפדפן.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.hc):not(.saver)::view-transition-old(root) { animation-duration: 0.2s; }
+  html:not(.hc):not(.saver)::view-transition-new(root) { animation: v21-vt-in 0.28s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
+  html:not(.hc):not(.saver)::view-transition-group(v21-panel) { animation-duration: 0.26s; animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1); }
+  html:not(.hc):not(.saver)::view-transition-old(v21-panel) { animation-duration: 0.16s; }
+  html:not(.hc):not(.saver)::view-transition-new(v21-panel) { animation: v21-vt-panel 0.26s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
+}
+@keyframes v21-vt-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes v21-vt-panel { from { opacity: 0; transform: translateY(10px); } }

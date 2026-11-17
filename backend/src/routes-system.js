@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { persistHandle, persistHealthy, persistState, verifyRemoteBackup } from "./persist.js";
+import { aiConfigured, sharedRouter } from "./ai-router.js";
 import { aiBudgetState } from "./ai-budget.js";
 import { recentServerErrors } from "./server-errors.js";
 import { schemaVersion, SCHEMA_VERSION } from "./db.js";
@@ -77,7 +78,7 @@ export function registerSystemRoutes(app, { db, dbFile, config, fail, requireAdm
       counts: { users: count("users"), activities: count("activities"), writeDocs: count("write_docs") },
       persist: { ...persistState },
       schema: { version: schemaVersion(db), expected: SCHEMA_VERSION },
-      ai: { ...aiBudgetState(), configured: Boolean(config.ai.key) },
+      ai: { ...aiBudgetState(), configured: aiConfigured(), providers: sharedRouter().status() },
       serverErrors: recentServerErrors(),
       warnings,
     });

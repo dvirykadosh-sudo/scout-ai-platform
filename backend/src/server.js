@@ -1,4 +1,5 @@
 import { createApp } from "./app.js";
+import { sharedRouter } from "./ai-router.js";
 import { backupDirFor, startBackupSchedule } from "./backup.js";
 import { ensureAdmin, timingDummyRounds } from "./auth.js";
 import { assertProductionSafe, config } from "./config.js";
@@ -23,6 +24,9 @@ app.listen(config.port, () => {
   console.log(`\nהשרת פועל: http://localhost:${config.port}`);
   if (seeded) console.log(`נטענו ${seeded} פעולות מוכנות למאגר`);
   if (adminCreated) console.log(`נוצר משתמש אדמין: ${config.admin.username}`);
-  console.log(config.ai.key ? `יצירת פעולות: Claude (${config.ai.model})` : "יצירת פעולות: מחולל תבניות מובנה (אין ANTHROPIC_API_KEY)");
+  {
+    const on = sharedRouter().status().filter((p) => p.configured).map((p) => `${p.id} (${p.model})`);
+    console.log(on.length ? `מעוז ויצירת פעולות: ${on.join(" ← ")}, ואם הם לא זמינים: מחולל מקומי` : "מעוז ויצירת פעולות: מחולל מקומי חינמי (לא הוגדר מפתח GEMINI_API_KEY, GROQ_API_KEY או ANTHROPIC_API_KEY)");
+  }
   console.log(mailer.hasTransport ? `מייל: מוגדר (ערוץ ${mailer.mode})` : "מייל: לא מוגדר (מצב בדיקה, שום מייל לא יוצא)");
 });

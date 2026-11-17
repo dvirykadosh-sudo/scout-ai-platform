@@ -8,6 +8,7 @@ import { api, errorMessage, storageGet, storageSet } from "@/lib/api";
 import { AGE_GROUPS } from "@/lib/constants";
 import { useAuth, useToast } from "./Providers";
 import { AssistantTools, type Profile, type ToolId, type ToolRequest } from "./AssistantTools";
+import { MaozLab } from "./maoz/MaozLab";
 import { Field, Modal } from "./ui";
 
 interface Analysis {
@@ -793,6 +794,9 @@ export function AssistantPage() {
           )}
         </aside>
       </div>
+
+      {/* שלב 68: מכשיר קשר (דיבור) וסימולטור חניכים. לא נטען עד שבוחרים לשונית ולא מופיע בהדפסה */}
+      <MaozLab />
 
       {/* מה שמודפס ל-PDF: הלוגו הקבוע מגיע מהכותרת הגלובלית */}
       <article className="assist-print assist-doc-print print-only" aria-hidden="true">

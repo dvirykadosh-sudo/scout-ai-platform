@@ -68,6 +68,21 @@ export const config = {
     model: env.AI_MODEL || "claude-sonnet-5-5",
     // שלב 64: תקרת קריאות למודל לכל האתר ביום (כולל אורחים). מעבר לה כולם עוברים למחולל המקומי, בלי עלות.
     dailyCap: Math.max(0, Number(env.AI_DAILY_CAP ?? 400) || 0),
+    // שלב 68: ספקים חינמיים נוספים. אם אין שום מפתח, הכול ממשיך לעבוד במנוע המקומי.
+    gemini: { key: env.GEMINI_API_KEY || "", model: env.GEMINI_MODEL || "" },
+    groq: { key: env.GROQ_API_KEY || "", model: env.GROQ_MODEL || "" },
+    // סדר הניסיון, למשל "groq,gemini,anthropic". ברירת מחדל: קודם החינמיים, ואחרון הבתשלום.
+    order: (env.AI_PROVIDER_ORDER || "gemini,groq,anthropic").split(",").map((x) => x.trim()).filter(Boolean),
+    // AI_EXTERNAL=0 סוגר כל שליחה לספקים חיצוניים (כל ה-AI עובד מקומית)
+    external: env.AI_EXTERNAL !== "0",
+    // דריסת מגבלות רכות, למשל {"gemini":{"rpm":5,"rpd":200}}
+    limits: (() => {
+      try {
+        return env.AI_LIMITS_JSON ? JSON.parse(env.AI_LIMITS_JSON) : {};
+      } catch {
+        return {};
+      }
+    })(),
   },
   // שלב 64: כמה פעולות בלי התחברות מותר ליצור מכל כתובת ביום (בנוסף למכסה הכללית)
   guestDailyPerIp: Math.max(1, Number(env.GUEST_DAILY_PER_IP ?? 40) || 40),

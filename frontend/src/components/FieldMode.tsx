@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
+import { Walkie } from "./maoz/Walkie";
 import { useA11y } from "./Providers";
 import { Skeleton } from "./ui";
 
@@ -33,6 +34,7 @@ export function FieldMode() {
   const [fullscreen, setFullscreen] = useState(false);
   const [big, setBig] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [walkie, setWalkie] = useState(false);
 
   const endAt = useRef(0);
   const alarmed = useRef(false);
@@ -219,6 +221,49 @@ export function FieldMode() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // ───────── שלב 68: פקודות בקול ממכשיר הקשר. רק משפטים קצרים וברורים; כל מה שאינו פקודה עובר למעוז כשאלה. ─────────
+  const voiceCmd = (raw: string): string | null => {
+    if (!a) return null;
+    const t = raw.replace(/[.,!?״"׳'־-]/g, " ").replace(/\s+/g, " ").trim();
+    if (!t || t.split(" ").length > 5) return null;
+    const st = a.stages[idx];
+    const last = idx === a.stages.length - 1;
+    if (/^(?:ל?שלב )?(?:הבא|קדימה)$|^(?:תעבור|עבור)(?: לשלב הבא)?$/.test(t)) {
+      if (last) return "זה השלב האחרון. אפשר לסיים את הפעולה.";
+      goTo(idx + 1);
+      const n = a.stages[idx + 1];
+      return `שלב ${idx + 2}: ${n.name}, ${n.minutes} דקות.`;
+    }
+    if (/^(?:ל?שלב )?(?:קודם|הקודם|אחורה)$|^חזור(?: לשלב הקודם)?$/.test(t)) {
+      if (idx === 0) return "זה השלב הראשון.";
+      goTo(idx - 1);
+      const n = a.stages[idx - 1];
+      return `חזרנו לשלב ${idx}: ${n.name}, ${n.minutes} דקות.`;
+    }
+    if (/^(?:תתחיל|התחל|תפעיל|הפעל|המשך|תמשיך)(?: את)?(?: הטיימר| טיימר)?$/.test(t)) {
+      if (running) return "הטיימר כבר רץ.";
+      toggle();
+      return "הטיימר הופעל.";
+    }
+    if (/^(?:עצור|תעצור|השהה|תשהה|פאוזה|הפסק|תפסיק)(?: את)?(?: הטיימר| טיימר)?$/.test(t)) {
+      if (!running) return "הטיימר כבר מושהה.";
+      toggle();
+      return "הטיימר הושהה.";
+    }
+    if (/^(?:איפוס|אפס|תאפס)(?: את)?(?: השלב| שלב)?$/.test(t)) {
+      goTo(idx);
+      return "השלב אופס.";
+    }
+    if (/^(?:הקרא|תקריא|תקרא)(?: את)?(?: השלב| שלב)?$/.test(t)) return `שלב ${idx + 1}: ${st.name}. ${st.content}`;
+    if (/^(?:כמה זמן(?: נשאר)?|כמה נשאר|מה הזמן)$/.test(t)) {
+      const left = Math.max(0, remaining);
+      const m = Math.floor(left / 60);
+      const sec = left % 60;
+      return left === 0 ? "הזמן לשלב הסתיים." : `נותרו ${m ? `${m} דקות` : ""}${m && sec ? " ו-" : ""}${sec ? `${sec} שניות` : ""} בשלב.`;
+    }
+    return null;
+  };
+
   // ───────── render ─────────
   if (notFound)
     return (
@@ -340,6 +385,20 @@ export function FieldMode() {
         </div>
 
         <div className="field-content">{stage.content}</div>
+      </section>
+
+      <section className="field-walkie" aria-labelledby="field-walkie-h">
+        <h2 id="field-walkie-h" className="field-walkie-h">
+          <button type="button" className="btn field-btn" aria-expanded={walkie} aria-controls="field-walkie-body" onClick={() => setWalkie(!walkie)}>
+            מכשיר קשר מעוז {walkie ? "(סגירה)" : "(שאלה בקול)"}
+          </button>
+        </h2>
+        {walkie && (
+          <div id="field-walkie-body">
+            <p className="hint">פקודות בקול: ״שלב הבא״, ״שלב קודם״, ״התחל״, ״עצור״, ״הקרא״, ״כמה זמן נשאר״. כל משפט אחר נשאל את מעוז, למשל ״ירד גשם״ או ״נשאר לי 10 דקות״.</p>
+            <Walkie variant="field" onCommand={voiceCmd} />
+          </div>
+        )}
       </section>
 
       <details className="field-keys">

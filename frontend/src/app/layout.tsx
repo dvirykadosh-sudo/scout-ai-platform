@@ -26,6 +26,7 @@ import "../styles/lux-intro.css";
 import "../styles/lux-flow.css";
 import "../styles/lux-eagle.css";
 import "../styles/v21.css";
+import "../styles/maoz68.css";
 import { Providers } from "@/components/Providers";
 import { EagleIntroGate } from "@/components/lux/EagleIntroGate";
 import { PwaSupport } from "@/components/PwaSupport";

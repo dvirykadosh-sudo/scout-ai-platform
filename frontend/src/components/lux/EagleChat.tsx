@@ -17,6 +17,8 @@ export interface EagleCard {
   title: string;
   meta: string;
   href: string;
+  /** שלב 68: קטע קצר מהחומר עצמו (למשל רעיון למצב שטח) */
+  text?: string;
 }
 export interface EagleDraft {
   title: string;
@@ -30,8 +32,10 @@ export interface EagleAction {
   href?: string;
   draft?: EagleDraft;
 }
-interface Reply {
+export interface Reply {
   answer: string;
+  /** שלב 68: מה מעוז הבין אחרי תיקון שגיאות הקלדה (ריק אם לא תוקן כלום) */
+  understood?: string;
   items?: string[];
   actions?: EagleAction[];
   note?: string;
@@ -54,6 +58,7 @@ export interface Msg {
   suggestions?: string[];
   ai?: boolean;
   capped?: boolean;
+  understood?: string;
   error?: boolean;
 }
 interface Info {
@@ -98,7 +103,7 @@ export function useEagleChat(token: string | null) {
         const r = await api<Reply>("/api/lux/eagle/ask", { method: "POST", body: { q }, token: token ?? undefined, signal: ac.signal });
         setMsgs((m) => [
           ...m,
-          { id: ++id.current, role: "eagle", text: r.answer, items: r.items, actions: r.actions, note: r.note, links: r.links, cards: r.cards, suggestions: r.suggestions?.slice(0, 3), ai: r.source === "ai", capped: r.capped },
+          { id: ++id.current, role: "eagle", text: r.answer, items: r.items, actions: r.actions, note: r.note, links: r.links, cards: r.cards, suggestions: r.suggestions?.slice(0, 3), ai: r.source === "ai", capped: r.capped, understood: r.understood },
         ]);
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -242,6 +247,7 @@ export function EagleChat({ chat, loggedIn, onBack, onClose }: { chat: EagleChat
           <div key={m.id} className={`eg-msg ${m.role === "me" ? "is-me" : "is-eagle"} ${m.error ? "is-error" : ""}`}>
             <span className="sr-only">{m.role === "me" ? "אתם: " : "מעוז: "}</span>
             <p className="eg-text">{m.text}</p>
+            {m.understood && <p className="eg-note">הבנתי: «{m.understood}»</p>}
             {m.items && m.items.length > 0 && (
               <>
                 <ol className="eg-items">
@@ -269,6 +275,7 @@ export function EagleChat({ chat, loggedIn, onBack, onClose }: { chat: EagleChat
                       <Link href={h} className="eg-card">
                         <strong>{c.title}</strong>
                         {c.meta && <span>{c.meta}</span>}
+                        {c.text && <span className="eg-snip">{c.text}</span>}
                       </Link>
                     </li>
                   ) : null;

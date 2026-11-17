@@ -9,7 +9,10 @@ import { expandToken, norm, skeleton, smartSearch, stems } from "./smart-search.
 import { rowToActivity } from "./activities.js";
 import { collectEvents } from "./lux-insights.js";
 import { writeHelp } from "./lux-eagle-write.js";
-import { requireAiBudget } from "./ai-budget.js";
+import { routerFromConfig } from "./ai-router.js";
+import { CHALLENGE_KEYS, analyzeIntent, buildVocab, clarifyFor } from "./maoz-intent.js";
+import { createRag } from "./maoz-rag.js";
+import { LOST_ANSWER, MEDICAL_ANSWER, fieldAnswer } from "./maoz-field.js";
 
 const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 
@@ -139,17 +142,7 @@ export function rankSite(q, limit = 3) {
 }
 
 // אתגרי חינוך (content.js): "חניכים שמפריעים", "ריב בין חברים" ועוד, עם הנחיה מוכנה. מילות מפתח מקבילות לניסוחים חופשיים.
-const CH_KEYS = {
-  quarrel: "ריב רבים רבו מתקוטטים מריבה כעס כועסים מסוכסכים",
-  excluded: "בצד מבודד לבד לא משתלב נשאר בצד דחוי חריג",
-  disruptive: "מפריע מפריעים מפריעה הפרעה רעש רועשים צועק צועקים לא מקשיבים שקט משתוללים לא שקט משמעת",
-  unmotivated: "משועמם משועממים משתעמם משתעממים משעמם משעממת אדישים מוטיבציה לא רוצים להשתתף לא מתעניינים",
-  teasing: "מקניט מקניטים הקנטה הצקה מציק מציקים בריונות צוחקים על עלבונות",
-  split: "חבורות חבורה קליקה פיצול מפולגת לא מתערבבים",
-  phones: "טלפון טלפונים נייד ניידים סמארטפון מסך מסכים וואטסאפ",
-  newgroup: "איחוד שכבות קבוצה חדשה לא מכירים מכירים שכבה חדשה מתאחדים",
-  hardtimes: "אבל עצוב עצובה מתח משבר תקופה קשה פטירה מצב רוח כבד",
-};
+const CH_KEYS = CHALLENGE_KEYS;
 const CH_TITLE = { newgroup: "איחוד שכבות קבוצה חדשה", hardtimes: "תקופה לא פשוטה" };
 let CH_IDX;
 export function rankChallenges(q) {
@@ -243,6 +236,13 @@ const SYSTEM = [
   "6) אל תכלול כתובות אינטרנט. החזר טקסט בלבד.",
 ].join("\n");
 
+// מצב בשטח: אותו SYSTEM, עם כללי סגנון לשיחה חיה. התוכנית המקומית נשלחת כטיוטה, והמודל רק מנסח אותה בקול אנושי ומתאים לשאלה.
+const FIELD_SYSTEM = [
+  SYSTEM,
+  "7) זו שאלה מהשטח של מדריך שבאמצע פעולה. התחל במשפט אמפתי אחד קצר, ואז שלושה צעדים ממוספרים וקצרים שאפשר לבצע עכשיו (עד 90 מילים בסך הכול).",
+  "8) השתמש ב-localPlan וב-candidateGames כבסיס. אפשר לנסח מחדש ולהתאים לפרטים בשאלה, אבל אל תמציא משחקים או ציוד שלא מופיעים שם, ואל תחרוג מהזמן שנשאר.",
+].join("\n");
+
 /** מנקה טקסט שמגיע ממשתמשים לפני שהוא נשלח כהקשר: בלי תגיות, שורות חדשות וקיצור. */
 /** לפני שליחה למודל: מסתירים כתובות מייל ומספרי טלפון שהוקלדו בטעות */
 const maskPII = (s) => String(s ?? "").replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "[מייל]").replace(/\+?\d[\d\s().-]{6,}\d/g, "[מספר]");
@@ -270,7 +270,16 @@ const cleanAnswer = (t) =>
  * יוצר את מנוע הנשר. fetchImpl ו-now ניתנים להחלפה בבדיקות.
  * מכסות: aiDaily למשתמש ביום, aiGlobal לכל האתר ביום (ב-env: EAGLE_AI_DAILY, EAGLE_AI_GLOBAL_DAILY).
  */
-export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, aiGlobal = 300, rng, logUnanswered = true }) {
+export function createEagle({ db, ai, fetchImpl = (...a) => globalThis.fetch(...a), today, aiDaily = 20, aiGlobal = 300, rng, logUnanswered = true, router: routerIn }) {
+  // שלב 68: נתב AI רב-שכבתי (Gemini ו-Groq בחינם, Anthropic אם הוגדר). בלי אף מפתח הכול נשאר מקומי.
+  const router = routerIn || routerFromConfig(ai || {}, { fetchImpl });
+  const siteDocs = () => SITE_KB.map((e) => ({ kind: "site", ref: e.id, href: e.links[0]?.href || "/help", meta: "מידע על האתר", dur: null, energetic: null, noequip: null, snippet: e.a.slice(0, 160), title: e.title, vocab: e.keys, body: `${e.keys} ${e.a}` }));
+  const rag = createRag(db, { extraDocs: siteDocs });
+  let vocab = null;
+  const getVocab = () => {
+    if (rag.refresh() || !vocab) vocab = buildVocab(rag.vocabTexts());
+    return vocab;
+  };
   const perUser = new Map();
   const glob = { day: "", n: 0 };
   const cache = new Map();
@@ -292,18 +301,19 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
     if (perUser.size > 5000) for (const key of perUser.keys()) if (!key.startsWith(dayKey())) perUser.delete(key);
   };
 
-  async function callModel(question, ctx) {
-    requireAiBudget();
-    const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": ai.key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: ai.model, max_tokens: 450, system: SYSTEM, messages: [{ role: "user", content: JSON.stringify({ question: safeText(maskPII(question), 400), CONTEXT: ctx }) }] }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`AI HTTP ${res.status}`);
-    const text = cleanAnswer((await res.json())?.content?.[0]?.text);
+  async function callModel(question, ctx, system = SYSTEM) {
+    const out = await router.chat({ system, user: JSON.stringify({ question: safeText(maskPII(question), 400), CONTEXT: ctx }), maxTokens: 450, timeoutMs: 20_000 });
+    const text = cleanAnswer(out.text);
     if (text.length < 8) throw new Error("AI empty");
-    return text;
+    return { text, provider: out.provider };
+  }
+
+  /** כרטיסים מאינדקס ה-RAG: רק תוצאות שמכסות את רוב מילות השאלה, כדי לא להציע רעש */
+  function ragCards(qs, kinds, limit = 4) {
+    const r = rag.search(qs, { kinds, limit });
+    const top = r.hits[0]?.coverage ?? 0;
+    if (top < 0.5) return [];
+    return r.hits.filter((h) => h.coverage >= top - 0.01).map((h) => ({ title: clip(h.title, 80), meta: h.meta, href: h.href, text: h.snippet }));
   }
 
   /** התשובה המקומית: תמיד זמינה, ללא עלות. */
@@ -311,6 +321,11 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
     const nq = norm(q);
     if (GREETING.test(nq)) return { answer: "שלום! אני מעוז. אפשר לשאול אותי איך משתמשים באתר, מה זו מתודה או ערך, לבקש שאחפש פעולה במאגר, או שאעזור לכתוב פעולה.", links: [], cards: [], topic: "hello", suggestions: STARTERS.slice(0, 3) };
     if (SAFETY.test(q)) return { ...SAFETY_ANSWER, cards: [], topic: "safety" };
+    // שלב 68: הבנת כוונה (תיקון הקלדה, סלנג צופי ומצבי שטח) לפני כל השאר
+    const ia = analyzeIntent(q, { vocab: getVocab() });
+    ctxOut.understood = ia.fixes.length ? ia.fixedQ : "";
+    if (ia.emergency === "lost") return { ...LOST_ANSWER };
+    if (ia.emergency === "medical") return { ...MEDICAL_ANSWER };
     if (IDENTITY.test(nq)) {
       const e = SITE_KB.find((x) => x.id === "eagle");
       return { answer: e.a, links: e.links, cards: [], topic: "eagle", suggestions: STARTERS.slice(0, 3) };
@@ -326,14 +341,34 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
       if (!user) return { answer: "כדי שאראה מה מתוכנן לכם צריך להתחבר. אחרי ההתחברות אוכל להציג את מה שבלוח שלכם.", links: [L("להתחברות", "/login")], cards: [], topic: "week" };
       return { ...myWeek(db, user.id, today(), q), topic: "week" };
     }
-    const m = methodHit(q);
-    const v = valueHit(q);
-    const k = kindHit(q);
-    const wantsFind = FIND.test(q);
-    const site = rankSite(q);
-    const ch = rankChallenges(q);
-    const advice = ADVICE.test(q);
-    const define = DEFINE.test(nq);
+    // מצב בשטח ("ירד גשם", "נשאר לי רבע שעה"): ספר משחקים מקומי. אם חסר מידע קריטי (כמה דקות?), שואלים שאלת מיקוד קצרה
+    // שאלת ייעוץ כללית ("איך מתמודדים עם חניכים שמפריעים") שיש לה הנחיה מוכנה באתגרי החינוך מקבלת אותה, ולא ספר שטח
+    const advisedChallenge = ia.field && ADVICE.test(q) && (rankChallenges(ia.fixes.length ? ia.fixedQ : q).hits[0]?.total ?? 0) >= 1.8;
+    if (ia.field && !advisedChallenge && ia.needsMinutes) {
+      const c = clarifyFor(ia);
+      return { answer: c.ask, links: [], cards: [], topic: "clarify", suggestions: c.options };
+    }
+    if (ia.field && !advisedChallenge) {
+      const f = fieldAnswer(ia, { rag, rng });
+      ctxOut.confident = true;
+      ctxOut.cards = f.cards;
+      ctxOut.ia = ia;
+      return f;
+    }
+    if (ia.vagueExact) {
+      const c = clarifyFor(ia);
+      return { answer: c.ask, links: [L("למרכז העזרה", "/help")], cards: [], topic: "clarify", suggestions: c.options };
+    }
+    const qn = ia.fixes.length ? ia.fixedQ : q; // השאלה אחרי תיקון שגיאות הקלדה, להמשך החיפוש
+    const nqn = norm(qn);
+    const m = methodHit(qn);
+    const v = valueHit(qn);
+    const k = kindHit(qn);
+    const wantsFind = FIND.test(qn);
+    const site = rankSite(qn);
+    const ch = rankChallenges(qn);
+    const advice = ADVICE.test(qn);
+    const define = DEFINE.test(nqn);
     ctxOut.hits = site.hits;
     ctxOut.methods = m ? [m] : [];
     ctxOut.values = v ? [v] : [];
@@ -341,11 +376,18 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
 
     // 1. בקשת חיפוש במאגר: תמיד קודמת להסברים
     if (wantsFind) {
-      const cards = findActivities(db, q);
+      const cards = findActivities(db, qn);
       ctxOut.cards = cards;
       ctxOut.confident = cards.length > 0;
       if (cards.length) return { answer: "מצאתי במאגר:", links: [L("לכל המאגר", "/library")], cards, topic: "find" };
-      const t = topicOf(q);
+      // שלב 68: לא נמצאה פעולה שלמה, אז מחפשים גם בתוך שלבים, משחקי היכרות, חימומים וסיפורים
+      const deep = ragCards(qn, ["activity", "stage", "icebreaker", "warmup", "story"]);
+      if (deep.length) {
+        ctxOut.cards = deep;
+        ctxOut.confident = true;
+        return { answer: "לא מצאתי פעולה שלמה בנושא, אבל מצאתי חומר שאפשר לבנות ממנו:", links: [L("לכל המאגר", "/library"), L("ליצירת פעולה", "/")], cards: deep, topic: "find" };
+      }
+      const t = topicOf(qn);
       return { answer: `לא מצאתי במאגר פעולה על ${t ? `"${t}"` : "הנושא הזה"}. אפשר לבקש אותה ב'בקשות לפעולות', או ליצור כזו עם המחולל.`, links: [L("לבקשות", "/requests"), L("ליצירת פעולה", "/")], cards: [], topic: "find-none" };
     }
     // 2. אתגר חינוכי ("חניכים שמפריעים"): מנצח כשזו שאלת ייעוץ או כשהאתר עצמו לא ענה בביטחון
@@ -379,9 +421,18 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
     }
     // 5. לא בטוח: מציעים פעולות קרובות או את ההתאמה הטובה ביותר
     ctxOut.confident = false;
-    const cards = findActivities(db, q);
+    const cards = findActivities(db, qn);
     ctxOut.cards = cards;
     if (cards.length) return { answer: "לא מצאתי תשובה מדויקת לשאלה, אבל הנה פעולות מהמאגר שקרובות לנושא:", links: [L("לכל המאגר", "/library")], cards, topic: "find" };
+    const near = ragCards(qn, ["activity", "stage", "icebreaker", "warmup", "story", "method", "challenge"]);
+    if (near.length) {
+      ctxOut.cards = near;
+      return { answer: "לא מצאתי תשובה מדויקת, אבל הנה מה שהכי קרוב בספרייה:", links: [L("לכל המאגר", "/library")], cards: near, topic: "find" };
+    }
+    if (ia.vague) {
+      const c = clarifyFor(ia);
+      return { answer: c.ask, links: [L("למרכז העזרה", "/help")], cards: [], topic: "clarify", suggestions: c.options };
+    }
     if (site.hits.length) return { answer: `אולי זה מה שחיפשתם: ${site.hits[0].e.a}`, links: site.hits[0].e.links, cards: [], topic: site.hits[0].e.id, suggestions: site.hits.slice(1).map((h) => h.e.title) };
     return { answer: "לא מצאתי תשובה לזה. אפשר לנסות לנסח אחרת, לעיין במרכז העזרה, או לשאול אותי למשל על מצב במה, על מתודה או על ערך.", links: [L("למרכז העזרה", "/help")], cards: [], topic: "none", suggestions: STARTERS.slice(0, 3) };
   }
@@ -411,27 +462,37 @@ export function createEagle({ db, ai, fetchImpl = fetch, today, aiDaily = 20, ai
     const ctxOut = {};
     const local = localAnswer(q, user, ctxOut);
     if (ctxOut.confident === false) recordUnanswered(q);
-    const base = { ...local, source: "local", aiLeft: user && ai?.key ? aiLeft(user.id) : null };
-    const personal = ["week", "safety", "hello"].includes(local.topic) || /^write-/.test(local.topic || ""); // כתיבה: הרשימות והכפתורים מהמאגרים, לא מנוסחים מחדש
-    // מודל: רק כשיש מפתח, משתמש מחובר, השאלה לא אישית ולא בטיחותית, ויש הצדקה (אין תשובה בטוחה, או שזו שאלת ייעוץ)
-    const wantsAi = !!ai?.key && !!user && !personal && (!ctxOut.confident || ADVICE.test(q));
+    const base = { ...local, source: "local", aiLeft: user && router.configured() ? aiLeft(user.id) : null };
+    if (ctxOut.understood) base.understood = clip(ctxOut.understood, 200);
+    const personal = ["week", "safety", "hello", "emergency", "clarify"].includes(local.topic) || /^write-/.test(local.topic || ""); // כתיבה: הרשימות והכפתורים מהמאגרים, לא מנוסחים מחדש
+    const field = local.topic === "field";
+    // מודל: רק כשיש ספק זמין, משתמש מחובר, השאלה לא אישית ולא בטיחותית, ויש הצדקה (אין תשובה בטוחה, שאלת ייעוץ, או מצב בשטח שכדאי לנסח אנושית)
+    const wantsAi = router.ready() && !!user && !personal && (!ctxOut.confident || ADVICE.test(q) || field);
     if (!wantsAi) return base;
     if (aiLeft(user.id) <= 0) return { ...base, capped: true };
 
-    const ck = norm(q);
+    const ck = `${field ? "f:" : ""}${norm(q)}`;
     const hit = cache.get(ck);
     if (hit && Date.now() - hit.at < CACHE_MS) return { ...base, answer: hit.text, source: "ai", cached: true };
     try {
-      const ctx = buildContext(ctxOut.hits ?? [], ctxOut.methods?.length ? ctxOut.methods : METHODS.slice(0, 0), ctxOut.values ?? [], ctxOut.cards ?? []);
-      const text = await callModel(q, ctx);
+      const ctx = field
+        ? { situation: { signals: ctxOut.ia?.signals ?? [], minutes: ctxOut.ia?.minutes || null, kids: ctxOut.ia?.kids || null }, localPlan: local.answer, candidateGames: (local.cards || []).map((c) => ({ title: safeText(c.title, 80), details: safeText(c.meta, 80), how: safeText(c.text, 220) })) }
+        : buildContext(ctxOut.hits ?? [], ctxOut.methods?.length ? ctxOut.methods : METHODS.slice(0, 0), ctxOut.values ?? [], ctxOut.cards ?? []);
+      const out = await callModel(q, ctx, field ? FIELD_SYSTEM : SYSTEM);
       charge(user.id);
       if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
-      cache.set(ck, { at: Date.now(), text });
-      return { ...base, answer: text, source: "ai", aiLeft: aiLeft(user.id) };
+      cache.set(ck, { at: Date.now(), text: out.text });
+      return { ...base, answer: out.text, source: "ai", provider: out.provider, aiLeft: aiLeft(user.id) };
     } catch {
       return { ...base, aiFailed: true };
     }
   }
 
-  return { ask, aiLeft, used };
+  /** מחייב קריאת AI אחת מהמכסה היומית של המשתמש (טיוטה מלאה, סימולטור). מחזיר false אם אין יותר מכסה או אין ספק זמין. */
+  const spendAi = (uid) => {
+    if (!uid || !router.ready() || aiLeft(uid) <= 0) return false;
+    charge(uid);
+    return true;
+  };
+  return { ask, aiLeft, used, rag, router, spendAi };
 }

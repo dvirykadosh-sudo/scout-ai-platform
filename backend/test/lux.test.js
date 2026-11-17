@@ -663,7 +663,12 @@ describe("מעוז עוזר לכתוב: בלי מפתח ובלי מודל", () =
     assert.equal(doc.body.meta.ageGroup, "כיתה ו' - מעורב");
     assert.equal(doc.body.meta.value, "אחריות");
     assert.equal(doc.body.blocks.reduce((s, b) => s + (b.minutes || 0), 0), 45, "הדקות בבלוקים מסתכמות בזמן שביקשו");
-    assert.ok(doc.body.blocks.every((b) => b.text === ""), "מעוז לא ממציא תוכן: הטקסט ריק, יש רק רמזים");
+    // שלב 68 (הפוך מממצא 92 של שלב 66, לבקשת המשתמש): מעוז כותב תוכן מלא בכל שלב, ולא רק שלד
+    assert.ok(doc.body.blocks.every((b) => b.text.length > 120), "בכל שלב יש תוכן מפורט, לא טקסט ריק");
+    assert.ok(doc.body.blocks.every((b) => /\d+ דק/.test(b.text) || b.kind === "close" || b.kind === "open"), "בגוף ובשיא יש תזמון פנימי");
+    assert.ok(doc.body.blocks.some((b) => b.text.includes("אחריות")), "התוכן מותאם לנושא");
+    assert.ok(doc.body.meta.gear.length > 0, "רשימת הציוד מתמלאת מהתבנית שנבחרה");
+    assert.equal(r.body.source, "local", "בלי מפתח AI הכול נכתב מקומית");
     assert.ok(doc.body.blocks.every((b) => b.hint.includes("אחריות")), "הרמזים מותאמים לנושא שנבחר");
     assert.equal((await j(`/api/write/docs/${r.body.id}`, { headers: auth(other) })).status, 404);
     const bad = (body) => j("/api/lux/eagle/draft", { method: "POST", headers: auth(t), body: JSON.stringify(body) });

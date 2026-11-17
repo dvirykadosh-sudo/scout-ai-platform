@@ -12,6 +12,7 @@ import { Mascot } from "./Mascot";
 import { SheetEnhancer } from "./SheetEnhancer";
 import { applyTribe, ensureTribe } from "@/lib/lux/tribe";
 import { ViewTransitions } from "./ViewTransitions";
+import { SpecularGlow } from "../v21/SpecularGlow";
 
 /** שעת היום (רעיון 9): data-tod על html. ה-CSS צובע לפי זה את הרקע. מתעדכן כל כמה דקות. */
 export const todOf = (d = new Date()): "morning" | "day" | "evening" | "night" => {
@@ -62,6 +63,7 @@ export function LuxRoot() {
     <>
       <ViewTransitions />
       <CursorGlow />
+      <SpecularGlow />
       <SheetEnhancer />
       <Mascot />
       <ReadAloud />

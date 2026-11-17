@@ -11,6 +11,8 @@ import { KIND_LABEL, adviceFor, forecast, geocode, kindOf, pickHour, ttlCache } 
 import { buildInsights, buildTribeWrapped, buildWrapped } from "./lux-insights.js";
 import { createPresence } from "./lux-presence.js";
 import { STARTERS, createEagle } from "./lux-eagle.js";
+import { aiDraft, findValue, localDraft } from "./maoz-draft.js";
+import { PERSONAS, SCENARIOS, aiTurn, distressNote, localTurn } from "./maoz-spar.js";
 import { config } from "./config.js";
 
 const todayStr = () => israelToday();
@@ -246,7 +248,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
   app.get("/api/lux/eagle/info", lim, (req, res) => {
     const user = optionalAuth(req);
     res.set("Cache-Control", "no-store");
-    res.json({ starters: STARTERS, ai: !!config.ai.key, aiLeft: user && config.ai.key ? eagle.aiLeft(user.id) : null });
+    res.json({ starters: STARTERS, ai: eagle.router.configured(), aiLeft: user && eagle.router.configured() ? eagle.aiLeft(user.id) : null, voice: true });
   });
   app.post("/api/lux/eagle/ask", eagleLim, async (req, res) => {
     const v = askSchema.safeParse(req.body ?? {});
@@ -265,13 +267,12 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
       value: z.string().trim().max(40).default(""),
     })
     .strict();
-  app.post("/api/lux/eagle/draft", requireUser(), limiter(15 * 60_000, 30), (req, res) => {
+  app.post("/api/lux/eagle/draft", requireUser(), limiter(15 * 60_000, 30), async (req, res) => {
     const v = draftZ.safeParse(req.body ?? {});
     if (!v.success) return res.status(400).json(fail("BAD_REQUEST", "פרטי הטיוטה אינם תקינים"));
     if (db.prepare("SELECT COUNT(*) AS c FROM write_docs WHERE owner_id = ?").get(req.user.id).c >= 100) return res.status(409).json(fail("LIMIT", "אפשר לשמור עד 100 מסמכים. אפשר למחוק או לארכב ישנים."));
     const t = TEMPLATES.find((x) => x.id === "classic");
     let blocks = t.blocks();
-    // שלב 66 (ממצא 92): מעוז לא ממציא תוכן (הטקסט נשאר ריק, וזו החלטה מכוונת), אבל הרמזים בכל שלב מותאמים לנושא שבחרו
     const topic = (v.data.value || v.data.title).slice(0, 40);
     const HINT = {
       open: `שאלה, משפט או מעשה קטן שמכניסים את החבורה לנושא "${topic}"`,
@@ -284,10 +285,57 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
       const parts = apportion(blocks.map((b) => b.minutes || 1), v.data.minutes);
       blocks = blocks.map((b, i) => ({ ...b, minutes: parts[i] }));
     }
-    const meta = metaDefaults({ ageGroup: v.data.ageGroup, minutes: v.data.minutes ?? t.minutes, value: v.data.value });
+    // שלב 68: מעוז כותב תוכן מלא בכל שלב. מקומית תמיד, ובעזרת ספק AI (אם יש וזמין ובמכסה) בניסוח אנושי יותר
+    const input = { title: v.data.title, ageGroup: v.data.ageGroup, value: v.data.value, minutes: v.data.minutes ?? t.minutes };
+    const local = localDraft(input, blocks, { rag: eagle.rag });
+    let texts = local.texts;
+    let source = "local";
+    if (eagle.spendAi(req.user.id)) {
+      const better = await aiDraft(eagle.router, input, blocks, local);
+      if (better) {
+        texts = better;
+        source = "ai";
+      }
+    }
+    blocks = blocks.map((b) => ({ ...b, text: texts[b.kind] ?? "" }));
+    const val = findValue(v.data.value, v.data.title);
+    const meta = metaDefaults({ ageGroup: v.data.ageGroup, minutes: v.data.minutes ?? t.minutes, value: v.data.value || val?.label || "", gear: local.gear });
+    const wordCount = ([v.data.title, ...blocks.flatMap((b) => [b.title, b.text])].join(" ").match(/\S+/g) || []).length;
     const at = nowIso();
-    const r = db.prepare("INSERT INTO write_docs (owner_id, title, meta_json, blocks_json, rev, words, created_at, updated_at) VALUES (?,?,?,?,1,0,?,?)").run(req.user.id, v.data.title, JSON.stringify(meta), JSON.stringify(blocks), at, at);
+    const r = db.prepare("INSERT INTO write_docs (owner_id, title, meta_json, blocks_json, rev, words, created_at, updated_at) VALUES (?,?,?,?,1,?,?,?)").run(req.user.id, v.data.title, JSON.stringify(meta), JSON.stringify(blocks), wordCount, at, at);
     const id = Number(r.lastInsertRowid);
-    res.status(201).json({ id, href: `/write/${id}` });
+    res.status(201).json({ id, href: `/write/${id}`, source, format: local.format });
+  });
+
+  // ── שלב 68: סימולטור חניכים (ספארינג) ──
+  // בלי מצב בשרת: כל קריאה מביאה את ההיסטוריה (עד 30 הודעות), והשרת לא שומר דבר. פתוח גם לאורחים (גרסה מקומית), ומודל AI רק למחובר ובמכסה.
+  app.get("/api/lux/spar/scenarios", lim, (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({ ai: eagle.router.configured(), scenarios: SCENARIOS.map((s) => ({ id: s.id, title: s.title, setup: s.setup, ageGroup: s.ageGroup, personas: s.personas.map((id) => ({ id, label: PERSONAS[id].label, blurb: PERSONAS[id].blurb })) })) });
+  });
+  const sparZ = z
+    .object({
+      scenario: z.enum(SCENARIOS.map((s) => s.id)),
+      history: z.array(z.object({ from: z.enum(["leader", ...Object.keys(PERSONAS)]), text: z.string().max(500) }).strict()).max(30).default([]),
+      leader: z.string().trim().max(500).default(""),
+      finish: z.boolean().default(false),
+    })
+    .strict();
+  app.post("/api/lux/spar/turn", limiter(60_000, 40), async (req, res) => {
+    const v = sparZ.safeParse(req.body ?? {});
+    if (!v.success) return res.status(400).json(fail("BAD_REQUEST", "הקלט לתרגיל אינו תקין: עד 500 תווים לתור ועד 30 הודעות בהיסטוריה"));
+    const p = v.data;
+    if (!p.leader && p.history.length && !p.finish) return res.status(400).json(fail("BAD_REQUEST", "כתבו מה אתם אומרים לקבוצה"));
+    res.set("Cache-Control", "no-store");
+    const note = p.leader ? distressNote(p.leader) : "";
+    if (note) return res.json({ replies: [], tip: note, mood: "neutral", turn: p.history.filter((h) => h.from === "leader").length, distress: true, source: "local" });
+    const local = localTurn(p);
+    const user = optionalAuth(req);
+    let out = { ...local, source: "local" };
+    if (user && p.leader && !local.report && eagle.spendAi(user.id)) {
+      const better = await aiTurn(eagle.router, p, local);
+      if (better) out = { ...better, source: "ai" };
+    }
+    res.json(out);
   });
 }
