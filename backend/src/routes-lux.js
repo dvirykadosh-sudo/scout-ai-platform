@@ -14,6 +14,7 @@ import { STARTERS, createEagle } from "./lux-eagle.js";
 import { aiDraft, findValue, localDraft } from "./maoz-draft.js";
 import { PERSONAS, SCENARIOS, aiTurn, distressNote, localTurn } from "./maoz-spar.js";
 import { config } from "./config.js";
+import { dnaFor, listGroups } from "./group-dna.js";
 
 const todayStr = () => israelToday();
 const addDays = (d, n) => new Date(Date.parse(d) + n * 86400000).toISOString().slice(0, 10);
@@ -194,6 +195,13 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
     res.json({ shared: true, people: people ?? [], ...draftState(d) });
   });
 
+  // ── שלב 70: ה-DNA של הקבוצה. מחושב בכל בקשה מהיומן הפרטי של המדריך המחובר (לא נשמר). ──
+  app.get("/api/lux/dna", requireUser(), lim, (req, res) => {
+    res.set("Cache-Control", "no-store");
+    const want = String(req.query.group ?? "").trim().slice(0, 60);
+    res.json({ groups: listGroups(db, req.user.id), group: want, dna: dnaFor(db, req.user.id, want === "*" ? "" : want) });
+  });
+
   // ── אשף נוחות (רעיון 20): העדפות נגישות שנשמרות בחשבון ועוברות בין מכשירים ──
   const comfortSchema = z
     .object({
@@ -245,7 +253,9 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
   });
   app.locals.luxEagle = eagle; // שלב 69: נתיב הסריקה משתמש באותו נתב ובאותה מכסה יומית
   const eagleLim = limiter(60_000, 20);
-  const askSchema = z.object({ q: z.string().trim().min(2).max(400) }).strict();
+  const askSchema = z.object({ q: z.string().trim().min(2).max(400), dna: z.string().trim().max(60).optional() }).strict();
+  // שלב 70: "*" = כל הקבוצות; אחרת תווית קבוצה מיומן ההפעלות. רק למחובר, ורק כשיש מספיק הפעלות מדורגות.
+  const dnaOf = (user, want) => (user && want ? dnaFor(db, user.id, want === "*" ? "" : want) : null);
   app.get("/api/lux/eagle/info", lim, (req, res) => {
     const user = optionalAuth(req);
     res.set("Cache-Control", "no-store");
@@ -255,7 +265,8 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
     const v = askSchema.safeParse(req.body ?? {});
     if (!v.success) return res.status(400).json(fail("BAD_REQUEST", "אפשר לשאול עד 400 תווים, ולפחות שתי אותיות"));
     res.set("Cache-Control", "no-store");
-    res.json(await eagle.ask({ question: v.data.q, user: optionalAuth(req) }));
+    const user = optionalAuth(req);
+    res.json(await eagle.ask({ question: v.data.q, user, dna: dnaOf(user, v.data.dna) }));
   });
 
   // "צרו טיוטה בעורך": מעוז מכין מסמך חדש מתבנית "פעולה קלאסית" עם הכותרת, הגיל, הערך והזמן שהבנתם, ומחלק את הדקות בין השלבים.
@@ -266,6 +277,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
       ageGroup: z.enum(AGE_GROUPS).or(z.literal("")).default(""),
       minutes: z.number().int().min(5).max(180).nullable().default(null),
       value: z.string().trim().max(40).default(""),
+      dna: z.string().trim().max(60).optional(),
     })
     .strict();
   app.post("/api/lux/eagle/draft", requireUser(), limiter(15 * 60_000, 30), async (req, res) => {
@@ -287,7 +299,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
       blocks = blocks.map((b, i) => ({ ...b, minutes: parts[i] }));
     }
     // שלב 68: מעוז כותב תוכן מלא בכל שלב. מקומית תמיד, ובעזרת ספק AI (אם יש וזמין ובמכסה) בניסוח אנושי יותר
-    const input = { title: v.data.title, ageGroup: v.data.ageGroup, value: v.data.value, minutes: v.data.minutes ?? t.minutes };
+    const input = { title: v.data.title, ageGroup: v.data.ageGroup, value: v.data.value, minutes: v.data.minutes ?? t.minutes, groupProfile: dnaOf(req.user, v.data.dna)?.hint || "" };
     const local = localDraft(input, blocks, { rag: eagle.rag });
     let texts = local.texts;
     let source = "local";
@@ -320,6 +332,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
       history: z.array(z.object({ from: z.enum(["leader", ...Object.keys(PERSONAS)]), text: z.string().max(500) }).strict()).max(30).default([]),
       leader: z.string().trim().max(500).default(""),
       finish: z.boolean().default(false),
+      dna: z.string().trim().max(60).optional(),
     })
     .strict();
   app.post("/api/lux/spar/turn", limiter(60_000, 40), async (req, res) => {
@@ -334,7 +347,7 @@ export function registerLuxRoutes(app, { db, limiter, fail, requireUser, optiona
     const user = optionalAuth(req);
     let out = { ...local, source: "local" };
     if (user && p.leader && !local.report && eagle.spendAi(user.id)) {
-      const better = await aiTurn(eagle.router, p, local);
+      const better = await aiTurn(eagle.router, { ...p, dnaHint: dnaOf(user, p.dna)?.hint || "" }, local);
       if (better) out = { ...better, source: "ai" };
     }
     res.json(out);

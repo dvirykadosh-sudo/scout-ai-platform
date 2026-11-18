@@ -160,6 +160,14 @@ CREATE TABLE IF NOT EXISTS write_shares (
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS write_doc_editors (
+  doc_id INTEGER NOT NULL REFERENCES write_docs(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  added_by TEXT NOT NULL,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (doc_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_write_doc_editors_user ON write_doc_editors(user_id);
 CREATE TABLE IF NOT EXISTS write_comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   doc_id INTEGER NOT NULL REFERENCES write_docs(id) ON DELETE CASCADE,

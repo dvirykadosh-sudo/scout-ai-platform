@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, api } from "@/lib/api";
+import { dnaBody } from "@/lib/dna";
 import { useAuth } from "../Providers";
 import type { Reply } from "../lux/EagleChat";
 import { useVoice } from "./useVoice";
@@ -67,7 +68,7 @@ export function Walkie({ variant, onCommand, starters }: WalkieProps) {
       const ac = new AbortController();
       abort.current = ac;
       try {
-        const r = await api<Reply>("/api/lux/eagle/ask", { method: "POST", body: { q }, token: token ?? undefined, signal: ac.signal });
+        const r = await api<Reply>("/api/lux/eagle/ask", { method: "POST", body: { q, ...dnaBody() }, token: token ?? undefined, signal: ac.signal });
         setReply(r);
         if (autoRef.current) voiceRef.current?.say(spokenOf(r, field));
       } catch (e) {

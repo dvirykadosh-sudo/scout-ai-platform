@@ -21,14 +21,17 @@ interface Options {
   body?: unknown;
   token?: string | null;
   signal?: AbortSignal;
+  /** "no-store" כשחייבים נתון עדכני (למשל תצוגת הלוגו מיד אחרי העלאה). בלי זה הדפדפן רשאי להשתמש בעותק עד דקה (Cache-Control של השרת). */
+  cache?: RequestCache;
 }
 
-export async function api<T>(path: string, { method = "GET", body, token, signal }: Options = {}): Promise<T> {
+export async function api<T>(path: string, { method = "GET", body, token, signal, cache }: Options = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(API_URL + path, {
       method,
       signal,
+      ...(cache ? { cache } : {}),
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

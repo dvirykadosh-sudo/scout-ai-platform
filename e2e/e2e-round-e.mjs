@@ -40,7 +40,7 @@ await page.getByRole("button", { name: /הרשמה/ }).first().click();
 await page.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
 await page.getByLabel("שם להצגה").fill("רונית");
 await page.getByLabel("שם משתמש").fill("ronit" + Date.now().toString().slice(-6));
-await page.getByLabel("סיסמה", { exact: true }).fill("password99");
+await page.getByLabel("סיסמה", { exact: true }).fill("Str0ng-e2e-pw-26");
 { const cf = page.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
 await page.getByLabel("קראתי ואני מאשר").check();
 await page.getByRole("button", { name: /^(הרשמה|יצירת חשבון)$/ }).last().click();

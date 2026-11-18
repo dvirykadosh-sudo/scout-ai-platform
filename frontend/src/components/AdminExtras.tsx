@@ -96,7 +96,7 @@ export function AdminLogo() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    api<{ logoVersion: string | null }>("/api/meta")
+    api<{ logoVersion: string | null }>("/api/meta", { cache: "no-store" }) // שלב 69: אחרת אחרי העלאה/הסרה התצוגה יכולה להישאר עד דקה על העותק הישן
       .then((m) => setVersion(m.logoVersion))
       .catch(() => {});
   }, []);

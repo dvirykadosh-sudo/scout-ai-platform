@@ -13,6 +13,7 @@ import { StatsModal } from "./WriteMore2";
 import { TrashPanel, TribeTemplates } from "./WriteMore3";
 import { WriteEditor } from "./WriteEditor";
 import type { Doc } from "./WriteParts";
+import { SharedWithMe } from "./v21/SharedWithMe";
 
 interface Tpl {
   id: string;
@@ -169,6 +170,8 @@ export function WriteList() {
           </>
         )}
       </section>
+
+      <SharedWithMe />
 
       <section aria-labelledby="w-mine" className="card glass">
         <h2 id="w-mine" className="section-title">

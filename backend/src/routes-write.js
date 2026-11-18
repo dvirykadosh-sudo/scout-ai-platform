@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { audit, nowIso } from "./db.js";
 import { AGE_GROUPS } from "./shared/constants.js";
+import { createRevCache, mergeBlocks, mergeFields } from "./block-merge.js";
 
 export const KINDS = ["open", "body", "peak", "close", "free"];
 const MAX_DOCS = 100;
@@ -46,6 +47,9 @@ const saveSchema = z.object({
   meta: metaSchema.default({}),
   blocks: z.array(blockSchema).max(60),
   baseRev: z.number().int().min(1).optional(),
+  // שלב 70: עריכת צוות. merge=true מבקש מיזוג ברמת שלב כשהמסמך עודכן ע"י אחר; cid מזהה את הלשונית כדי שלא תקבל הודעה על עצמה
+  merge: z.boolean().optional(),
+  cid: z.string().regex(/^[a-f0-9]{16}$/).optional(),
 });
 
 const newId = () => crypto.randomBytes(5).toString("hex");
@@ -124,6 +128,15 @@ export function registerWriteRoutes(app, { db, limiter, fail, requireUser }) {
   const parse = (row) => ({ meta: metaDefaults(JSON.parse(row.meta_json)), blocks: JSON.parse(row.blocks_json) });
   const out = (d) => ({ id: d.id, title: d.title, ...parse(d), rev: d.rev, words: d.words, createdAt: d.created_at, updatedAt: d.updated_at });
   const mine = (id, uid) => db.prepare("SELECT * FROM write_docs WHERE id = ? AND owner_id = ?").get(id, uid);
+  const revs = app.locals.writeRevs ?? (app.locals.writeRevs = createRevCache());
+  /** שלב 70: מסמך שאפשר לערוך: הבעלים, או עורך שהוזמן. שאר הנתיבים נשארים לבעלים בלבד (mine). */
+  const editable = (id, uid) => {
+    const d = db.prepare("SELECT * FROM write_docs WHERE id = ?").get(id);
+    if (!d) return null;
+    if (d.owner_id === uid) return { d, role: "owner" };
+    return db.prepare("SELECT 1 FROM write_doc_editors WHERE doc_id = ? AND user_id = ?").get(id, uid) ? { d, role: "editor" } : null;
+  };
+  const teamDoc = (id) => !!db.prepare("SELECT 1 FROM write_doc_editors WHERE doc_id = ? LIMIT 1").get(id);
   const toTrash = (d) => db.prepare("INSERT INTO write_trash (owner_id, title, meta_json, blocks_json, words, deleted_at) VALUES (?,?,?,?,?,?)").run(d.owner_id, d.title, d.meta_json, d.blocks_json, d.words, nowIso());
   const notFound = (res) => res.status(404).json(fail("NOT_FOUND", "המסמך לא נמצא"));
   const idOf = (req) => Number(req.params.id);
@@ -173,29 +186,57 @@ export function registerWriteRoutes(app, { db, limiter, fail, requireUser }) {
   });
 
   app.get("/api/write/docs/:id", requireUser(), (req, res) => {
-    const d = mine(idOf(req), req.user.id);
-    if (!d) return notFound(res);
-    res.json(out(d));
+    const a = editable(idOf(req), req.user.id);
+    if (!a) return notFound(res);
+    if (teamDoc(a.d.id)) revs.remember(a.d); // נקודת בסיס למיזוג, אם מי שקרא יתחיל לערוך
+    res.json({ ...out(a.d), role: a.role });
   });
 
   // שמירה אוטומטית. baseRev מונע דריסה כששתי לשוניות עורכות את אותו מסמך.
   app.put("/api/write/docs/:id", requireUser(), limiter(60_000, 240), (req, res) => {
-    const d = mine(idOf(req), req.user.id);
-    if (!d) return notFound(res);
+    const a = editable(idOf(req), req.user.id);
+    if (!a) return notFound(res);
+    const d = a.d;
     const v = saveSchema.parse(req.body ?? {});
-    if (v.baseRev !== undefined && v.baseRev !== d.rev) return res.status(409).json({ ...fail("CONFLICT", "המסמך עודכן במקום אחר (בלשונית או במכשיר אחר). טענו אותו מחדש כדי לא לאבד שינויים"), current: out(d) });
-    const ids = new Set(v.blocks.map((b) => b.id));
-    if (ids.size !== v.blocks.length) return res.status(400).json(fail("DUP_BLOCK", "מזהי שלבים כפולים"));
-    const meta = JSON.stringify(v.meta);
-    const blocks = JSON.stringify(v.blocks);
-    if (meta === d.meta_json && blocks === d.blocks_json && v.title === d.title) return res.json(out(d));
-    if (JSON.stringify(v.blocks).length > 400_000) return res.status(413).json(fail("TOO_BIG", "המסמך גדול מדי"));
+    let { title, meta, blocks } = v;
+    let merged = null;
+    if (v.baseRev !== undefined && v.baseRev !== d.rev) {
+      // שלב 70: בעריכת צוות (merge=true) ממזגים ברמת שלב מול הנוסח שממנו התחיל מי ששומר.
+      // בלי merge, או כשנוסח הבסיס כבר לא בזיכרון השרת (למשל אחרי השכמה): התנגשות רגילה, כמו קודם.
+      const base = v.merge ? revs.at(d.id, v.baseRev) : null;
+      if (!base) return res.status(409).json({ ...fail("CONFLICT", "המסמך עודכן במקום אחר (בלשונית או במכשיר אחר). טענו אותו מחדש כדי לא לאבד שינויים"), current: out(d) });
+      // כולם עוברים אותה נורמליזציה (ערכי ברירת מחדל), אחרת שלב שלא נגעו בו ייראה "ששונה" ויהפוך להתנגשות מדומה
+      const norm = (l) => l.map((b) => blockSchema.parse(b));
+      const theirs = { meta: parse(d).meta, blocks: norm(parse(d).blocks) };
+      const baseBlocks = norm(base.blocks);
+      const m = mergeBlocks(baseBlocks, blocks, theirs.blocks);
+      if (m.blocks.length > 60) return res.status(409).json({ ...fail("TOO_MANY", "אחרי המיזוג יש יותר מ-60 שלבים. טענו את הנוסח העדכני ואחדו ידנית"), current: out(d) });
+      if (m.conflicts.length) snapshot(d, "לפני מיזוג של עריכה משותפת", d.updated_at); // הנוסח של האחר נשמר בגרסאות, ולא הולך לאיבוד
+      title = title === base.title ? d.title : title;
+      meta = metaSchema.parse(mergeFields(metaDefaults(base.meta), meta, theirs.meta));
+      blocks = m.blocks;
+      merged = { conflicts: m.conflicts };
+    }
+    const ids = new Set(blocks.map((b) => b.id));
+    if (ids.size !== blocks.length) return res.status(400).json(fail("DUP_BLOCK", "מזהי שלבים כפולים"));
+    const metaJson = JSON.stringify(meta);
+    const blocksJson = JSON.stringify(blocks);
+    if (metaJson === d.meta_json && blocksJson === d.blocks_json && title === d.title) return res.json({ ...out(d), role: a.role, ...(merged ? { merged: true, conflicts: merged.conflicts } : {}) });
+    if (blocksJson.length > 400_000) return res.status(413).json(fail("TOO_BIG", "המסמך גדול מדי"));
     const at = nowIso();
     // גרסה אוטומטית של המצב הקודם, לכל היותר אחת בשעה
     const last = db.prepare("SELECT saved_at FROM write_versions WHERE doc_id = ? ORDER BY id DESC LIMIT 1").get(d.id);
     if (!last || Date.parse(at) - Date.parse(last.saved_at) >= HOUR) snapshot(d, "אוטומטי", d.updated_at);
-    db.prepare("UPDATE write_docs SET title = ?, meta_json = ?, blocks_json = ?, words = ?, rev = rev + 1, updated_at = ? WHERE id = ?").run(v.title, meta, blocks, words(v.title, v.blocks), at, d.id);
-    res.json(out(mine(d.id, req.user.id)));
+    db.prepare("UPDATE write_docs SET title = ?, meta_json = ?, blocks_json = ?, words = ?, rev = rev + 1, updated_at = ? WHERE id = ?").run(title, metaJson, blocksJson, words(title, blocks), at, d.id);
+    const fresh = db.prepare("SELECT * FROM write_docs WHERE id = ?").get(d.id);
+    if (teamDoc(d.id)) {
+      revs.remember(fresh);
+      const before = parse(d).blocks.map((b) => blockSchema.parse(b));
+      const bById = new Map(before.map((b) => [b.id, JSON.stringify(b)]));
+      const changed = blocks.filter((b) => bById.get(b.id) !== JSON.stringify(b)).map((b) => b.id).concat(before.filter((b) => !ids.has(b.id)).map((b) => b.id));
+      app.locals.liveDocs?.saved(d.id, { rev: fresh.rev, cid: v.cid, changed, title: title !== d.title, meta: metaJson !== d.meta_json, conflicts: merged?.conflicts ?? [] });
+    }
+    res.json({ ...out(fresh), role: a.role, ...(merged ? { merged: true, conflicts: merged.conflicts } : {}) });
   });
 
   app.delete("/api/write/docs/:id", requireUser(), (req, res) => {

@@ -10,6 +10,8 @@ const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY).toISO
 /** יום ראשון של השבוע של התאריך (שבוע ישראלי) */
 export const weekStart = (d) => addDays(d, -new Date(`${d}T12:00:00Z`).getUTCDay());
 
+// JSON.parse(null) מחזיר null (לא זורק): שורת יומן בלי פעולה מקושרת נותנת methods_json=null, וזה הפיל את התובנות ב-500
+const arr = (v) => (Array.isArray(v) ? v : []);
 const parseJson = (s, fb) => {
   try {
     return JSON.parse(s);
@@ -30,7 +32,7 @@ export function collectEvents(db, uid, from, to) {
     seen.add(e.key);
     out.push(e);
   };
-  const act = (a) => ({ value: a?.leading_value || "", methods: parseJson(a?.methods_json, []), minutes: a?.duration_min ?? 0, title: a?.title || "" });
+  const act = (a) => ({ value: a?.leading_value || "", methods: arr(parseJson(a?.methods_json, [])), minutes: a?.duration_min ?? 0, title: a?.title || "" });
 
   for (const r of db
     .prepare(
@@ -74,7 +76,7 @@ export function mixes(events) {
   const methods = new Map();
   for (const e of events) {
     if (e.value) values.set(e.value, { n: (values.get(e.value)?.n ?? 0) + 1 });
-    for (const m of e.methods) {
+    for (const m of arr(e.methods)) {
       if (!m?.name) continue;
       const c = methods.get(m.name) ?? { n: 0, minutes: 0 };
       c.n += 1;

@@ -55,3 +55,137 @@ export function createPresence(now = () => Date.now()) {
     size: () => docs.size,
   };
 }
+
+// ───────── שלב 70: נוכחות חיה בעורך (SSE) ─────────
+// מי מחובר למסמך עכשיו, באיזה שלב הוא נמצא, והאם הוא מקליד. בנוסף: הודעת "נשמר" לשאר המחוברים, כדי שישלפו את הנוסח העדכני.
+// הכול בזיכרון בלבד (נעלם כשהשרת נרדם; הדפדפנים מתחברים מחדש לבד), ואף כתובת IP לא נשמרת.
+// בפרוטוקול משתמשים במזהה אטום (hash) ולא במזהה החיבור, כדי שאי אפשר יהיה לזייף מיקום של מישהו אחר.
+export function createLiveDocs({ maxPerDoc = 6, maxDocs = 300, pingMs = 20_000, timers = true } = {}) {
+  const docs = new Map(); // docId -> Map(cid -> {res, userId, name, owner, block, editing})
+  const pid = (cid) => (hash(cid) % 1e8).toString(36);
+  const list = (m) =>
+    [...m]
+      .map(([cid, p]) => ({ id: pid(cid), name: p.name, owner: p.owner, block: p.block, editing: p.editing, color: COLORS[hash(cid) % COLORS.length] }))
+      .sort((a, b) => Number(b.owner) - Number(a.owner) || a.name.localeCompare(b.name, "he") || a.id.localeCompare(b.id));
+  const send = (res, event, data) => {
+    try {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      res.flush?.();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const broadcast = (docId, event, data, exceptCid) => {
+    const m = docs.get(docId);
+    if (!m) return 0;
+    let n = 0;
+    for (const [cid, p] of [...m]) {
+      if (cid === exceptCid) continue;
+      if (send(p.res, event, data)) n++;
+      else m.delete(cid);
+    }
+    return n;
+  };
+  const tidy = (docId) => {
+    if (docs.get(docId)?.size === 0) docs.delete(docId);
+  };
+  let beat = null;
+  if (timers) {
+    beat = setInterval(() => {
+      for (const [docId, m] of [...docs]) {
+        for (const [cid, p] of [...m]) {
+          try {
+            p.res.write(": ping\n\n");
+            p.res.flush?.();
+          } catch {
+            m.delete(cid);
+          }
+        }
+        tidy(docId);
+      }
+    }, pingMs);
+    beat.unref?.();
+  }
+  return {
+    /** "ok" / "full" (לפני שליחת כותרות) */
+    check(docId, cid) {
+      const m = docs.get(docId);
+      if (!m && docs.size >= maxDocs) return "full";
+      return m && !m.has(cid) && m.size >= maxPerDoc ? "full" : "ok";
+    },
+    /** מצרף חיבור. חיבור חוזר עם אותו cid מחליף את הישן. מחזיר פונקציית ניתוק. */
+    join(docId, cid, res, { userId, name, owner = false }) {
+      let m = docs.get(docId);
+      if (!m) docs.set(docId, (m = new Map()));
+      const old = m.get(cid);
+      if (old) {
+        m.delete(cid);
+        try {
+          old.res.end();
+        } catch {
+          /* כבר סגור */
+        }
+      }
+      m.set(cid, { res, userId, name: cleanName(name), owner: !!owner, block: null, editing: false });
+      send(res, "hello", { me: pid(cid), people: list(m) });
+      broadcast(docId, "presence", { people: list(m) }, cid);
+      return () => {
+        const cur = docs.get(docId);
+        if (!cur || cur.get(cid)?.res !== res) return;
+        cur.delete(cid);
+        broadcast(docId, "presence", { people: list(cur) });
+        tidy(docId);
+      };
+    },
+    /** עדכון מיקום/הקלדה. מחזיר false אם אין חיבור פעיל של אותו משתמש. */
+    focus(docId, cid, userId, { block, editing }) {
+      const p = docs.get(docId)?.get(cid);
+      if (!p || p.userId !== userId) return false;
+      const b = block == null ? null : String(block).slice(0, 24);
+      const e = !!editing && b !== null;
+      if (p.block === b && p.editing === e) return true;
+      p.block = b;
+      p.editing = e;
+      broadcast(docId, "presence", { people: list(docs.get(docId)) });
+      return true;
+    },
+    /** הודעה לכולם: המסמך נשמר (rev חדש). by = מזהה אטום של השומר, כדי שהוא יתעלם מההודעה על עצמו. */
+    saved(docId, { rev, cid, changed = [], title = false, meta = false, conflicts = [] }) {
+      return broadcast(docId, "saved", { rev, by: cid ? pid(cid) : null, changed: changed.slice(0, 60), title: !!title, meta: !!meta, conflicts: conflicts.slice(0, 60) }, cid);
+    },
+    /** מנתק את כל החיבורים של משתמש במסמך (הוסר מרשימת העורכים) */
+    kickUser(docId, userId) {
+      const m = docs.get(docId);
+      if (!m) return 0;
+      let n = 0;
+      for (const [cid, p] of [...m]) {
+        if (p.userId !== userId) continue;
+        send(p.res, "kicked", {});
+        try {
+          p.res.end();
+        } catch {
+          /* כבר סגור */
+        }
+        m.delete(cid);
+        n++;
+      }
+      if (n) broadcast(docId, "presence", { people: list(m) });
+      tidy(docId);
+      return n;
+    },
+    people: (docId) => (docs.has(docId) ? list(docs.get(docId)) : []),
+    size: () => docs.size,
+    shutdown() {
+      if (beat) clearInterval(beat);
+      for (const m of docs.values()) for (const p of m.values()) {
+        try {
+          p.res.end();
+        } catch {
+          /* כבר סגור */
+        }
+      }
+      docs.clear();
+    },
+  };
+}

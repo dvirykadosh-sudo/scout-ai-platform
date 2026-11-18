@@ -38,6 +38,8 @@ export interface Snap {
 }
 export interface Doc extends Snap {
   id: number;
+  /** שלב 70: owner = הבעלים, editor = עורך מוזמן */
+  role?: "owner" | "editor";
   rev: number;
   words: number;
   createdAt: string;

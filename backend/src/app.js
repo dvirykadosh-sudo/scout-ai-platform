@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import { ZodError } from "zod";
 import { aiConfigured } from "./ai-router.js";
@@ -37,6 +37,7 @@ import { registerV54Routes } from "./routes-v54.js";
 import { registerWaRoutes } from "./wa/index.js";
 import { registerV57Routes } from "./routes-v57.js";
 import { registerV69Routes } from "./routes-v69.js";
+import { registerLive70Routes } from "./routes-live70.js";
 import { registerLuxRoutes } from "./routes-lux.js";
 import { registerV56Routes } from "./routes-v56.js";
 import { cleanDict } from "./human-voice.js";
@@ -177,8 +178,24 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     });
 
   // ── הגבלת קצב כללית לכל ה-API (בנוסף להגבלות הפרטניות): קריאות נדיבות, כתיבות מחמירות ──
-  const apiReadLimit = limiter(60_000, 300);
-  const apiWriteLimit = limiter(60_000, 90);
+  // שלב 70: מחוברים נספרים לפי משתמש (config.rate.read / write), אורחים לפי כתובת (readAnon / writeAnon), כך שמדריכים רבים על אותו NAT
+  // לא חוסמים זה את זה. הערכים נקבעים ב-Environment: API_READ_LIMIT, API_READ_LIMIT_ANON, API_WRITE_LIMIT, API_WRITE_LIMIT_ANON.
+  const whoKey = (req) => {
+    const u = optionalAuth(req);
+    return u ? `u${u.id}` : ipKeyGenerator(req.ip || "0.0.0.0");
+  };
+  const whoLimiter = (authed, anon) =>
+    rateLimit({
+      windowMs: 60_000,
+      limit: (req) => (optionalAuth(req) ? authed : anon),
+      keyGenerator: whoKey,
+      standardHeaders: true,
+      legacyHeaders: false,
+      skip: () => config.nodeEnv === "test",
+      handler: (req, res) => res.status(429).json(fail("RATE_LIMIT", "יותר מדי בקשות. נסו שוב בעוד כמה דקות")),
+    });
+  const apiReadLimit = whoLimiter(config.rate.read, config.rate.readAnon);
+  const apiWriteLimit = whoLimiter(config.rate.write, config.rate.writeAnon);
   app.use("/api", (req, res, next) => {
     if (req.path.startsWith("/health") || isInternal(req)) return next();
     return (["GET", "HEAD", "OPTIONS"].includes(req.method) ? apiReadLimit : apiWriteLimit)(req, res, next);
@@ -736,6 +753,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerV57Routes(app, { db, limiter, fail, requireUser, audit, config });
   registerLuxRoutes(app, { db, limiter, fail, requireUser, optionalAuth });
   registerV69Routes(app, { db, limiter, fail, requireUser });
+  registerLive70Routes(app, { db, limiter, fail, requireUser });
   // שלב 58: מנוע הוואטסאפ (תור, תבניות, בוט, גשר מקומי). בבדיקות אין טיימרים.
   registerWaRoutes(app, { db, limiter, fail, requireAdmin, audit, notifyAdmins, publicUrl: config.publicUrl }, { startScheduler: config.nodeEnv !== "test" });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });

@@ -10,7 +10,7 @@ const page = await ctx.newPage();
 page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
 let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
-const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n")[0]); } };
+const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n").map((l) => l.replace(/\x1b\[\d+m/g, "").trim()).filter(Boolean).slice(0, 3).join(" | ")); } };
 const cls = () => page.evaluate(() => document.documentElement.className);
 
 await step("hero", async () => {
@@ -102,7 +102,7 @@ await step("logo", async () => {
   ok(bad === 401, "logo upload without token refused");
   await p.goto(B + "/admin", { waitUntil: "networkidle" });
   await p.getByRole("button", { name: "הסרת הלוגו" }).click();
-  await p.getByText("הלוגו הוסר").first().waitFor();
+  await p.getByAltText("הלוגו הנוכחי של השבט").waitFor({ state: "detached", timeout: 10000 }); // ההודעה הקופצת חולפת מהר, והיעלמות התצוגה המקדימה יציבה
   ok(true, "logo removed");
   await p.close();
 });

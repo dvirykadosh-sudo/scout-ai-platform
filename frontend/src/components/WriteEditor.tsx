@@ -16,6 +16,10 @@ import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
 import { MoreToolsModal, OutdoorHint } from "./WriteV36";
 import { EditorProgress } from "./Polish";
 import { WritePulse } from "./v21/WritePulse";
+import { BlockPeers, TeamEdit } from "./v21/TeamEdit";
+import { GroupDnaCard } from "./v21/GroupDnaCard";
+import { useTeamLive } from "@/lib/useTeamLive";
+import { mergeBlocks, mergeFields } from "@/lib/blockmerge";
 import type { TransitionGame } from "@/lib/pulse";
 import { StageModeModal } from "./Depth3D2";
 import { ToolboxModal } from "./WriteV51";
@@ -52,6 +56,16 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const h = useHistory(first);
   const { state } = h;
   const rev = useRef(initial.rev);
+  // שלב 70: עריכת צוות. baseRef = הנוסח האחרון שאושר בשרת (נקודת המוצא למיזוג ברמת שלב).
+  const baseRef = useRef<{ rev: number; snap: Snap }>({ rev: initial.rev, snap: first });
+  const [teamN, setTeamN] = useState(0);
+  const role = initial.role ?? "owner";
+  const team = role === "editor" || teamN > 0;
+  const adoptSkip = useRef(false);
+  const quiet = useRef(false);
+  const [typing, setTyping] = useState(false);
+  const typingT = useRef<number | undefined>(undefined);
+  const pullT = useRef<number | undefined>(undefined);
   const [status, setStatus] = useState<Status>("saved");
   const [statusMsg, setStatusMsg] = useState("");
   const [savedAt, setSavedAt] = useState(initial.updatedAt);
@@ -123,8 +137,22 @@ export function WriteEditor({ initial }: { initial: Doc }) {
     const snap = h.current.current;
     setSt("saving");
     try {
-      const d = await api<Doc>(`/api/write/docs/${initial.id}`, { method: "PUT", token, body: { title: snap.title, meta: snap.meta, blocks: snap.blocks.map(({ hint, ...b }) => ({ ...b, ...(hint ? { hint } : {}) })), baseRev: rev.current } });
+      const d = await api<Doc & { merged?: boolean; conflicts?: string[] }>(`/api/write/docs/${initial.id}`, { method: "PUT", token, body: { title: snap.title, meta: snap.meta, blocks: snap.blocks.map(({ hint, ...b }) => ({ ...b, ...(hint ? { hint } : {}) })), baseRev: rev.current, ...(team ? { merge: true, cid: liveRef.current.getCid() || undefined } : {}) } });
       rev.current = d.rev;
+      baseRef.current = { rev: d.rev, snap: { title: d.title, meta: d.meta, blocks: d.blocks } };
+      if (d.merged) {
+        // השרת מיזג לנוסח שלי שינויים של מדריכים אחרים
+        const theirs: Snap = { title: d.title, meta: d.meta, blocks: d.blocks };
+        if (seq.current === mySeq) {
+          adoptSkip.current = true;
+          h.reset(theirs);
+        } else {
+          const nowSnap = h.current.current; // המשכתי להקליד בזמן השמירה: ממזגים מקומית מול מה ששלחתי
+          quiet.current = true;
+          h.set(() => ({ title: nowSnap.title === snap.title ? d.title : nowSnap.title, meta: mergeFields(snap.meta, nowSnap.meta, d.meta), blocks: mergeBlocks(snap.blocks, nowSnap.blocks, d.blocks).blocks }));
+        }
+        if (d.conflicts?.length) toast("שני מדריכים ערכו את אותו שלב. נשמר הנוסח שלך, והנוסח של האחר נשמר ב״גרסאות״.", { kind: "info" });
+      }
       setSavedAt(d.updatedAt);
       if (seq.current === mySeq) {
         setSt("saved");
@@ -152,12 +180,66 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       if ((statusRef.current as Status) !== "conflict") flush();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, initial.id]);
+  }, [token, initial.id, team]);
+
+  // שלב 70: חיבור חי. כשמישהו אחר שמר, שולפים את הנוסח העדכני: אם אין לי שינויים שלא נשמרו, מחליפים; אחרת ממזגים ברמת שלב.
+  const adopt = (d: Doc) => {
+    rev.current = d.rev;
+    baseRef.current = { rev: d.rev, snap: { title: d.title, meta: d.meta, blocks: d.blocks } };
+    adoptSkip.current = true;
+    h.reset({ title: d.title, meta: d.meta, blocks: d.blocks });
+    setSavedAt(d.updatedAt);
+    setSt("saved");
+    try {
+      localStorage.removeItem(bufKey(initial.id));
+    } catch {}
+  };
+  const pullRemote = async () => {
+    if (statusRef.current === "conflict" || !token) return;
+    try {
+      const d = await api<Doc>(`/api/write/docs/${initial.id}`, { token, cache: "no-store" });
+      if (d.rev <= rev.current) return;
+      if (statusRef.current === "saved" && !inflight.current) {
+        adopt(d);
+        return;
+      }
+      const base = baseRef.current.snap;
+      const mine = h.current.current;
+      rev.current = d.rev; // הבסיס החדש: השרת. השינויים שלי נשלחים מעליו
+      baseRef.current = { rev: d.rev, snap: { title: d.title, meta: d.meta, blocks: d.blocks } };
+      quiet.current = true;
+      h.set(() => ({ title: mine.title === base.title ? d.title : mine.title, meta: mergeFields(base.meta, mine.meta, d.meta), blocks: mergeBlocks(base.blocks, mine.blocks, d.blocks).blocks }));
+    } catch {
+      /* רשת: ננסה בהודעה הבאה */
+    }
+  };
+  const live = useTeamLive({
+    docId: initial.id,
+    token,
+    enabled: team,
+    onSaved: (e) => {
+      if (e.rev <= rev.current) return;
+      window.clearTimeout(pullT.current);
+      pullT.current = window.setTimeout(() => void pullRemote(), 400);
+    },
+  });
+  const liveRef = useRef(live);
+  liveRef.current = live;
 
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
       return;
+    }
+    if (adoptSkip.current) {
+      adoptSkip.current = false;
+      return;
+    }
+    if (quiet.current) quiet.current = false;
+    else {
+      setTyping(true);
+      window.clearTimeout(typingT.current);
+      typingT.current = window.setTimeout(() => setTyping(false), 4000);
     }
     seq.current++;
     if (statusRef.current !== "conflict") setSt("dirty");
@@ -550,6 +632,12 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const target = state.meta.minutes;
   const diff = target ? total - target : 0;
   const cur = state.blocks[Math.min(active, state.blocks.length - 1)];
+  // שלב 70: מדווחים לצוות באיזה שלב אני נמצא ואם אני מקליד
+  const curId = cur?.id ?? null;
+  const focusLive = live.focus;
+  useEffect(() => {
+    if (team) focusLive(curId, typing);
+  }, [team, curId, typing, focusLive]);
   const statusText =
     status === "saved" ? `נשמר ${new Date(savedAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : status === "saving" ? "שומר..." : status === "dirty" ? "יש שינויים, נשמרים בעוד רגע" : status === "offline" ? "אין חיבור. הטקסט שמור במכשיר ויישמר בשרת כשהחיבור יחזור" : status === "conflict" ? "המסמך עודכן במקום אחר" : `השמירה נכשלה: ${statusMsg}`;
 
@@ -917,6 +1005,9 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       <PrepPanel equipment={state.meta.equipment ?? []} review={state.meta.review ?? []} onEquipment={(equipment) => h.set((s) => ({ ...s, meta: { ...s.meta, equipment } }))} onReview={(review) => h.set((s) => ({ ...s, meta: { ...s.meta, review } }))} />
       <SimilarNotice title={state.title} text={flatten(state)} docId={initial.id} token={token} />
 
+      {token && <TeamEdit docId={initial.id} role={role} active={team} people={live.people} me={live.me} state={live.state} blocks={state.blocks} activeId={cur?.id ?? null} onEditorsChange={setTeamN} />}
+      {token && <GroupDnaCard compact />}
+
       <WritePulse blocks={state.blocks} total={total} onInsert={insertGame} />
 
       <ol className="write-blocks">
@@ -944,6 +1035,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
               <h2 className="sr-only">
                 שלב {idx + 1}: {b.title || KIND_LABEL[b.kind]}
               </h2>
+              <BlockPeers people={live.people} me={live.me} blockId={b.id} />
               <div className="write-head">
                 <span
                   className="write-handle"

@@ -23,7 +23,7 @@ const stamp = Date.now().toString().slice(-6);
 const USER = "mom" + stamp;
 const EMAIL = `mom${stamp}@example.com`;
 const PHONE_IN = "050-76" + stamp.slice(0, 5);
-const PW = "password99";
+const PW = "Str0ng-e2e-pw-26";
 
 // TOTP (RFC 6238) לבדיקה בלבד
 const b32 = (s) => { const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"; let bits = 0, v = 0; const out = []; for (const c of s.toUpperCase()) { const i = A.indexOf(c); if (i < 0) continue; v = (v << 5) | i; bits += 5; if (bits >= 8) { out.push((v >>> (bits - 8)) & 255); bits -= 8; } } return Buffer.from(out); };

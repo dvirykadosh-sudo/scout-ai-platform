@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
+import { dnaBody } from "@/lib/dna";
 import { calmMotion } from "@/lib/lux/motion";
 
 export interface EagleLink {
@@ -100,7 +101,7 @@ export function useEagleChat(token: string | null) {
       const ac = new AbortController();
       abort.current = ac;
       try {
-        const r = await api<Reply>("/api/lux/eagle/ask", { method: "POST", body: { q }, token: token ?? undefined, signal: ac.signal });
+        const r = await api<Reply>("/api/lux/eagle/ask", { method: "POST", body: { q, ...dnaBody() }, token: token ?? undefined, signal: ac.signal });
         setMsgs((m) => [
           ...m,
           { id: ++id.current, role: "eagle", text: r.answer, items: r.items, actions: r.actions, note: r.note, links: r.links, cards: r.cards, suggestions: r.suggestions?.slice(0, 3), ai: r.source === "ai", capped: r.capped, understood: r.understood },
@@ -120,7 +121,7 @@ export function useEagleChat(token: string | null) {
   const createDraft = useCallback(
     async (d: EagleDraft): Promise<string | null> => {
       try {
-        const r = await api<{ href: string }>("/api/lux/eagle/draft", { method: "POST", body: d, token: token ?? undefined });
+        const r = await api<{ href: string }>("/api/lux/eagle/draft", { method: "POST", body: { ...d, ...dnaBody() }, token: token ?? undefined });
         return r.href;
       } catch (e) {
         const text = e instanceof ApiError && e.status === 409 ? e.message : e instanceof ApiError && e.status === 401 ? "כדי ליצור טיוטה צריך להתחבר." : "לא הצלחתי ליצור את הטיוטה. אפשר לנסות שוב.";

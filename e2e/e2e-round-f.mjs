@@ -26,7 +26,7 @@ const register = async (p, user, display) => {
   await p.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await p.getByLabel("שם להצגה").fill(display);
   await p.getByLabel("שם משתמש").fill(user);
-  await p.getByLabel("סיסמה", { exact: true }).fill("password99");
+  await p.getByLabel("סיסמה", { exact: true }).fill("Str0ng-e2e-pw-26");
   { const cf = p.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
   await p.getByLabel("קראתי ואני מאשר").check();
   await p.getByRole("button", { name: /^(הרשמה|יצירת חשבון)$/ }).last().click();
@@ -130,6 +130,7 @@ await step("28-29. schedule from activity, calendar, reminder", async () => {
   await page.getByLabel("שם האירוע, או חיפוש פעולה מהמאגר").fill("טיול שבט");
   await page.getByRole("button", { name: "שמירה", exact: true }).click();
   await page.getByText("הפעולה נוספה ליומן").waitFor();
+  await page.locator(".cal-event", { hasText: "טיול שבט" }).first().waitFor({ timeout: 8000 }).catch(() => {}); // היומן מתרענן אחרי ההודעה, לא לפניה
   ok((await page.locator(".cal-event", { hasText: "טיול שבט" }).count()) === 1, "free-text event added");
 });
 
@@ -216,7 +217,8 @@ await step("30. collaborators + conflict", async () => {
   ok(true, "conflict shown to the partner");
   await p2.getByRole("button", { name: /שמירה בכל זאת/ }).click();
   await p2.getByText("הפעולה נשמרה").waitFor();
-  ok((await p2.locator("h1").innerText()).includes("שם מהשותף"), "forced save wins");
+  await p2.locator("h1").filter({ hasText: "שם מהשותף" }).first().waitFor({ timeout: 8000 }).catch(() => {});
+  ok((await p2.locator("h1").first().innerText()).includes("שם מהשותף"), "forced save wins");
   await ctx2.close();
 });
 

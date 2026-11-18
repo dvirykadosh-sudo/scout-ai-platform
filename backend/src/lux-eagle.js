@@ -12,6 +12,7 @@ import { writeHelp } from "./lux-eagle-write.js";
 import { routerFromConfig } from "./ai-router.js";
 import { CHALLENGE_KEYS, analyzeIntent, buildVocab, clarifyFor } from "./maoz-intent.js";
 import { createRag } from "./maoz-rag.js";
+import { dnaSystemLine } from "./group-dna.js";
 import { LOST_ANSWER, MEDICAL_ANSWER, fieldAnswer } from "./maoz-field.js";
 
 const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
@@ -309,8 +310,8 @@ export function createEagle({ db, ai, fetchImpl = (...a) => globalThis.fetch(...
   }
 
   /** כרטיסים מאינדקס ה-RAG: רק תוצאות שמכסות את רוב מילות השאלה, כדי לא להציע רעש */
-  function ragCards(qs, kinds, limit = 4) {
-    const r = rag.search(qs, { kinds, limit });
+  function ragCards(qs, kinds, limit = 4, dna = null) {
+    const r = rag.search(qs, { kinds, limit, dna });
     const top = r.hits[0]?.coverage ?? 0;
     if (top < 0.5) return [];
     return r.hits.filter((h) => h.coverage >= top - 0.01).map((h) => ({ title: clip(h.title, 80), meta: h.meta, href: h.href, text: h.snippet }));
@@ -381,7 +382,7 @@ export function createEagle({ db, ai, fetchImpl = (...a) => globalThis.fetch(...
       ctxOut.confident = cards.length > 0;
       if (cards.length) return { answer: "מצאתי במאגר:", links: [L("לכל המאגר", "/library")], cards, topic: "find" };
       // שלב 68: לא נמצאה פעולה שלמה, אז מחפשים גם בתוך שלבים, משחקי היכרות, חימומים וסיפורים
-      const deep = ragCards(qn, ["activity", "stage", "icebreaker", "warmup", "story"]);
+      const deep = ragCards(qn, ["activity", "stage", "icebreaker", "warmup", "story"], 4, ctxOut.dna);
       if (deep.length) {
         ctxOut.cards = deep;
         ctxOut.confident = true;
@@ -424,7 +425,7 @@ export function createEagle({ db, ai, fetchImpl = (...a) => globalThis.fetch(...
     const cards = findActivities(db, qn);
     ctxOut.cards = cards;
     if (cards.length) return { answer: "לא מצאתי תשובה מדויקת לשאלה, אבל הנה פעולות מהמאגר שקרובות לנושא:", links: [L("לכל המאגר", "/library")], cards, topic: "find" };
-    const near = ragCards(qn, ["activity", "stage", "icebreaker", "warmup", "story", "method", "challenge"]);
+    const near = ragCards(qn, ["activity", "stage", "icebreaker", "warmup", "story", "method", "challenge"], 4, ctxOut.dna);
     if (near.length) {
       ctxOut.cards = near;
       return { answer: "לא מצאתי תשובה מדויקת, אבל הנה מה שהכי קרוב בספרייה:", links: [L("לכל המאגר", "/library")], cards: near, topic: "find" };
@@ -457,9 +458,9 @@ export function createEagle({ db, ai, fetchImpl = (...a) => globalThis.fetch(...
   }
 
   /** @param {{question:string, user:{id:number}|null}} p */
-  async function ask({ question, user }) {
+  async function ask({ question, user, dna = null }) {
     const q = clip(question, 400);
-    const ctxOut = {};
+    const ctxOut = { dna: user && dna?.ready ? dna : null }; // שלב 70: פרופיל קבוצה (רק למחובר, ורק אם יש מספיק נתונים)
     const local = localAnswer(q, user, ctxOut);
     if (ctxOut.confident === false) recordUnanswered(q);
     const base = { ...local, source: "local", aiLeft: user && router.configured() ? aiLeft(user.id) : null };
@@ -471,14 +472,14 @@ export function createEagle({ db, ai, fetchImpl = (...a) => globalThis.fetch(...
     if (!wantsAi) return base;
     if (aiLeft(user.id) <= 0) return { ...base, capped: true };
 
-    const ck = `${field ? "f:" : ""}${norm(q)}`;
+    const ck = `${ctxOut.dna ? `d${user.id}${ctxOut.dna.sig}:` : ""}${field ? "f:" : ""}${norm(q)}`; // עם פרופיל: מפתח נפרד למשתמש, כדי שתשובה מכוונת לא תוגש לאחר
     const hit = cache.get(ck);
     if (hit && Date.now() - hit.at < CACHE_MS) return { ...base, answer: hit.text, source: "ai", cached: true };
     try {
       const ctx = field
         ? { situation: { signals: ctxOut.ia?.signals ?? [], minutes: ctxOut.ia?.minutes || null, kids: ctxOut.ia?.kids || null }, localPlan: local.answer, candidateGames: (local.cards || []).map((c) => ({ title: safeText(c.title, 80), details: safeText(c.meta, 80), how: safeText(c.text, 220) })) }
         : buildContext(ctxOut.hits ?? [], ctxOut.methods?.length ? ctxOut.methods : METHODS.slice(0, 0), ctxOut.values ?? [], ctxOut.cards ?? []);
-      const out = await callModel(q, ctx, field ? FIELD_SYSTEM : SYSTEM);
+      const out = await callModel(q, ctx, (field ? FIELD_SYSTEM : SYSTEM) + dnaSystemLine(ctxOut.dna));
       charge(user.id);
       if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
       cache.set(ck, { at: Date.now(), text: out.text });

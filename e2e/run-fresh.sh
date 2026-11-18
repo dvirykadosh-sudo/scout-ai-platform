@@ -10,7 +10,7 @@ for f in "$@"; do
   pgrep -f "backend/src/all\.js" | xargs -r kill 2>/dev/null
   sleep 2
   rm -f "$DB"*
-  (cd "$ROOT" && PORT=$PORT NODE_ENV=production JWT_SECRET=testsecret1234567890 ADMIN_PASSWORD='Strong#Pass99' SIGNUP_CODE=maoz2026 DB_PATH="$DB" nohup node backend/src/all.js > /tmp/e2e-fresh-server.log 2>&1 &)
+  (cd "$ROOT" && PORT=$PORT API_READ_LIMIT=${API_READ_LIMIT:-6000} API_READ_LIMIT_ANON=${API_READ_LIMIT_ANON:-6000} API_WRITE_LIMIT=${API_WRITE_LIMIT:-6000} API_WRITE_LIMIT_ANON=${API_WRITE_LIMIT_ANON:-6000} NODE_ENV=production JWT_SECRET=testsecret1234567890 ADMIN_PASSWORD='Strong#Pass99' SIGNUP_CODE=maoz2026 DB_PATH="$DB" nohup node backend/src/all.js > /tmp/e2e-fresh-server.log 2>&1 &)
   i=0; while [ $i -lt 40 ]; do c=$(curl -s -o /dev/null -w "%{http_code}" "localhost:$PORT/api/health"); [ "$c" = "200" ] && break; sleep 2; i=$((i+1)); done
   echo "=== $f"
   (cd "$HERE" && BASE_URL="http://localhost:$PORT" timeout 420 node "$f" 2>&1 | grep -E "^FAIL|FAILED|ALL OK" )

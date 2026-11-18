@@ -9,6 +9,7 @@ import { METHODS } from "./shared/constants.js";
 import { CHALLENGES, STORIES, WARMUPS } from "./content.js";
 import { ICEBREAKERS } from "./tools.js";
 import { CHALLENGE_KEYS, fold } from "./maoz-intent.js";
+import { dnaFactor } from "./group-dna.js";
 
 const STOP = new Set(
   "איך מה מי איפה אפשר לי לך לכם לנו אותי אותך את של על עם זה זאת האם למה מתי כמה אני אתה תוכל בבקשה צריך צריכה רוצה יש אין הוא היא או גם אם כל מן אל לא כן פה שם איזה אילו לגבי בנושא שלי שלך לעשות אותו אותה הזה הזאת אחד אחת ממש בעצם פשוט תן תני אולי חושב תציע תמליץ תמצא מצא חפש רעיון רעיונות משהו עכשיו כרגע הרגע פעולה פעולות פעילות".split(" ").map(fold),
@@ -145,7 +146,7 @@ export function createRag(db, { extraDocs = () => [] } = {}) {
    * @param {{kinds?: string[], maxMin?: number, noEquip?: boolean, energetic?: boolean|null, limit?: number}} [o]
    * @returns {{hits: {kind:string, ref:string, href:string, title:string, meta:string, snippet:string, dur:number|null, score:number, coverage:number}[], tokens:string[]}}
    */
-  function search(query, { kinds = KINDS, maxMin, noEquip, energetic, limit = 6 } = {}) {
+  function search(query, { kinds = KINDS, maxMin, noEquip, energetic, limit = 6, dna = null } = {}) {
     refresh();
     const tokens = Array.isArray(query) ? query.map(fold) : questionTokens(query);
     const match = ftsQuery(tokens);
@@ -161,7 +162,7 @@ export function createRag(db, { extraDocs = () => [] } = {}) {
     if (energetic === false) where.push("(energetic IS NULL OR energetic = 0)");
     let rows = [];
     try {
-      rows = idx.prepare(`SELECT kind, ref, href, meta, dur, snippet, label, title, body, terms, bm25(docs, ${W}) AS rank FROM docs WHERE ${where.join(" AND ")} ORDER BY rank LIMIT ?`).all(...args, limit * 3);
+      rows = idx.prepare(`SELECT kind, ref, href, meta, dur, energetic, snippet, label, title, body, terms, bm25(docs, ${W}) AS rank FROM docs WHERE ${where.join(" AND ")} ORDER BY rank LIMIT ?`).all(...args, limit * 3);
     } catch {
       return { hits: [], tokens }; // ביטוי MATCH לא תקין (לא אמור לקרות אחרי ftsQuery): מתייחסים כאל "לא נמצא"
     }
@@ -170,8 +171,9 @@ export function createRag(db, { extraDocs = () => [] } = {}) {
       .map((r) => {
         const hay = `${r.title} ${r.body} ${r.terms}`;
         const cov = altList.filter((alts) => alts.some((a) => hay.includes(a))).length;
-        return { kind: r.kind, ref: r.ref, href: r.href, title: r.label, meta: r.meta, snippet: r.snippet, dur: r.dur, score: -r.rank * (r.kind === "activity" ? 1.6 : 1), coverage: tokens.length ? cov / tokens.length : 0 };
+        return { kind: r.kind, ref: r.ref, href: r.href, title: r.label, meta: r.meta, snippet: r.snippet, dur: r.dur, energetic: r.energetic, score: -r.rank * (r.kind === "activity" ? 1.6 : 1), coverage: tokens.length ? cov / tokens.length : 0 };
       })
+      .map((h) => (dna?.ready ? { ...h, score: h.score * dnaFactor(h, dna) } : h)) // שלב 70: DNA קבוצתי משנה רק את הסדר בין תוצאות עם אותו כיסוי
       .sort((a, b) => b.coverage - a.coverage || b.score - a.score);
     // פעולה שלמה עדיפה על שלבים שלה: אם הפעולה עצמה נמצאה, השלבים שלה לא חוזרים כתוצאות נפרדות
     const wholes = new Set(hits.filter((h) => h.kind === "activity").map((h) => h.href));

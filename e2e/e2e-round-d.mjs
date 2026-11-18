@@ -14,10 +14,12 @@ const mk = async () => {
 };
 const ctx = await mk();
 const page = await ctx.newPage();
+let n429 = 0;
+page.on("response", (r) => { if (r.status() === 429 || r.status() >= 500) { n429++; if (n429 <= 5) console.log("FAIL http", r.status(), r.request().method(), r.url().slice(0, 90)); } }); // מגבלת קצב או תקלת שרת באמצע הסבב נראות ככישלון ברור ולא כהמתנה שתמה
 page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
 let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
-const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n")[0]); } };
+const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n").map((l) => l.replace(/\x1b\[\d+m/g, "").trim()).filter(Boolean).slice(0, 3).join(" | ")); } };
 const axe = (p) => new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
 const bodyText = () => page.locator("body").innerText();
 const arriveAtActivity = async () => {
@@ -40,7 +42,7 @@ await page.getByRole("button", { name: /הרשמה/ }).first().click();
 await page.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
 await page.getByLabel("שם להצגה").fill("רונית");
 await page.getByLabel("שם משתמש").fill("ronit" + Date.now().toString().slice(-6));
-await page.getByLabel("סיסמה", { exact: true }).fill("password99");
+await page.getByLabel("סיסמה", { exact: true }).fill("Str0ng-e2e-pw-26");
 { const cf = page.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
 await page.getByLabel("קראתי ואני מאשר").check();
 await page.getByRole("button", { name: /^(הרשמה|יצירת חשבון)$/ }).last().click();
@@ -162,6 +164,9 @@ await step("types page", async () => {
 await step("peak ideas", async () => {
   await page.goto(B + "/ideas", { waitUntil: "networkidle" });
   await page.getByRole("heading", { level: 1, name: "רעיונות לפעולת שיא" }).waitFor();
+  if (!(await page.locator("#idea-cat").waitFor({ timeout: 12000 }).then(() => true, () => false))) {
+    await page.reload({ waitUntil: "networkidle" }); // טעינה איטית של הרעיונות: ניסיון נוסף
+  }
   await page.locator("#idea-cat").selectOption("טקס");
   await page.waitForFunction(() => document.querySelectorAll(".examples-list > li").length === 3);
   ok(true, "category filter leaves three ceremony ideas");

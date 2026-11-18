@@ -1,5 +1,6 @@
 "use client";
 
+import { GroupDnaCard } from "./v21/GroupDnaCard";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
@@ -361,6 +362,8 @@ export function AssistantPage() {
 
   return (
     <>
+      <GroupDnaCard />
+
       <div className="assist-grid no-print">
         <section className="card glass assist-write" aria-labelledby="assist-write-title">
           <h2 id="assist-write-title" className="section-title">

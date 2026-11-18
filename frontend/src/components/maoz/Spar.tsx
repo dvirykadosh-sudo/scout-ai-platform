@@ -5,6 +5,7 @@
 // הציון הוא הערכה לפי כללי אצבע ולא מבחן. שום דבר לא נשמר: התרגיל נמצא בזיכרון הדפדפן בלבד.
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, api } from "@/lib/api";
+import { dnaBody } from "@/lib/dna";
 import { useAuth } from "../Providers";
 import { Ring } from "../v21/Ring";
 import { useVoice } from "./useVoice";
@@ -93,7 +94,7 @@ export function Spar() {
       setBusy(true);
       setError("");
       try {
-        const r = await api<TurnReply>("/api/lux/spar/turn", { method: "POST", body: { scenario: scenario.id, history: history(prior), leader, finish }, token: token ?? undefined });
+        const r = await api<TurnReply>("/api/lux/spar/turn", { method: "POST", body: { scenario: scenario.id, history: history(prior), leader, finish, ...dnaBody() }, token: token ?? undefined });
         setAiOn(r.source === "ai");
         setTip(r.tip);
         if (r.distress) {

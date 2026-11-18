@@ -38,7 +38,7 @@ export function registerV69Routes(app, { db, limiter, fail, requireUser }) {
   });
 
   // ───────── חדרי סנכרון צוות ─────────
-  const rooms = app.locals.fieldRooms ?? (app.locals.fieldRooms = createRooms());
+  const rooms = app.locals.fieldRooms ?? (app.locals.fieldRooms = createRooms({ db }));
   const createLim = limiter(15 * 60_000, 20);
   const joinLim = limiter(60_000, 40);
   const pushLim = limiter(60_000, 300);

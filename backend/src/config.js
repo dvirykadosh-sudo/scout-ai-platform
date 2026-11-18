@@ -18,6 +18,11 @@ const parseTrust = (v) => {
   return t;
 };
 
+const rateEnv = (v, def) => {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n >= 60 ? Math.min(n, 100_000) : def;
+};
+
 export const config = {
   nodeEnv,
   isProd,
@@ -38,6 +43,14 @@ export const config = {
   // שם כותרת שהפלטפורמה מציבה עם כתובת המבקר (למשל cf-connecting-ip). להגדיר רק אחרי בדיקה בעמוד האדמין.
   clientIpHeader: /^[A-Za-z][A-Za-z0-9-]{2,40}$/.test(env.CLIENT_IP_HEADER || "") ? String(env.CLIENT_IP_HEADER).toLowerCase() : "",
   tokenHours: Number(env.TOKEN_HOURS) || 8,
+  // שלב 70: הגבלת קצב כללית לדקה. מחוברים נספרים לפי משתמש (כל השבט על אותו NAT לא נחסם יחד), ואורחים לפי כתובת.
+  // כל ערך אפשר להחליף ב-Environment; מתחת ל-60 לא מקבלים (כדי לא לנעול את האתר בטעות).
+  rate: {
+    read: rateEnv(env.API_READ_LIMIT, 1200),
+    readAnon: rateEnv(env.API_READ_LIMIT_ANON, 600),
+    write: rateEnv(env.API_WRITE_LIMIT, 240),
+    writeAnon: rateEnv(env.API_WRITE_LIMIT_ANON, 90),
+  },
   instructorTokenDays: Number(env.INSTRUCTOR_TOKEN_DAYS) || 30,
   signupCode: env.SIGNUP_CODE || "",
   backupDir: env.BACKUP_DIR || "",

@@ -5933,6 +5933,134 @@
     }
    }
   },
+  "/api/field/rooms": {
+   "post": {
+    "tags": [
+     "field"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/field/rooms/{code}": {
+   "delete": {
+    "tags": [
+     "field"
+    ],
+    "parameters": [
+     {
+      "name": "code",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "field"
+    ],
+    "parameters": [
+     {
+      "name": "code",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/field/rooms/{code}/state": {
+   "post": {
+    "tags": [
+     "field"
+    ],
+    "parameters": [
+     {
+      "name": "code",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/field/rooms/{code}/stream": {
+   "get": {
+    "tags": [
+     "field"
+    ],
+    "parameters": [
+     {
+      "name": "code",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/flag-reasons": {
    "get": {
     "tags": [
@@ -6145,6 +6273,24 @@
     }
    }
   },
+  "/api/lux/dna": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/lux/eagle/ask": {
    "post": {
     "tags": [
@@ -6259,6 +6405,60 @@
        "type": "string"
       }
      }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/scan": {
+   "post": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/spar/scenarios": {
+   "get": {
+    "tags": [
+     "lux"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/lux/spar/turn": {
+   "post": {
+    "tags": [
+     "lux"
     ],
     "responses": {
      "200": {
@@ -9073,6 +9273,152 @@
     }
    }
   },
+  "/api/write/docs/{id}/editors": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/editors/{userId}": {
+   "delete": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "userId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/live": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/{id}/live/focus": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/write/docs/{id}/presence": {
    "get": {
     "tags": [
@@ -9323,6 +9669,24 @@
        "type": "string"
       }
      }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/editing": {
+   "get": {
+    "tags": [
+     "write"
     ],
     "responses": {
      "200": {

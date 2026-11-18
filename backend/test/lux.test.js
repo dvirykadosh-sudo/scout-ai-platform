@@ -14,7 +14,7 @@ const { ensureAdmin } = await import("../src/auth.js");
 const { createMailer } = await import("../src/email.js");
 const { adviceFor, kindOf, pickHour } = await import("../src/lux-weather.js");
 const { classify, holidayStations, scoutYear } = await import("../src/lux-trail.js");
-const { bestWeekStreak, weekStart, weekStreak } = await import("../src/lux-insights.js");
+const { bestWeekStreak, mixes, weekStart, weekStreak } = await import("../src/lux-insights.js");
 const { TTL_MS, cleanName, createPresence } = await import("../src/lux-presence.js");
 const { SITE_KB, createEagle, rankSite, SAFETY_ANSWER } = await import("../src/lux-eagle.js");
 const { discussionSet, parseAge, parseMinutes, valueAny } = await import("../src/lux-eagle-write.js");
@@ -26,7 +26,8 @@ const j = async (path, opts = {}) => {
   return { status: r.status, body: await r.json().catch(() => null) };
 };
 const auth = (t) => ({ authorization: `Bearer ${t}` });
-const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+// באותו אזור זמן כמו השרת (ישראל); אחרת בין 22:00 ל-24:00 UTC ה"היום" של הבדיקה והשרת נבדלים ביום
+const day = (n) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date(Date.now() + n * 86400000));
 
 before(() => {
   db = openDb(":memory:");
@@ -208,6 +209,11 @@ const seedEvents = (userId, dates) => {
 };
 
 describe("תובנות וסיכום שנה", () => {
+  it("mixes לא נופל על אירוע בלי מתודות (שורת יומן ללא פעולה מקושרת)", () => {
+    const r = mixes([{ value: "", methods: null, minutes: 0 }, { value: "חברות", methods: [{ name: "משחק", minutes: 10 }] }, { methods: undefined }]);
+    assert.deepEqual(r.methods, [{ label: "משחק", n: 1, minutes: 10 }]);
+    assert.equal(r.values.length, 1);
+  });
   it("weekStart מחזיר יום ראשון; רצף שבועות", () => {
     assert.equal(weekStart("2026-11-09"), "2026-11-08"); // 9.11.2026 הוא יום שני
     assert.equal(weekStart("2026-11-08"), "2026-11-08");

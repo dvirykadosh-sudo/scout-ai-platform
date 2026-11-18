@@ -23,7 +23,7 @@ const register = async (p, user, display) => {
   await p.waitForTimeout(2100); // השרת דוחה טפסי הרשמה שנשלחו מהר מ-2 שניות
   await p.getByLabel("שם להצגה").fill(display);
   await p.getByLabel("שם משתמש").fill(user);
-  await p.getByLabel("סיסמה", { exact: true }).fill("password99");
+  await p.getByLabel("סיסמה", { exact: true }).fill("Str0ng-e2e-pw-26");
   { const cf = p.getByLabel("קוד הרשמה של השבט"); if (await cf.count()) await cf.fill(CODE); } // ההרשמה פתוחה: השדה מוצג רק אם מנהל השבט הפעיל קוד
   await p.getByLabel("קראתי ואני מאשר").check();
   await p.getByRole("button", { name: /^(הרשמה|יצירת חשבון)$/ }).last().click();
