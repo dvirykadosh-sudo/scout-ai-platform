@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { API_URL, ApiError, api, errorMessage } from "@/lib/api";
-import { fmtDay, todayLocal, type ScheduleItem } from "@/lib/organizer";
+import { clashText, fmtDay, todayLocal, type ScheduleItem } from "@/lib/organizer";
 import { RemindersBanner } from "./RemindersBanner";
 import { ScheduleModal } from "./ScheduleModal";
 import { useAuth, useToast } from "./Providers";
 import { Skeleton } from "./ui";
+import { Reservations } from "./v21/Reservations";
 
 const DAY_NAMES = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 const MONTH_NAMES = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
@@ -42,6 +43,17 @@ export function CalendarPage() {
       .catch((e) => setError(e instanceof ApiError && e.status === 401 ? "ההתחברות פגה. התחברו מחדש באזור האישי" : errorMessage(e)));
   }, [token, first, last]);
   useEffect(load, [load]);
+
+  // שלב 71: התראה חיה על התנגשות. מי שמשבץ את החדר או הציוד שלכם יופיע כאן תוך שניות, בלי לרענן
+  useEffect(() => {
+    const tick = () => document.visibilityState === "visible" && load();
+    const t = window.setInterval(tick, 45_000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [load]);
 
   useEffect(() => {
     if (typeof Notification !== "undefined") setPerm(Notification.permission);
@@ -105,10 +117,29 @@ export function CalendarPage() {
   const byDate = new Map<string, ScheduleItem[]>();
   for (const it of items ?? []) byDate.set(it.date, [...(byDate.get(it.date) ?? []), it]);
   const today = todayLocal();
+  const clashed = (items ?? []).filter((it) => (it.clashes?.length ?? 0) > 0);
 
   return (
     <>
       <RemindersBanner key={reloadKey} limit={5} showEmpty />
+
+      {clashed.length > 0 && (
+        <section className="warn-box cal71-alert" role="alert" aria-labelledby="cal71-alert">
+          <h2 id="cal71-alert" className="section-title">
+            יש {clashed.length === 1 ? "שיבוץ אחד" : `${clashed.length} שיבוצים`} בהתנגשות
+          </h2>
+          <ul>
+            {clashed.map((it) => (
+              <li key={it.id}>
+                <button type="button" className="linklike" onClick={() => setEdit(it)}>
+                  {fmtDay(it.date)} {it.time} · {it.title}
+                </button>
+                : {it.clashes?.map(clashText).join("; ")}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="card glass" aria-labelledby="cal-title">
         <div className="cal-head">
@@ -155,7 +186,8 @@ export function CalendarPage() {
                           {d}
                         </button>
                         {list.map((it) => (
-                          <button key={it.id} type="button" className="cal-event" onClick={() => setEdit(it)}>
+                          <button key={it.id} type="button" className={`cal-event${it.clashes?.length ? " cal71-clash" : ""}`} onClick={() => setEdit(it)}>
+                            {it.clashes?.length ? <span aria-label="התנגשות שיבוץ">⚠ </span> : null}
                             {it.time && <span className="cal-time">{it.time} </span>}
                             {it.title}
                           </button>
@@ -202,6 +234,8 @@ export function CalendarPage() {
                   <strong>{fmtDay(it.date)}</strong>
                   {it.time ? ` · ${it.time}` : ""} · {it.activityId ? <Link href={`/library/${it.activityId}`}>{it.title}</Link> : it.title}
                   {it.groupLabel ? ` · ${it.groupLabel}` : ""}
+                  {it.room ? ` · חדר: ${it.room}` : ""}
+                  {it.clashes?.length ? ` · ⚠ התנגשות` : ""}
                   {it.remindDays != null ? ` · תזכורת ${it.remindDays === 0 ? "ביום עצמו" : it.remindDays === 1 ? "יום לפני" : `${it.remindDays} ימים לפני`}` : ""}
                 </span>
                 <span className="actions">
@@ -214,6 +248,8 @@ export function CalendarPage() {
           </ul>
         )}
       </section>
+
+      <Reservations from={first} to={last} title="תפוסת חדרים וציוד בשבט החודש" />
 
       {adding && <ScheduleModal open onClose={() => setAdding(null)} date={adding} onSaved={refresh} />}
       {edit && <ScheduleModal open onClose={() => setEdit(null)} item={edit} onSaved={refresh} />}

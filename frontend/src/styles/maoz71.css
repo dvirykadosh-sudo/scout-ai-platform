@@ -1,0 +1,141 @@
+/* שלב 71: זירת משחק, כרטיס הזמנה לסטורי, והתנגשויות חדר/ציוד ביומן. */
+
+/* ───────────── זירת משחק ───────────── */
+.arn { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; color: #f7f3ff; background: radial-gradient(900px 560px at 50% -10%, rgba(124, 58, 237, 0.55), transparent 70%), #0a0714; overflow: hidden; direction: rtl; }
+.arn:focus { outline: none; }
+.arn button, .arn select, .arn input, .arn textarea { font: inherit; }
+.arn-top { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.arn-title { flex: 1; margin: 0; font-size: 1.05rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.arn-icon { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 1.1rem; color: #f7f3ff; background: rgba(255, 255, 255, 0.09); border: 1px solid rgba(255, 255, 255, 0.25); cursor: pointer; flex: none; }
+.arn-icon[aria-pressed="true"] { background: rgba(255, 255, 255, 0.22); }
+.arn-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 14px; padding: 0 14px 14px; overflow: hidden; }
+.arn-main { min-width: 0; min-height: 0; overflow-y: auto; display: grid; gap: 12px; align-content: start; }
+.arn-tabs { display: flex; gap: 8px; }
+.arn-tab { min-height: 46px; padding: 0 20px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.3); background: transparent; color: inherit; cursor: pointer; font-weight: 700; }
+.arn-tab.on { background: #fcd34d; color: #1a1033; border-color: transparent; }
+.arn-panel { padding: 16px; border-radius: 20px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); display: grid; gap: 12px; min-width: 0; }
+.arn-panel label { display: grid; gap: 4px; font-weight: 600; }
+.arn-panel select, .arn-panel textarea, .arn-panel input[type="text"], .arn-name { min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 7, 20, 0.7); color: #fff; max-width: 100%; }
+.arn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.arn-btn { min-height: 48px; padding: 0 18px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.1); color: #fff; cursor: pointer; font-weight: 700; }
+.arn-btn:disabled, .arn-mini:disabled { opacity: 0.45; cursor: not-allowed; }
+.arn-main-btn { background: #fcd34d; color: #1a1033; border-color: transparent; }
+.arn-team { border-color: var(--c); box-shadow: inset 0 -4px 0 var(--c); }
+.arn-icon:focus-visible, .arn-btn:focus-visible, .arn-tab:focus-visible, .arn-mini:focus-visible, .arn-name:focus-visible, .arn select:focus-visible, .arn textarea:focus-visible, .arn summary:focus-visible { outline: 3px solid #fcd34d; outline-offset: 3px; }
+.arn-warn { margin: 0; padding: 8px 12px; border-radius: 10px; background: rgba(252, 211, 77, 0.16); border: 1px solid #fcd34d; }
+.arn-hint { margin: 0; font-size: 0.85rem; opacity: 0.8; }
+.arn-kicker { margin: 0; opacity: 0.85; font-weight: 600; }
+.arn-bonus { color: #fcd34d; }
+.arn-prompt { margin: 0; font-size: clamp(1.35rem, 3.4vw, 2.3rem); line-height: 1.35; overflow-wrap: anywhere; }
+.arn-timer { position: relative; height: 26px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.arn-timer span { position: absolute; inset-block: 0; inset-inline-start: 0; background: #22c55e; transition: width 1s linear; }
+.arn-timer span.warn { background: #ef4444; }
+.arn-timer b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 0.95rem; text-shadow: 0 1px 3px #000; }
+.arn-opts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.arn-opt { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 10px 14px; border-radius: 16px; font-size: clamp(1.05rem, 2.2vw, 1.6rem); font-weight: 700; border: 3px solid transparent; overflow-wrap: anywhere; background: var(--o, #4c1d95); }
+.arn-opt.o0 { --o: #6d28d9; } .arn-opt.o1 { --o: #0369a1; } .arn-opt.o2 { --o: #b45309; } .arn-opt.o3 { --o: #047857; }
+.arn-opt.right { border-color: #fcd34d; box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.35); }
+.arn-opt.dim { opacity: 0.4; }
+.arn-letter { opacity: 0.85; }
+.arn-ask { margin: 0; font-weight: 700; }
+.arn-end h3 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.6rem); text-align: center; }
+.arn-podium { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-end; gap: 10px; min-height: 200px; }
+.arn-podium li { flex: 1; max-width: 160px; height: var(--h, 60%); min-height: 90px; border-radius: 14px 14px 0 0; background: var(--c); display: grid; align-content: center; justify-items: center; gap: 2px; padding: 8px; text-align: center; animation: arn-rise 0.7s cubic-bezier(0.2, 0.9, 0.2, 1) both; overflow-wrap: anywhere; }
+.arn-podium li.p1 { order: 2; } .arn-podium li.p2 { order: 3; } .arn-podium li.p3 { order: 1; }
+.arn-place { font-size: 1.6rem; font-weight: 800; }
+@keyframes arn-rise { from { transform: translateY(40px) scaleY(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.arn-wheel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+.arn-wheel-box { position: relative; width: min(100%, 420px); aspect-ratio: 1; margin-inline: auto; }
+.arn-disc { width: 100%; height: 100%; display: block; will-change: transform; }
+.arn-pointer { position: absolute; top: -8px; left: 50%; width: 0; height: 0; margin-left: -16px; border-inline: 16px solid transparent; border-top: 34px solid #fcd34d; z-index: 2; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+.arn-wheel-side { display: grid; gap: 10px; min-width: 0; }
+.arn-won { margin: 0; font-size: clamp(1.3rem, 3vw, 2rem); min-height: 2.4em; overflow-wrap: anywhere; }
+.arn-won strong { color: #fcd34d; }
+.arn-check { display: flex !important; grid-template-columns: none; align-items: center; gap: 8px; font-weight: 500; }
+
+.arn-board { min-width: 0; min-height: 0; overflow-y: auto; padding: 14px; border-radius: 20px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.18); display: grid; gap: 10px; align-content: start; }
+.arn-board-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.arn-board-head h3 { margin: 0; }
+.arn-teams { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.arn-team-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; grid-template-areas: "rank name score" "bar bar bar" "btns btns btns"; gap: 6px 8px; align-items: center; padding: 10px; border-radius: 16px; background: rgba(10, 7, 20, 0.55); border-inline-start: 6px solid var(--c); }
+.arn-team-row.lead { box-shadow: 0 0 0 2px #fcd34d; }
+.arn-rank { grid-area: rank; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--c); font-weight: 800; }
+.arn-name { grid-area: name; width: 100%; min-width: 0; font-weight: 700; }
+.arn-score { grid-area: score; font-size: clamp(1.5rem, 3vw, 2.2rem); min-width: 2.2ch; text-align: end; }
+.arn-bar { grid-area: bar; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.arn-bar i { display: block; height: 100%; background: var(--c); border-radius: 999px; transition: width 0.5s cubic-bezier(0.2, 0.9, 0.2, 1); }
+.arn-btns { grid-area: btns; display: flex; gap: 6px; flex-wrap: wrap; }
+.arn-mini { min-width: 44px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.1); color: #fff; cursor: pointer; font-weight: 700; }
+
+/* מקרן: הכול גדול יותר, כדי שיקרא מהקצה השני של החדר */
+.arn-projector .arn-prompt { font-size: clamp(1.8rem, 4.2vw, 3.4rem); }
+.arn-projector .arn-opt { min-height: 92px; font-size: clamp(1.3rem, 2.8vw, 2.4rem); }
+.arn-projector .arn-body { grid-template-columns: minmax(0, 1fr) minmax(340px, 440px); }
+.arn-projector .arn-score { font-size: clamp(2rem, 4vw, 3.2rem); }
+
+@media (max-width: 900px) {
+  /* בנייד הלוח יורד מתחת לחידון. שורות לפי התוכן, אחרת הלוח נדחס ונשפך מעל כפתורי החידון */
+  .arn-body { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: start; overflow-y: auto; }
+  .arn-board, .arn-main { overflow: visible; min-height: auto; }
+  .arn-wheel { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .arn-opts { grid-template-columns: 1fr; }
+  .arn-top { padding: 8px 10px; }
+  .arn-body { padding: 0 10px 12px; }
+  .arn-panel { padding: 12px; }
+  .arn-btn { padding: 0 12px; }
+}
+html.hc .arn { background: #000; }
+html.hc .arn-panel, html.hc .arn-board, html.hc .arn-team-row { background: #000; border: 2px solid #ffeb00; }
+html.hc .arn-btn, html.hc .arn-mini, html.hc .arn-icon, html.hc .arn-tab { background: #000; border: 2px solid #ffeb00; color: #fff; }
+html.hc .arn-main-btn, html.hc .arn-tab.on { background: #ffeb00; color: #000; }
+html.hc .arn-opt { background: #000; border: 3px solid #fff; color: #fff; }
+html.hc .arn-opt.right { border-color: #ffeb00; }
+html.saver .arn { background: #0a0714; }
+html.saver .arn-podium li, html.saver .arn-bar i, html.saver .arn-timer span { animation: none; transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .arn-podium li { animation: none; }
+  .arn-bar i, .arn-timer span { transition: none; }
+}
+@media print { .arn { display: none !important; } }
+
+/* ───────────── יומן: התנגשות חדר וציוד ───────────── */
+.linklike { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.cal71-alert ul { margin: 6px 0 0; padding-inline-start: 1.2em; }
+.cal-event.cal71-clash { outline: 2px solid var(--danger, #dc2626); outline-offset: -2px; font-weight: 700; }
+.sc71-gear { margin-top: 10px; }
+.sc71-clash ul { margin: 6px 0; padding-inline-start: 1.2em; }
+.res71 { margin-top: 16px; }
+.res71-days, .res71-days ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.res71-days h3 { margin: 8px 0 4px; font-size: 1rem; }
+.res71-days ul li { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line, rgba(0, 0, 0, 0.15)); overflow-wrap: anywhere; }
+.res71-days ul li.is-mine { border-inline-start: 4px solid var(--pal-a, #6d28d9); }
+.res71-time { font-weight: 800; }
+
+/* ───────────── כרטיס הזמנה לסטורי ───────────── */
+.story71 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 16px; align-items: start; min-width: 0; }
+.story71-form, .story71-preview { min-width: 0; max-width: 100%; }
+.story71-form { display: grid; gap: 12px; }
+.story71-preview { margin: 0; display: grid; gap: 6px; justify-items: center; position: sticky; top: 12px; }
+.story71-canvas { width: 100%; max-width: 300px; height: auto; aspect-ratio: 9 / 16; border-radius: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); background: #2a1458; display: block; }
+.story71-actions { display: grid; gap: 8px; }
+.story71-actions .btn { justify-content: center; }
+.story71-rsvp { display: grid; gap: 8px; }
+@media (max-width: 900px) {
+  .story71 { grid-template-columns: minmax(0, 1fr); }
+  .story71-preview { position: static; order: -1; }
+  .story71-canvas { max-width: min(100%, 260px); }
+}
+html.hc .story71-canvas { outline: 2px solid #ffeb00; }
+@media print { .story71 { display: none !important; } }
+
+/* ───────────── תיקון שורש לגלילה האופקית בסטודיו הייצוא ב-390px ─────────────
+   רדיו מוסתר (position:absolute) ירש רוחב 100% מכללי הטפסים הגלובליים ולא היה לו הורה ממוקם, ולכן נמתח 374px
+   ויצא מחוץ למסך (בעברית: 36px שמאלה, וזה מה ש-scrollWidth ספר). התיקון הקודם (clip על האזור הראשי) לא תפס אותו כי הוא בצד. */
+.lux-swatch { position: relative; }
+.lux-swatch input { width: 1px; height: 1px; margin: 0; padding: 0; top: 0; inset-inline-start: 0; }
+
+/* כותרת תחתונה דביקה של חלון (בנייד): רקע אטום, כדי שהשדות שמתחתיה לא ייראו דרכה. נחשף כשנוספו כפתורים והיא התארכה */
+.modal-foot { background: var(--panel); }  /* בלי position: הדביקות של הנייד מוגדרת ב-lux-features.css */

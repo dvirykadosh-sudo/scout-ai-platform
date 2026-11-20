@@ -119,6 +119,59 @@ export function chime(high = false): void {
   }
 }
 
+/* ───────── שלב 71: אפקטים של זירת המשחק. אותם כללים: כבוי כברירת מחדל, אחרי לחיצה, לא במצב חיסכון ──────── */
+
+type Wave = OscillatorType;
+/** צליל קצר אחד. מחזיר false כשהצלילים כבויים. */
+function note(freq: number, at: number, dur: number, type: Wave = "sine", vol = 0.2, slideTo?: number): boolean {
+  const c = getSoundPrefs().on && !saver() ? unlock() : null;
+  if (!c) return false;
+  try {
+    const t = c.currentTime + at;
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g);
+    g.connect(c.destination);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** תשובה נכונה: עלייה עליזה של שלושה צלילים. */
+export function correct(): void {
+  [523, 659, 880].forEach((f, i) => note(f, i * 0.09, 0.28, "triangle", 0.22));
+}
+/** תשובה שגויה: ירידה רכה (לא מבהילה ולא משפילה). */
+export function wrong(): void {
+  note(330, 0, 0.32, "sine", 0.2, 220);
+}
+/** תקתוק של טיימר או של פלח בגלגל. step מזיז מעט את הגובה כדי שלא יישמע כמו מכונה. */
+export function tick(step = 0): void {
+  note(1100 + (step % 5) * 40, 0, 0.05, "square", 0.05);
+}
+/** עלייה בניקוד: קפיצה קטנה. */
+export function scoreUp(big = false): void {
+  note(big ? 698 : 587, 0, 0.12, "triangle", 0.2);
+  note(big ? 1047 : 880, 0.08, 0.2, "triangle", 0.2);
+}
+/** תרועת סיום: פנפרה קצרה. */
+export function fanfare(): void {
+  [392, 392, 392, 523, 659, 784].forEach((f, i) => note(f, i * (i < 3 ? 0.11 : 0.16) + (i > 2 ? 0.05 : 0), i === 5 ? 0.7 : 0.22, "triangle", 0.24));
+}
+/** פתיחת גלגל או שאלה: "וווש" עולה. */
+export function whoosh(): void {
+  note(220, 0, 0.35, "sawtooth", 0.06, 880);
+}
+
 /* ───────── מדורה: רעש מסונן + נקישות אקראיות ───────── */
 let fire: { stop: () => void } | null = null;
 export const isFireOn = () => fire !== null;

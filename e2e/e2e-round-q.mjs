@@ -40,7 +40,9 @@ await step("registration: code with spaces and capitals works; mobile attrs", as
   await A.getByLabel("שם להצגה").fill("בודק הרשמה");
   await A.getByLabel("שם משתמש").fill(USER);
   await A.getByLabel("סיסמה", { exact: true }).fill(PW);
-  await A.getByLabel("קוד הרשמה של השבט").fill("  " + CODE.toUpperCase() + " ");
+  // ההרשמה פתוחה (signupNeedsCode=false), ולכן שדה הקוד לא מוצג. אם בעתיד יחזור, הבדיקה ממשיכה לוודא שקוד עם רווחים ואותיות גדולות עובד.
+  const codeField = A.getByLabel("קוד הרשמה של השבט");
+  if (await codeField.count()) await codeField.fill("  " + CODE.toUpperCase() + " ");
   await A.getByLabel("קראתי ואני מאשר").check();
   await A.getByRole("button", { name: /^הרשמה$/ }).last().click();
   await A.getByRole("heading", { name: "פרטיות", exact: true }).waitFor({ timeout: 10000 });

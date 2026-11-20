@@ -1,5 +1,6 @@
 // שלב 58 – נתיבי מסך הניהול של הוואטסאפ: /api/admin/wa/*. אדמין ראשי בלבד (accounts.js: "wa" קטע רגיש).
 // שום נתיב כאן לא מחזיר את גוף ההודעות מעבר למה שהאדמין צריך לראות, והיומן נשמר בלי תוכן.
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import QRCode from "qrcode";
 import * as repo from "./repo.js";
@@ -224,6 +225,18 @@ export function registerAdminRoutes(app, { db, limiter, fail, requireAdmin, audi
   app.post("/api/admin/wa/rules/run", lim, A, (req, res) => res.json({ created: runRules(db) }));
 
   // ───────────── אישורי הגעה ותיבת נכנסות ─────────────
+  // שלב 71: אירוע אישור הגעה חדש לכרטיס הזמנה (סטורי). מחזיר מפתח שנכנס לקישור הוואטסאפ של הכרטיס
+  app.post("/api/admin/wa/rsvp-events", lim, A, (req, res) => {
+    const { title } = z.object({ title: z.string().trim().min(2).max(80) }).strict().parse(req.body ?? {});
+    if (repo.countEvents(db) >= 300) return bad(res, "יש יותר מדי אירועים. אפשר להשתמש באחד קיים", 409);
+    const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
+    let key = "";
+    do key = Array.from(randomBytes(6), (b) => alphabet[b % alphabet.length]).join("");
+    while (repo.eventByKey(db, key));
+    repo.createEvent(db, key, title, req.user.username);
+    audit(db, req.user.username, "wa.rsvp.event", { key });
+    res.status(201).json({ key, title });
+  });
   app.get("/api/admin/wa/rsvp", lim, A, (req, res) => res.json(repo.rsvpEvents(db)));
   app.get("/api/admin/wa/rsvp/:key", lim, A, (req, res) => res.json(repo.rsvpSummary(db, String(req.params.key).slice(0, 80))));
   app.get("/api/admin/wa/inbox", lim, A, (req, res) => res.json(repo.listInbox(db, { contactId: req.query.contactId ? Number(req.query.contactId) : undefined })));

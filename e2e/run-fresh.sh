@@ -13,6 +13,12 @@ for f in "$@"; do
   (cd "$ROOT" && PORT=$PORT API_READ_LIMIT=${API_READ_LIMIT:-6000} API_READ_LIMIT_ANON=${API_READ_LIMIT_ANON:-6000} API_WRITE_LIMIT=${API_WRITE_LIMIT:-6000} API_WRITE_LIMIT_ANON=${API_WRITE_LIMIT_ANON:-6000} NODE_ENV=production JWT_SECRET=testsecret1234567890 ADMIN_PASSWORD='Strong#Pass99' SIGNUP_CODE=maoz2026 DB_PATH="$DB" nohup node backend/src/all.js > /tmp/e2e-fresh-server.log 2>&1 &)
   i=0; while [ $i -lt 40 ]; do c=$(curl -s -o /dev/null -w "%{http_code}" "localhost:$PORT/api/health"); [ "$c" = "200" ] && break; sleep 2; i=$((i+1)); done
   echo "=== $f"
-  (cd "$HERE" && BASE_URL="http://localhost:$PORT" timeout 420 node "$f" 2>&1 | grep -E "^FAIL|FAILED|ALL OK" )
+  # הסבבים הישנים מסיימים במילים שונות (ALL OK / ALL PASS / N FAILED / N FAILURES), ולכן בודקים גם את קוד היציאה
+  OUT="/tmp/e2e-last-$$.log"
+  (cd "$HERE" && BASE_URL="http://localhost:$PORT" timeout "${ROUND_TIMEOUT:-420}" node "$f" > "$OUT" 2>&1); CODE=$?
+  [ -n "$KEEP_LOGS" ] && mkdir -p "$KEEP_LOGS" && cp "$OUT" "$KEEP_LOGS/$f.log"   # KEEP_LOGS=תיקייה: שומר את הפלט המלא של כל סבב
+  grep -E "^FAIL|FAILED|FAILURES|ALL OK|ALL PASS" "$OUT"
+  [ "$CODE" = "0" ] && echo "exit=0" || { echo "exit=$CODE (לא ירוק)"; tail -3 "$OUT"; }
+  rm -f "$OUT"
 done
 pgrep -f "backend/src/all\.js" | xargs -r kill 2>/dev/null

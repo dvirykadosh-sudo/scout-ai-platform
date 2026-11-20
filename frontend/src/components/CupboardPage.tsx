@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, errorMessage, storageGet, storageSet } from "@/lib/api";
 import { AGE_GROUPS } from "@/lib/constants";
+import { addDaysIso, todayLocal } from "@/lib/organizer";
 import type { Brief } from "@/lib/organizer";
 import { Field } from "./ui";
+import { Reservations } from "./v21/Reservations";
 
 interface Gear {
   id: string;
@@ -125,6 +127,8 @@ export function CupboardPage() {
           {error}
         </p>
       )}
+
+      <Reservations from={todayLocal()} to={addDaysIso(todayLocal(), 14)} title="ציוד וחדרים שתפוסים בשבועיים הקרובים" showCalendarLink />
 
       <p className="count" role="status" aria-live="polite">
         {res ? (res.total === 0 ? "אין פעולות שמתאימות למה שיש בארון" : `נמצאו ${res.total} פעולות שאפשר להפעיל${res.total > res.items.length ? ` (מוצגות ${res.items.length})` : ""}`) : "טוען..."}

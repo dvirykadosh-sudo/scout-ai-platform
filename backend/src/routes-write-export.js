@@ -15,7 +15,6 @@ import { prepOf } from "./write-suggest.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FONT = { ascii: "Arial", hAnsi: "Arial", cs: "Arial", eastAsia: "Arial" };
 const PURPLE = "5D2FA3";
-const DARK = "1E1245";
 export const KIND_LABEL = { open: "פתיחה", body: "גוף", peak: "שיא", close: "סיכום", free: "שלב" };
 
 const blockZ = z.object({
@@ -50,24 +49,6 @@ export function findLogo(getLogo) {
     }
   }
   return null;
-}
-
-/** גודל PNG/JPEG כדי לשמור יחס. */
-function imageSize(img) {
-  try {
-    if (img.type === "png") return { w: img.buf.readUInt32BE(16), h: img.buf.readUInt32BE(20) };
-    let i = 2;
-    while (i < img.buf.length) {
-      if (img.buf[i] !== 0xff) break;
-      const m = img.buf[i + 1];
-      const len = img.buf.readUInt16BE(i + 2);
-      if (m >= 0xc0 && m <= 0xc3) return { h: img.buf.readUInt16BE(i + 5), w: img.buf.readUInt16BE(i + 7) };
-      i += 2 + len;
-    }
-  } catch {
-    /* fallthrough */
-  }
-  return { w: 1, h: 1 };
 }
 
 const run = (t, o = {}) => new TextRun({ text: String(t ?? ""), rightToLeft: true, font: FONT, ...o });

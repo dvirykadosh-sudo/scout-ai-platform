@@ -35,7 +35,6 @@ export const VARIABLES = [
   { name: "הערה", key: "note", help: "הערה חופשית", sample: "להביא תעודת זהות" },
   { name: "ימים_עד", key: "daysUntil", help: "כמה ימים עד האירוע", sample: "2" },
 ];
-const KEYS = new Set(Object.values(ALIAS));
 const RX = /\{\{\s*([^{}|]{1,40}?)\s*(?:\|\s*([^{}]{0,80}?)\s*)?\}\}/g;
 
 /** מנקה טקסט לפני שליחה: בלי תווי בקרה, שורות מנורמלות, אורך מוגבל. */

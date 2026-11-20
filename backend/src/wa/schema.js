@@ -106,6 +106,14 @@ CREATE TABLE IF NOT EXISTS wa_rsvp (
   PRIMARY KEY (event_key, contact_id)
 );
 
+-- שלב 71: אירועי אישור הגעה שנוצרו מכרטיס הזמנה (סטורי). התשובה מזוהה לפי מפתח (#abc123) שבהודעה
+CREATE TABLE IF NOT EXISTS wa_events (
+  key TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  created_by TEXT,
+  created_at TEXT NOT NULL
+);
+
 -- הודעות נכנסות (מאנשי קשר מוכרים בלבד, 14 יום)
 CREATE TABLE IF NOT EXISTS wa_inbox (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

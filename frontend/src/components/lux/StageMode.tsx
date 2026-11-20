@@ -2,6 +2,7 @@
 
 // שלב 61 (רעיון 1 + 5): מצב במה. שלב אחד על המסך, טיימר טבעת ענק, החלקה בין שלבים, רטט וצלילים.
 // בנוי כך שאפשר להפעיל אותו מהכיס, באור שמש, ביד אחת. מצב השטח הקיים (/field) נשאר כמו שהוא.
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -9,6 +10,9 @@ import { ApiError, api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
 import { buzz, chime, getSoundPrefs, isFireOn, setSoundPrefs, startFire, stopFire, unlock, whistle } from "@/lib/lux/sound";
 import { Eagle } from "./illus";
+
+// שלב 71: זירת המשחק נטענת רק כשפותחים אותה
+const Arena = dynamic(() => import("./Arena").then((m) => m.Arena), { ssr: false });
 
 const fmt = (sec: number): string => {
   const a = Math.abs(sec);
@@ -33,6 +37,7 @@ export function StageMode() {
   const [fs, setFs] = useState(false);
   const [showText, setShowText] = useState(true);
   const [drag, setDrag] = useState(0);
+  const [arena, setArena] = useState(false);
 
   const endAt = useRef(0);
   const alarmed = useRef(false);
@@ -195,19 +200,20 @@ export function StageMode() {
 
   // מקלדת. בעברית "קדימה" זה שמאלה.
   useEffect(() => {
-    if (!a) return;
+    if (!a || arena) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
-      if (e.key === "ArrowLeft" || e.key === "PageDown") (e.preventDefault(), next());
+      if (e.key === "g") setArena(true);
+      else if (e.key === "ArrowLeft" || e.key === "PageDown") (e.preventDefault(), next());
       else if (e.key === "ArrowRight" || e.key === "PageUp") (e.preventDefault(), prev());
       else if (e.key === " " && t?.tagName !== "BUTTON" && t?.tagName !== "A") (e.preventDefault(), toggle());
       else if (e.key === "f") void fullscreen();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [a, next, prev, toggle]);
+  }, [a, arena, next, prev, toggle]);
 
   // החלקה: ימינה = שלב הבא (כיוון הקריאה בעברית), שמאלה = קודם
   const onDown = (e: React.PointerEvent) => {
@@ -328,6 +334,9 @@ export function StageMode() {
               🔥
             </button>
           )}
+          <button type="button" className="stg-icon" aria-haspopup="dialog" aria-label="זירת משחק: חידון, גלגל מזל ולוח ניקוד (מקש G)" title="זירת משחק" onClick={() => setArena(true)}>
+            🎮
+          </button>
           <button type="button" className="stg-icon" aria-pressed={fs} aria-label="מסך מלא" onClick={fullscreen}>
             ⛶
           </button>
@@ -394,6 +403,7 @@ export function StageMode() {
       <div className="sr-only" aria-live="polite">
         {announce}
       </div>
+      {arena && <Arena activity={a} stageIndex={idx} onClose={() => setArena(false)} />}
     </div>
   );
 }

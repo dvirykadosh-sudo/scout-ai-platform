@@ -303,7 +303,6 @@ describe("24–26. מכסות יומיות לאורחים ולטלמטריה", (
     return { status: r.status, body: await r.json().catch(() => null), headers: r.headers };
   };
   const post = (p, body, tok, headers = {}) => j(p, { method: "POST", body: JSON.stringify(body), headers: { ...(tok ? { authorization: `Bearer ${tok}` } : {}), ...headers } });
-  const put = (p, body, tok) => j(p, { method: "PUT", body: JSON.stringify(body), headers: { authorization: `Bearer ${tok}` } });
   const get = (p, tok) => j(p, { headers: tok ? { authorization: `Bearer ${tok}` } : {} });
   const activityId = () => db.prepare("SELECT id FROM activities WHERE status = 'PUBLISHED' ORDER BY id LIMIT 1").get().id;
   const input = () => ({ topic: "אחריות", value: "אחריות", ageGroup: "כיתה ז' - מעורב", participants: 12, instructor: "נועה", role: "מדריכה", methods: [{ name: "משחק תחרות", minutes: 10 }, { name: "דיון בשאלה", minutes: 12 }, { name: "הסבר", minutes: 5 }] });

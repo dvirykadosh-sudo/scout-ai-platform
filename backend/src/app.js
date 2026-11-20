@@ -9,7 +9,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import { ZodError } from "zod";
 import { aiConfigured } from "./ai-router.js";
-import { apportion, buildExternalPrompt, generateActivity, normalizeDraft, parseExternal } from "./ai.js";
+import { apportion, buildExternalPrompt, normalizeDraft, parseExternal } from "./ai.js";
 import { analyzeSample, extractText } from "./style.js";
 import { getActivity, insertActivity, rowToActivity, searchActivities, snapshotOf, updateActivity } from "./activities.js";
 import { buildPlan } from "./plan.js";
@@ -38,6 +38,7 @@ import { registerWaRoutes } from "./wa/index.js";
 import { registerV57Routes } from "./routes-v57.js";
 import { registerV69Routes } from "./routes-v69.js";
 import { registerLive70Routes } from "./routes-live70.js";
+import { registerResourceRoutes } from "./routes-res71.js";
 import { registerLuxRoutes } from "./routes-lux.js";
 import { registerV56Routes } from "./routes-v56.js";
 import { cleanDict } from "./human-voice.js";
@@ -46,7 +47,7 @@ import { guestDailyCap, takeDaily } from "./guest-limits.js";
 import { recordServerError } from "./server-errors.js";
 import { publicAuthor, scrubContact } from "./guest-guard.js";
 import compression from "compression";
-import { registerAccountV52Routes, regSettings } from "./routes-accounts-v52.js";
+import { registerAccountV52Routes } from "./routes-accounts-v52.js";
 import { pageCountMiddleware, registerPilotRoutes } from "./routes-pilot.js";
 import { maintenanceGuard, maintenanceMessage } from "./ops.js";
 import { registerWriteSearchRoutes, registerWriteCommunityRoutes, registerWriteMoreRoutes, registerWriteStatsRoutes } from "./routes-write-more.js";
@@ -54,7 +55,7 @@ import { ipHash, isBlocked, logAccess, pageFrom, purgeOld, readSettings } from "
 import { registerKindRoutes } from "./routes-kinds.js";
 import { EMERGENCY_METHODS, buildEmergencyDraft, parseLooseDoc, pickIcebreakers, regenerateStage } from "./tools.js";
 import { checkQuality } from "./quality.js";
-import { checkLock, clearFailures, hashPassword, optionalAuth, optionalUser, registerFailure, requireAdmin, requireUser, signToken, verifyPassword } from "./auth.js";
+import { optionalAuth, optionalUser, requireAdmin, requireUser } from "./auth.js";
 import { BACKUP_NAME, backupDirFor, createBackup, listBackups } from "./backup.js";
 import { styleSchema } from "./style.js";
 import { config } from "./config.js";
@@ -65,7 +66,7 @@ import { setWatermarkSource } from "./watermark.js";
 import { registerSystemRoutes, startedAt as bootedAt } from "./routes-system.js";
 import { activityEmailHtml } from "./email.js";
 import { AGE_GROUPS, GRADES, GENDER_GROUPS, METHODS, ROLES, STAGE_LAYERS, STAGE_NAMES, MIDOT } from "./shared/constants.js";
-import { emergencySchema, importParsedSchema, regenSchema, adminUserPatchSchema, bookletSchema, changePwSchema, duplicateSchema, generateSchema, importSchema, listQuerySchema, loginSchema, planSchema, qualitySchema, ratingSchema, registerSchema, runSchema, stagesSchema, updateSchema } from "./validate.js";
+import { emergencySchema, importParsedSchema, regenSchema, bookletSchema, duplicateSchema, generateSchema, importSchema, listQuerySchema, planSchema, qualitySchema, ratingSchema, runSchema, stagesSchema, updateSchema } from "./validate.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fail = (code, message, fields) => ({ error: { code, message, ...(fields ? { fields } : {}) } });
@@ -754,6 +755,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerLuxRoutes(app, { db, limiter, fail, requireUser, optionalAuth });
   registerV69Routes(app, { db, limiter, fail, requireUser });
   registerLive70Routes(app, { db, limiter, fail, requireUser });
+  registerResourceRoutes(app, { db, limiter, fail, requireUser });
   // שלב 58: מנוע הוואטסאפ (תור, תבניות, בוט, גשר מקומי). בבדיקות אין טיימרים.
   registerWaRoutes(app, { db, limiter, fail, requireAdmin, audit, notifyAdmins, publicUrl: config.publicUrl }, { startScheduler: config.nodeEnv !== "test" });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });
@@ -819,7 +821,6 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   // ── errors ──
   app.use("/api", (req, res) => res.status(404).json(fail("NOT_FOUND", "הכתובת לא נמצאה")));
 
-  // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     if (err instanceof ZodError) {
       const fields = {};

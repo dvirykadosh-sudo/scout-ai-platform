@@ -113,7 +113,7 @@ describe("1–3. פעולות אורח", () => {
     for (const topic of ["אחריות אישית", "מנהיגות בשטח", "חברות ושיתוף פעולה", "כבוד הדדי", "ידיעת הארץ"]) {
       const r = await post("/api/activities/generate", input({ topic }));
       assert.equal(r.status, 201);
-      const { id, status, ...rest } = r.body;
+      const { id: _id, status: _status, ...rest } = r.body;
       assert.equal(JSON.stringify(scrubDeep(rest)), JSON.stringify(rest), `הנושא ${topic} נוקה בטעות`);
     }
   });

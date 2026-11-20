@@ -48,6 +48,34 @@ export interface ScheduleItem {
   note: string;
   remindDays: number | null;
   dismissed: boolean;
+  /** שלב 71: חדר וציוד משובצים, והתנגשויות עם מדריכים אחרים באותו שבט */
+  room?: string;
+  gear?: string[];
+  clashes?: Clash[];
+}
+
+/** התנגשות חדר או ציוד בין שני שיבוצים (אותו תאריך, שעות חופפות) */
+export interface Clash {
+  id: number;
+  mine: boolean;
+  by: string;
+  date: string;
+  time: string;
+  until: string;
+  kind: "room" | "gear";
+  what: string;
+}
+export const clashText = (c: Clash): string => `${c.kind === "room" ? "החדר" : "הציוד"} "${c.what}" כבר משובץ ${c.mine ? "אצלכם" : `אצל ${c.by}`} ב-${c.time}–${c.until}`;
+
+export interface Reservation {
+  id: number;
+  mine: boolean;
+  by: string;
+  date: string;
+  time: string;
+  until: string;
+  room: string;
+  gear: { id: string; label: string }[];
 }
 
 export interface Reminder {

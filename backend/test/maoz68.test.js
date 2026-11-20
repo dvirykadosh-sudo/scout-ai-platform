@@ -37,7 +37,6 @@ const fake = (fn) => {
   return f;
 };
 const isGem = (c) => c.url.includes("generativelanguage.googleapis.com");
-const isGrq = (c) => c.url.includes("api.groq.com");
 
 describe("68א. נתב AI רב-שכבתי", () => {
   it("Gemini: כתובת, כותרת מפתח (לא בכתובת) ומבנה בקשה, JSON כשמבקשים", async () => {

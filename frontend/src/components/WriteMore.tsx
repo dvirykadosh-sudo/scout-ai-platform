@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { API_URL, api, errorMessage, fmtDate } from "@/lib/api";
 import { useToast } from "./Providers";
 import { Field, Modal, Skeleton } from "./ui";
-import { VisitorComments, cleanText } from "./WriteMore3";
+import { VisitorComments } from "./WriteMore3";
 import { KIND_LABEL, Md, type Block, type Kind, type Snap } from "./WriteParts";
 
 const snap0Title = (id: number) => `פעולה לצפייה (${id}):`;

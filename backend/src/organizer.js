@@ -1,6 +1,7 @@
 // כלי ארגון למדריך: מצב מהיר, יומן ותזכורות, טקסט לוואטסאפ, טיפים למדריך חדש.
 import { rowToActivity } from "./activities.js";
 import { gearItems, gearLoad } from "./gear.js";
+import { parseGear } from "./resources.js";
 import { GRADES } from "./shared/constants.js";
 import { activitySummary } from "./content.js";
 
@@ -31,7 +32,6 @@ const gradeOf = (ageGroup) => {
   const m = /^כיתה (\S+) - /.exec(ageGroup || "");
   return m ? GRADES.indexOf(m[1]) : -1;
 };
-const genderOf = (ageGroup) => (ageGroup || "").split(" - ")[1] || "";
 
 /** כמה "רחוק" שכבת הגיל של הפעולה מהשכבה המבוקשת: 0 זהה, 1 אותה כיתה, 2 סמוכה, 3 רחוקה. */
 function ageTier(want, have) {
@@ -126,6 +126,8 @@ export function scheduleRow(r) {
     remindDays: r.remind_days ?? null,
     dismissed: r.dismissed >= 1,
     createdAt: r.created_at,
+    room: r.room || "",
+    gear: parseGear(r.gear_json),
   };
 }
 

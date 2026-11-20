@@ -2,11 +2,15 @@
 
 // שלב 61 (רעיון 4): מצב מקרן למפקדה. טקסט ענק שנקרא מהקצה השני של החדר, קוד QR לפתיחה בטלפון, בלי רעש.
 // הבקרים מופיעים רק בתנועת עכבר, העכבר נעלם אחרי שניות. שלט מצגות (חצים / PageUp / PageDown) עובד.
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import type { Activity } from "@/lib/types";
+
+// שלב 71: זירת המשחק על מסך המקרן. נטענת רק כשפותחים אותה
+const Arena = dynamic(() => import("./Arena").then((m) => m.Arena), { ssr: false });
 
 const clock = () => new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
 
@@ -20,6 +24,7 @@ export function Projector() {
   const [time, setTime] = useState("");
   const [ui, setUi] = useState(true);
   const [black, setBlack] = useState(false);
+  const [arena, setArena] = useState(false);
   const hide = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -66,7 +71,7 @@ export function Projector() {
 
   const max = a ? a.stages.length - 1 : 0;
   useEffect(() => {
-    if (!a) return;
+    if (!a || arena) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       poke();
@@ -76,10 +81,11 @@ export function Projector() {
       else if (e.key === "End") setI(max);
       else if (e.key === "b" || e.key === "." || e.key === "ב") setBlack((x) => !x);
       else if (e.key === "f") void fullscreen();
+      else if (e.key === "g" || e.key === "ג") setArena(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [a, max, poke]);
+  }, [a, arena, max, poke]);
 
   if (notFound)
     return (
@@ -109,7 +115,7 @@ export function Projector() {
   const bodySize = len < 140 ? "clamp(2rem,4.6vw,4.4rem)" : len < 320 ? "clamp(1.6rem,3.4vw,3.2rem)" : "clamp(1.3rem,2.6vw,2.4rem)";
 
   return (
-    <div className={`prj ${ui ? "" : "prj-idle"}`} onPointerMove={poke} onClick={(e) => (e.target as HTMLElement).closest("button,a") ? undefined : setI((x) => Math.min(max, x + 1))}>
+    <div className={`prj ${ui ? "" : "prj-idle"}`} onPointerMove={poke} onClick={(e) => ((e.target as HTMLElement).closest("button,a,.arn") ? undefined : setI((x) => Math.min(max, x + 1)))}>
       {black && <div className="prj-black" aria-label="מסך שחור. B או נקודה לחזרה" role="img" />}
 
       <header className="prj-top" aria-hidden={!ui}>
@@ -177,6 +183,9 @@ export function Projector() {
         <button type="button" className="prj-btn" onClick={() => setI((x) => Math.min(max, x + 1))} disabled={i >= max}>
           הבא ›
         </button>
+        <button type="button" className="prj-btn" onClick={() => setArena(true)} aria-haspopup="dialog">
+          זירת משחק
+        </button>
         <button type="button" className="prj-btn" onClick={() => setBlack(!black)} aria-pressed={black}>
           מסך שחור
         </button>
@@ -187,6 +196,7 @@ export function Projector() {
       <p className="sr-only" aria-live="polite">
         {st ? `שלב ${i + 1}: ${st.name}` : `שער: ${a.title}`}
       </p>
+      {arena && <Arena activity={a} stageIndex={Math.max(0, i)} variant="projector" onClose={() => setArena(false)} />}
     </div>
   );
 }

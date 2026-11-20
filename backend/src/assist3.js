@@ -5,12 +5,6 @@ import { activitySummary } from "./content.js";
 import { analyze, draftToStages, lineAfter, norm, words } from "./assist.js";
 import { whatsappText } from "./organizer.js";
 
-const sentences = (s) =>
-  String(s || "")
-    .split(/(?<=[.!?])\s+|\n+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-
 // ───────────── 72. ציון מוכנות ─────────────
 
 /** a = תוצאת analyze. target = משך מתוכנן בדקות (לא חובה). */

@@ -4,7 +4,6 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
-import zlib from "node:zlib";
 import { DatabaseSync } from "node:sqlite";
 import { restoreIfMissing, startPersist } from "../src/persist.js";
 

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { config } from "./config.js";
 import { METHOD_NAMES, MIDOT, STAGE_LAYERS, STAGE_NAMES } from "./shared/constants.js";
 import { DEFAULT_STYLE, HUMAN_RULES, styleGuide } from "./style.js";
 import { aiReady, sharedRouter } from "./ai-router.js";

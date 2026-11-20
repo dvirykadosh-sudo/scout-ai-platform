@@ -3622,6 +3622,25 @@
     }
    }
   },
+  "/api/admin/wa/rsvp-events": {
+   "post": {
+    "tags": [
+     "admin"
+    ],
+    "description": "לאדמין בלבד.",
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/admin/wa/rsvp/{key}": {
    "get": {
     "tags": [
@@ -7125,6 +7144,24 @@
     }
    }
   },
+  "/api/me/reservations": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/me/runs": {
    "get": {
     "tags": [
@@ -7235,6 +7272,24 @@
        "type": "string"
       }
      }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/schedule/check": {
+   "post": {
+    "tags": [
+     "me"
     ],
     "responses": {
      "200": {

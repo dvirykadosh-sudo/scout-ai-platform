@@ -27,7 +27,6 @@ const read = (n) => {
   }
   return imgs[n];
 };
-const EMU = 360000;
 const cm = (x) => Math.round(x * 37.8);
 
 export const designPage = (o = {}) => ({

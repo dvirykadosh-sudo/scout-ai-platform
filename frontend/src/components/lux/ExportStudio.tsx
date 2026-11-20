@@ -10,6 +10,7 @@ import { tribeOrDefault } from "@/lib/lux/tribe";
 import type { Activity } from "@/lib/types";
 import { useLogoUrl } from "../Chrome";
 import { PageTitle, Skeleton } from "../ui";
+import { InviteStory } from "./InviteStory";
 import { PosterPanel } from "./Poster";
 import { useTabIndicator } from "../v21/useTabIndicator";
 
@@ -27,7 +28,7 @@ export function ExportStudio() {
   const wmSrc = logoSrc.includes("/api/logo") ? logoSrc : "/logo-maoz-640.v1.webp";
   const [a, setA] = useState<Activity | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"doc" | "cards" | "poster">("doc");
+  const [tab, setTab] = useState<"doc" | "cards" | "poster" | "story">("doc");
   const ti = useTabIndicator(tab);
   const [theme, setTheme] = useState<ThemeKey>("tribe");
   const [eco, setEco] = useState(false);
@@ -151,6 +152,7 @@ export function ExportStudio() {
                 ["doc", "מסמך"],
                 ["cards", "כרטיסים"],
                 ["poster", "כרזה"],
+                ["story", "סטורי הזמנה"],
               ] as const
             ).map(([k, l]) => (
               <button key={k} type="button" role="tab" id={`tab-${k}`} aria-selected={tab === k} aria-controls={`panel-${k}`} className={`tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>
@@ -240,6 +242,12 @@ export function ExportStudio() {
               <Link className="btn btn-primary" href={`/library/${a.id}/cards`}>
                 לעמוד הכרטיסים
               </Link>
+            </div>
+          )}
+
+          {tab === "story" && (
+            <div id="panel-story" role="tabpanel" aria-labelledby="tab-story" tabIndex={0}>
+              <InviteStory a={a} color={color} logoSrc={logoSrc} />
             </div>
           )}
 

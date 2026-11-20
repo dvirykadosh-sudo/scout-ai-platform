@@ -40,6 +40,21 @@ export function parseRsvp(text) {
   return null;
 }
 
+/**
+ * שלב 71: תשובה דרך קישור מכרטיס הזמנה. ההודעה מכילה מפתח אירוע (#abc123) וגם "כן", "לא" או "אולי".
+ * בלי מפתח זה לא תשובה לאירוע, ולכן לא נוגעים בהודעה (שאר ההודעות ממשיכות כרגיל).
+ */
+export const RSVP_KEY = /#([a-z0-9]{6})(?![a-z0-9])/i;
+export function parseRsvpKeyed(text) {
+  const m = RSVP_KEY.exec(String(text ?? ""));
+  if (!m) return null;
+  const toks = norm(String(text).replace(m[0], " ")).split(" ").filter(Boolean);
+  if (!toks.length || toks.length > 12) return null;
+  const has = (words) => toks.some((w) => words.includes(w));
+  const answer = has(["לא", "מבטל", "מבטלת", "2"]) ? "no" : has(["אולי", "3"]) ? "maybe" : has(["כן", "מגיע", "מגיעה", "מגיעים", "מאשר", "מאשרת", "מאשרים", "אגיע", "נגיע", "1"]) ? "yes" : null;
+  return answer ? { key: m[1].toLowerCase(), answer } : null;
+}
+
 const HELP = ["אני הבוט של שבט מעוז. אפשר לכתוב לי:", "• *הפעולה הבאה*", "• *פעולות השבוע*", "• *מה להביא*", "• *חפש* ואחריו נושא (למשל: חפש אחריות)", "• *אירועי השבט*", "• *הסר* כדי להפסיק לקבל הודעות"].join("\n");
 
 /** מפענח פקודה מהטקסט המנורמל. מחזיר { cmd, arg } או null. */
@@ -129,6 +144,12 @@ export function handleInbound(db, settings, msg, deps = {}) {
       repo.setRsvp(db, pending.eventKey, sender.id, ans);
       store("rsvp");
       return { handled: "rsvp", answer: ans, replyJobId: reply(sender, ACK[ans]).id };
+    }
+    const keyed = parseRsvpKeyed(text);
+    if (keyed && repo.eventByKey(db, keyed.key)) {
+      repo.setRsvp(db, keyed.key, sender.id, keyed.answer);
+      store("rsvp");
+      return { handled: "rsvp", answer: keyed.answer, replyJobId: reply(sender, ACK[keyed.answer]).id };
     }
   }
 

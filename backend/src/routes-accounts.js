@@ -7,7 +7,6 @@ import {
   STAFF_KEYS,
   STAFF_ROLES,
   checkTotp,
-  currentStep,
   deviceLabel,
   effectiveStaff,
   findByIdentifier,
@@ -28,7 +27,7 @@ import {
   sealSecret,
 } from "./accounts.js";
 import { config } from "./config.js";
-import { consumeInvite, dailyCapReached, effectiveSignupCode, emailDomainOk, findInvite, isNewDevice, isReservedName, regSettings } from "./routes-accounts-v52.js";
+import { consumeInvite, dailyCapReached, emailDomainOk, findInvite, isNewDevice, isReservedName, regSettings } from "./routes-accounts-v52.js";
 import { audit, auditHash, nowIso } from "./db.js";
 import { escapeHtml } from "./email.js";
 import { notify } from "./notify.js";

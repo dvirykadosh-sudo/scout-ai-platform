@@ -5,7 +5,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ChevronLeft, LogOut, Palette } from "lucide-react";
 import { isAdminUser, useAuth } from "../Providers";
 import { SidebarProfile } from "./SidebarProfile";
@@ -60,7 +60,7 @@ export function GlassSidebar({ collapsed, onToggle, open, onClose }: Props) {
                   const Icon = i.icon;
                   const count = i.badge ? badges[i.badge] : 0;
                   return (
-                    <motion.li key={i.href} whileHover={{ x: -4 }} transition={{ type: "spring", stiffness: 380, damping: 24 }}>
+                    <m.li key={i.href} whileHover={{ x: -4 }} transition={{ type: "spring", stiffness: 380, damping: 24 }}>
                       <Link href={i.href} prefetch={false} className="sh-item" aria-current={isActivePath(pathname, i.href) ? "page" : undefined} title={collapsed ? i.label : undefined} onClick={onClose}>
                         <Icon size={20} aria-hidden="true" />
                         <span className="sh-label">{i.label}</span>
@@ -71,7 +71,7 @@ export function GlassSidebar({ collapsed, onToggle, open, onClose }: Props) {
                           </>
                         )}
                       </Link>
-                    </motion.li>
+                    </m.li>
                   );
                 })}
               </ul>

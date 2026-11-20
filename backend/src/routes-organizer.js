@@ -23,6 +23,7 @@ import { AGE_GROUPS } from "./shared/constants.js";
 import { KIND_IDS } from "./kinds.js";
 import { notify } from "./notify.js";
 import { config } from "./config.js";
+import { clashMap, clashesFor, clashText, cleanGear } from "./resources.js";
 
 const text = (max) => z.string().trim().max(max);
 const GEAR_IDS = GEAR_GROUPS.map((g) => g.id);
@@ -55,6 +56,10 @@ const scheduleBase = z.object({
   groupLabel: text(60).optional(),
   note: text(300).optional(),
   remindDays: z.number().int().min(0).max(14).nullable().optional(),
+  // שלב 71: חדר וציוד לבדיקת התנגשויות. force = לשבץ בכל זאת (אחרי שהמדריך אישר שהוא מתאם עם הצוות)
+  room: text(60).optional(),
+  gear: z.array(z.enum(GEAR_IDS)).max(GEAR_IDS.length).optional(),
+  force: z.boolean().optional(),
 });
 const scheduleCreate = scheduleBase.refine((v) => v.activityId || (v.title && v.title.length >= 2), { message: "בחרו פעולה מהמאגר או כתבו שם לאירוע", path: ["title"] });
 
@@ -115,16 +120,43 @@ export function registerOrganizerRoutes(app, { db, limiter, fail, requireUser, o
     const from = isRealDate(String(req.query.from)) ? String(req.query.from) : "0000-01-01";
     const to = isRealDate(String(req.query.to)) ? String(req.query.to) : "9999-12-31";
     const rows = db.prepare(`${SCHEDULE_SELECT} WHERE s.user_id = ? AND s.date >= ? AND s.date <= ? ORDER BY s.date, s.time, s.id LIMIT 500`).all(req.user.id, from, to);
-    res.json(rows.map(scheduleRow));
+    const cm = clashMap(db, req.user.id, from, to);
+    res.set("Cache-Control", "no-store").json(rows.map((r) => ({ ...scheduleRow(r), clashes: cm.get(r.id) ?? [] })));
   });
+
+  /** שלב 71: אם יש התנגשות חדר/ציוד ולא אושר "לשבץ בכל זאת", עונים 409 עם הרשימה. אחרת שומרים, ומתריעים למי שנדרס. */
+  const clashGate = (req, res, cand, force) => {
+    const clashes = clashesFor(db, { userId: req.user.id, ...cand });
+    if (clashes.length && !force) {
+      res.status(409).json({ ...fail("RESOURCE_CLASH", `יש התנגשות: ${clashes.map(clashText).join("; ")}`), clashes });
+      return null;
+    }
+    return clashes;
+  };
+  const warnOthers = (req, clashes, date, time) => {
+    const seen = new Set();
+    const me = db.prepare("SELECT COALESCE(display_name, username) AS n FROM users WHERE id = ?").get(req.user.id)?.n || req.user.username;
+    for (const c of clashes) {
+      if (c.mine) continue;
+      const row = db.prepare("SELECT user_id FROM schedule WHERE id = ?").get(c.id);
+      if (!row || seen.has(row.user_id)) continue;
+      seen.add(row.user_id);
+      notify(db, row.user_id, "clash", `${me} שיבצו גם את ${c.kind === "room" ? "החדר" : "הציוד"} "${c.what}" ב-${date} ${time}. כדאי לתאם`, "/calendar");
+    }
+  };
 
   app.post("/api/me/schedule", requireUser(), limiter(15 * 60_000, 120), (req, res) => {
     const v = scheduleCreate.parse(req.body ?? {});
     if (v.activityId && !getActivity(db, v.activityId)) return notFound(res);
     if (db.prepare("SELECT COUNT(*) AS c FROM schedule WHERE user_id = ?").get(req.user.id).c >= 500) return res.status(409).json(fail("LIMIT", "אפשר עד 500 אירועים ביומן. מחקו ישנים"));
+    const gear = cleanGear(v.gear);
+    const dur = v.durationMin ?? (v.activityId ? getActivity(db, v.activityId)?.durationMin : null) ?? null;
+    const clashes = clashGate(req, res, { date: v.date, time: v.time || "", durationMin: dur, room: v.room, gear }, v.force);
+    if (clashes === null) return;
     const r = db
-      .prepare("INSERT INTO schedule (user_id, activity_id, title, date, time, duration_min, group_label, note, remind_days, dismissed, created_at) VALUES (?,?,?,?,?,?,?,?,?,0,?)")
-      .run(req.user.id, v.activityId ?? null, v.title || null, v.date, v.time || null, v.durationMin ?? null, v.groupLabel || null, v.note || null, v.remindDays ?? null, nowIso());
+      .prepare("INSERT INTO schedule (user_id, activity_id, title, date, time, duration_min, group_label, note, remind_days, dismissed, created_at, room, gear_json) VALUES (?,?,?,?,?,?,?,?,?,0,?,?,?)")
+      .run(req.user.id, v.activityId ?? null, v.title || null, v.date, v.time || null, v.durationMin ?? null, v.groupLabel || null, v.note || null, v.remindDays ?? null, nowIso(), v.room || null, gear.length ? JSON.stringify(gear) : null);
+    if (clashes.length) warnOthers(req, clashes, v.date, v.time);
     audit(db, req.user.username, "schedule.add", { id: Number(r.lastInsertRowid), date: v.date });
     res.status(201).json(scheduleRow(mySchedule(Number(r.lastInsertRowid), req.user.id)));
   });
@@ -144,13 +176,24 @@ export function registerOrganizerRoutes(app, { db, limiter, fail, requireUser, o
       group_label: p.groupLabel !== undefined ? p.groupLabel || null : cur.group_label,
       note: p.note !== undefined ? p.note || null : cur.note,
       remind_days: p.remindDays !== undefined ? p.remindDays : cur.remind_days,
+      room: p.room !== undefined ? p.room || null : cur.room ?? null,
+      gear_json: p.gear !== undefined ? (cleanGear(p.gear).length ? JSON.stringify(cleanGear(p.gear)) : null) : cur.gear_json ?? null,
     };
+    // בודקים התנגשות רק כשמשהו שמשפיע עליה השתנה, כדי שעריכת הערה לא תיחסם בגלל שיבוץ ישן
+    const touched = ["activityId", "date", "time", "durationMin", "room", "gear"].some((k) => p[k] !== undefined);
+    let clashes = [];
+    if (touched) {
+      const dur = next.duration_min ?? (next.activity_id ? getActivity(db, next.activity_id)?.durationMin : null) ?? null;
+      clashes = clashGate(req, res, { date: next.date, time: next.time || "", durationMin: dur, room: next.room, gear: JSON.parse(next.gear_json || "[]"), excludeId: id }, p.force);
+      if (clashes === null) return;
+    }
     if (!next.activity_id && !(next.title && next.title.length >= 2)) return res.status(400).json(fail("VALIDATION", "בחרו פעולה מהמאגר או כתבו שם לאירוע"));
     // שינוי תאריך או תזכורת מחזיר את התזכורת לפעולה
     const reset = p.date !== undefined || p.remindDays !== undefined;
-    db.prepare("UPDATE schedule SET activity_id=?, title=?, date=?, time=?, duration_min=?, group_label=?, note=?, remind_days=?, dismissed = CASE WHEN ? THEN 0 ELSE dismissed END WHERE id=? AND user_id=?").run(
-      next.activity_id ?? null, next.title, next.date, next.time, next.duration_min ?? null, next.group_label, next.note, next.remind_days ?? null, reset ? 1 : 0, id, req.user.id,
+    db.prepare("UPDATE schedule SET activity_id=?, title=?, date=?, time=?, duration_min=?, group_label=?, note=?, remind_days=?, room=?, gear_json=?, dismissed = CASE WHEN ? THEN 0 ELSE dismissed END WHERE id=? AND user_id=?").run(
+      next.activity_id ?? null, next.title, next.date, next.time, next.duration_min ?? null, next.group_label, next.note, next.remind_days ?? null, next.room, next.gear_json, reset ? 1 : 0, id, req.user.id,
     );
+    if (clashes.length) warnOthers(req, clashes, next.date, next.time);
     res.json(scheduleRow(mySchedule(id, req.user.id)));
   });
 

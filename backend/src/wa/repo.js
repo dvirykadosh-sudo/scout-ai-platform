@@ -132,15 +132,27 @@ export const deleteRule = (db, id) => run(db, "DELETE FROM wa_rules WHERE id = ?
 
 // ───────────── אישורי הגעה ─────────────
 export const setRsvp = (db, eventKey, contactId, answer) => run(db, "INSERT INTO wa_rsvp (event_key, contact_id, answer, at) VALUES (?,?,?,?) ON CONFLICT(event_key, contact_id) DO UPDATE SET answer = excluded.answer, at = excluded.at", eventKey, contactId, answer, now());
-/** סיכום לאירוע: לכל מי ששלחנו לו הודעת אישור (גם אם עוד לא ענה). */
+/** סיכום לאירוע: לכל מי ששלחנו לו הודעת אישור (גם אם עוד לא ענה), ובנוסף מי שענה דרך קישור כרטיס ההזמנה. */
 export function rsvpSummary(db, eventKey) {
   const rows = all(db, `SELECT c.id, c.name, c.battalion, r.answer, r.at FROM (SELECT DISTINCT contact_id FROM wa_jobs WHERE event_key = ? AND expects_rsvp = 1 AND status = 'sent') j
     JOIN wa_contacts c ON c.id = j.contact_id LEFT JOIN wa_rsvp r ON r.contact_id = c.id AND r.event_key = ? ORDER BY c.name`, eventKey, eventKey);
-  const out = { yes: 0, no: 0, maybe: 0, none: 0, people: rows.map((r) => ({ id: r.id, name: r.name, battalion: r.battalion || "", answer: r.answer || null, at: r.at || null })) };
-  for (const r of rows) out[r.answer || "none"]++;
+  const have = new Set(rows.map((r) => r.id));
+  const viaLink = all(db, "SELECT c.id, c.name, c.battalion, r.answer, r.at FROM wa_rsvp r JOIN wa_contacts c ON c.id = r.contact_id WHERE r.event_key = ? ORDER BY c.name", eventKey).filter((r) => !have.has(r.id));
+  const list = [...rows, ...viaLink];
+  const out = { yes: 0, no: 0, maybe: 0, none: 0, people: list.map((r) => ({ id: r.id, name: r.name, battalion: r.battalion || "", answer: r.answer || null, at: r.at || null })) };
+  for (const r of list) out[r.answer || "none"]++;
   return out;
 }
-export const rsvpEvents = (db) => all(db, "SELECT event_key AS key, MAX(event_title) AS title, MAX(sent_at) AS lastSent, COUNT(DISTINCT contact_id) AS sent FROM wa_jobs WHERE expects_rsvp = 1 AND event_key IS NOT NULL AND status = 'sent' GROUP BY event_key ORDER BY lastSent DESC LIMIT 30");
+export const rsvpEvents = (db) =>
+  all(db, `SELECT key, title, lastSent, sent FROM (
+    SELECT event_key AS key, MAX(event_title) AS title, MAX(sent_at) AS lastSent, COUNT(DISTINCT contact_id) AS sent FROM wa_jobs WHERE expects_rsvp = 1 AND event_key IS NOT NULL AND status = 'sent' GROUP BY event_key
+    UNION ALL
+    SELECT e.key, e.title, e.created_at AS lastSent, 0 AS sent FROM wa_events e WHERE e.key NOT IN (SELECT event_key FROM wa_jobs WHERE event_key IS NOT NULL AND expects_rsvp = 1 AND status = 'sent')
+  ) ORDER BY lastSent DESC LIMIT 30`);
+// שלב 71: אירוע שנוצר מכרטיס הזמנה
+export const createEvent = (db, key, title, by) => run(db, "INSERT INTO wa_events (key, title, created_by, created_at) VALUES (?,?,?,?)", key, title, by ?? null, now()).changes;
+export const eventByKey = (db, key) => one(db, "SELECT key, title FROM wa_events WHERE key = ?", key);
+export const countEvents = (db) => one(db, "SELECT COUNT(*) AS c FROM wa_events").c;
 
 // ───────────── הודעות נכנסות ─────────────
 export const insertInbox = (db, i) => run(db, "INSERT OR IGNORE INTO wa_inbox (msg_id, at, contact_id, is_group, text, handled) VALUES (?,?,?,?,?,?)", i.msgId ?? null, now(), i.contactId ?? null, i.isGroup ? 1 : 0, i.text ?? null, i.handled ?? null).changes;

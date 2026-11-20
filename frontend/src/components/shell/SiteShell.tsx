@@ -4,11 +4,14 @@
 // והחזקת חלון "הגדרות מראה".
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { MotionConfig } from "framer-motion";
+import { LazyMotion, MotionConfig } from "framer-motion";
 import { GlassSidebar } from "./GlassSidebar";
 import { FloatingDock } from "./FloatingDock";
 import { SettingsSheet } from "./SettingsSheet";
 import { setPrefs, usePrefs } from "./shell-prefs";
+
+// שלב 72: אנימציות ה-hover של הסרגל והדוק נטענות בנפרד אחרי העמוד (LazyMotion), כדי שחבילת העיצוב המלאה של framer-motion לא תכביד על כל עמוד.
+const loadMotionFeatures = () => import("./motion-features").then((mod) => mod.default);
 
 export function SiteShell() {
   const pathname = usePathname() || "/";
@@ -49,10 +52,12 @@ export function SiteShell() {
   const toggle = useCallback(() => setPrefs({ collapsed: !prefs.collapsed }), [prefs.collapsed]);
 
   return (
+    <LazyMotion features={loadMotionFeatures}>
     <MotionConfig reducedMotion="user">
       {active && <GlassSidebar collapsed={prefs.collapsed} onToggle={toggle} open={menu} onClose={() => setMenu(false)} />}
       {active && prefs.dock && <FloatingDock onMenu={() => setMenu(true)} />}
       <SettingsSheet open={sheet} onClose={() => setSheet(false)} />
     </MotionConfig>
+    </LazyMotion>
   );
 }

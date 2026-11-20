@@ -1,7 +1,6 @@
 // כלים נוספים: שלב בודד מחדש, פעולת חירום, משחקי היכרות וייבוא קובץ Word ישן.
 import { z } from "zod";
 import { apportion, buildFallback, framing } from "./ai.js";
-import { config } from "./config.js";
 import { AGE_GROUPS, GRADES, STAGE_LAYERS, STAGE_NAMES } from "./shared/constants.js";
 import { DEFAULT_STYLE, HUMAN_RULES, styleGuide } from "./style.js";
 import { aiReady, sharedRouter } from "./ai-router.js";

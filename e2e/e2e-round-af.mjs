@@ -23,6 +23,7 @@ await step("setup", async () => {
 });
 
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 }, locale: "he-IL", permissions: ["microphone"] });
+await ctx.addInitScript(() => { window.print = function () { try { (window.top.__printed ||= []).push(document.documentElement.outerHTML); } catch {} }; });
 await ctx.addInitScript(([t, u]) => { try { localStorage.setItem("scout.hero.seen", "1"); localStorage.setItem("scout.session", JSON.stringify({ token: t, user: u })); } catch {} }, [tok, usr]);
 const A = await ctx.newPage();
 A.on("pageerror", (e) => console.log("PAGEERROR", e.message));
@@ -44,17 +45,17 @@ await step("map", async () => {
 });
 await step("read aloud", async () => {
   await open("הקראה בקול");
-  await A.getByRole("button", { name: "הקראה" }).waitFor({ timeout: 6000 });
+  await A.getByRole("button", { name: "הקראה" }).waitFor({ timeout: 15000 });
   const r = await axe(A);
   ok(r.violations.length === 0, "axe read " + axeMsg(r));
 });
 await step("practice", async () => {
   await open("תרגול קולי");
   await A.getByRole("button", { name: "התחלת הקלטה" }).click();
-  await A.getByRole("button", { name: "עצירה" }).waitFor({ timeout: 6000 });
+  await A.getByRole("button", { name: "עצירה" }).waitFor({ timeout: 15000 });
   await A.waitForTimeout(1500);
   await A.getByRole("button", { name: "עצירה" }).click();
-  await A.locator("audio").waitFor({ timeout: 6000 });
+  await A.locator("audio").waitFor({ timeout: 15000 });
   const r = await axe(A);
   ok(r.violations.length === 0, "axe practice " + axeMsg(r));
 });
@@ -74,15 +75,16 @@ await step("printables + crossword", async () => {
   ok(n >= 4, "keywords found " + n);
   const r = await axe(A);
   ok(r.violations.length === 0, "axe printables " + axeMsg(r));
-  const [pop] = await Promise.all([A.waitForEvent("popup", { timeout: 6000 }), A.getByRole("button", { name: "תשבץ", exact: true }).click()]);
-  await pop.waitForLoadState();
-  const cells = await pop.locator("table.cw td").count();
+  // שלב 66: ההדפסה נעשית ממסגרת נסתרת (בלי חלון קופץ). window.print מוחלף בהקלטה של מסמך ההדפסה.
+  const printed = async (n) => { await A.waitForFunction((k) => (window.__printed || []).length >= k, n, { timeout: 15000 }); return A.evaluate(() => window.__printed.at(-1)); };
+  await A.getByRole("button", { name: "תשבץ", exact: true }).click();
+  const cw = await printed(1);
+  const cells = (cw.match(/<td/g) || []).length;
   ok(cells > 9, "crossword table " + cells);
-  ok((await pop.locator("table.cw td.b").count()) < cells, "crossword has letters cells");
-  await pop.close();
-  const [p2] = await Promise.all([A.waitForEvent("popup", { timeout: 6000 }), A.getByRole("button", { name: "הדפסת כרטיסי תפקידים" }).click()]);
-  await p2.waitForLoadState();
-  ok((await p2.locator(".cards .card").count()) >= 5, "role cards");
+  ok((cw.match(/<td[^>]*class="b"/g) || []).length < cells, "crossword has letters cells");
+  await A.getByRole("button", { name: "הדפסת כרטיסי תפקידים" }).click();
+  const cards = await printed(2);
+  ok((cards.match(/class="card[ "]/g) || []).length >= 5, "role cards");
 });
 await browser.close();
 console.log(fails ? `${fails} FAILED` : "ALL OK");

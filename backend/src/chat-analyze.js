@@ -7,7 +7,6 @@ const NIQQUD = /[֑-ׇ]/g;
 export const norm = (t) => String(t ?? "").replace(NIQQUD, "").replace(/\s+/g, " ").trim();
 const WORD_BOUND = (alts, prefix = false) => new RegExp(`(?<![\\p{L}\\d])${prefix ? "[ובהלמכש]{0,2}" : ""}(?:${alts.join("|")})(?![\\p{L}\\d])`, "iu");
 const EMOJI_RX = (chars) => new RegExp(`(?:${chars.join("|")})`, "u");
-const hasAny = (rx, t) => rx.test(t);
 const words = (t) => (t.match(/[\p{L}\d']+/gu) || []);
 const excerpt = (t, rx, len = 90) => {
   const m = rx.exec(t);

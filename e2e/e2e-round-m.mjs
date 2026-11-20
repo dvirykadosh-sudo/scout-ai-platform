@@ -16,7 +16,7 @@ const mk = async () => {
 let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
 const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n").slice(0, 8).join(" | ")); } };
-const settle = async (p) => { await p.evaluate(async () => { await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))); }).catch(() => {}); await p.waitForTimeout(150); };
+const settle = async (p) => { await p.evaluate(async () => { await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))); }).catch(() => {}); await p.waitForTimeout(150); };
 const axe = async (p) => { await settle(p); return new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze(); };
 const axeMsg = (r) => r.violations.map((v) => v.id + " " + v.nodes.map((n) => n.target.join(" ")).join("; ")).join(" || ");
 const stamp = Date.now().toString().slice(-6);
@@ -147,7 +147,7 @@ let secret = "";
 let backup = "";
 await step("86. enable two-factor in the account page", async () => {
   await A.reload({ waitUntil: "networkidle" });
-  await A.getByRole("button", { name: "הפעלת אימות דו-שלבי" }).click();
+  await A.getByRole("button", { name: "הפעלת אימות דו-שלבי", exact: true }).click();
   const form = A.getByRole("form", { name: "הגדרת אימות דו-שלבי" });
   secret = (await form.locator("code").innerText()).trim();
   ok(/^[A-Z2-7]{32}$/.test(secret), "secret shown: " + secret.length);
@@ -170,7 +170,7 @@ await step("86. two-step login with the app code", async () => {
   await D.getByLabel("שם משתמש, מייל או טלפון").fill(USER);
   await D.getByLabel("סיסמה", { exact: true }).fill(PW);
   await D.getByRole("button", { name: /^כניסה$/ }).click();
-  await D.getByRole("heading", { name: "אימות דו-שלבי" }).waitFor();
+  await D.getByRole("heading", { name: "אימות דו-שלבי", exact: true }).waitFor();
   const r = await axe(D);
   ok(r.violations.length === 0, "axe 2fa step " + axeMsg(r));
   await D.getByLabel("קוד אימות").fill("000000");

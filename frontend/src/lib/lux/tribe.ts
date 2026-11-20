@@ -19,7 +19,6 @@ export const TRIBE_DEFAULT: TribePal = { a: "#a78bfa", b: "#c4b5fd", ink: "#150a
 
 type RGB = [number, number, number];
 const hex = ([r, g, b]: RGB) => "#" + [r, g, b].map((x) => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0")).join("");
-const parse = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const lin = (c: number) => ((c /= 255) <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
 export const luminance = ([r, g, b]: RGB) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 export const contrast = (a: RGB, b: RGB) => {

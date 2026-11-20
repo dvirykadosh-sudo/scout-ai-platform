@@ -143,6 +143,7 @@ export function waApi(token: string) {
     runRules: () => call<{ created: number }>("/rules/run", "POST", {}),
 
     rsvpEvents: () => call<{ key: string; title: string; lastSent: string; sent: number }[]>("/rsvp"),
+    createRsvpEvent: (title: string) => call<{ key: string; title: string }>("/rsvp-events", "POST", { title }),
     rsvp: (key: string) => call<RsvpSummary>(`/rsvp/${encodeURIComponent(key)}`),
 
     inbox: (contactId?: number) => call<WaInboxItem[]>(`/inbox${qs({ contactId })}`),

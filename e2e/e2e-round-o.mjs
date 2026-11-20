@@ -16,7 +16,7 @@ const mk = async () => {
 let fails = 0;
 const ok = (c, m) => { if (!c) fails++; console.log(c ? "OK  " : "FAIL", m); };
 const step = async (name, fn) => { try { await fn(); } catch (e) { fails++; console.log("FAIL", name, "-", e.message.split("\n").slice(0, 8).join(" | ")); } };
-const settle = async (p) => { await p.evaluate(async () => { await Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))); }).catch(() => {}); await p.waitForTimeout(150); };
+const settle = async (p) => { await p.evaluate(async () => { await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))); }).catch(() => {}); await p.waitForTimeout(150); };
 const axe = async (p) => { await settle(p); return new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze(); };
 const axeMsg = (r) => r.violations.map((v) => v.id + " " + v.nodes.map((n) => n.target.join(" ") + " " + JSON.stringify({ fg: n.any[0]?.data?.fgColor, bg: n.any[0]?.data?.bgColor, r: n.any[0]?.data?.contrastRatio })).join("; ")).join(" || ");
 const stamp = Date.now().toString().slice(-6);

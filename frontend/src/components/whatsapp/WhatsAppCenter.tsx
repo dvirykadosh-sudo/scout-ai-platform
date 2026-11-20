@@ -89,6 +89,12 @@ export function WhatsAppCenter() {
   const { act, busy } = useAct();
   const [tab, setTab] = useState<TabId>("overview");
   const ti = useTabIndicator(tab);
+  // שלב 71: קישור ישיר ללשונית (למשל /whatsapp#rsvp מכרטיס ההזמנה)
+  useEffect(() => {
+    const h = window.location.hash.replace("#", "");
+    const hit = TABS.find((t) => t.id === h);
+    if (hit) setTab(hit.id);
+  }, []);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {

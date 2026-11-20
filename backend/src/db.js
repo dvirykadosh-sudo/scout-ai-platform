@@ -698,6 +698,10 @@ function migrate(db) {
   add("activities", "owner_id", "INTEGER");
   add("activities", "kind", "TEXT");
   add("runs", "engagement", "INTEGER");
+  // שלב 71: חדר וציוד משובצים באירוע ביומן, לזיהוי התנגשויות בין מדריכים
+  add("schedule", "room", "TEXT");
+  add("schedule", "gear_json", "TEXT");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_schedule_date ON schedule(date)");
   add("runs", "timing", "TEXT");
   db.exec("CREATE INDEX IF NOT EXISTS idx_activities_owner ON activities(owner_id)");
 }

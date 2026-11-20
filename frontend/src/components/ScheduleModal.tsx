@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, errorMessage, fieldErrorLines } from "@/lib/api";
-import { todayLocal, type ScheduleItem } from "@/lib/organizer";
+import { ApiError, api, errorMessage, fieldErrorLines } from "@/lib/api";
+import { clashText, todayLocal, type Clash, type ScheduleItem } from "@/lib/organizer";
 import type { ListResponse } from "@/lib/types";
 import { useAuth, useToast } from "./Providers";
 import { Field, Modal } from "./ui";
@@ -43,6 +43,20 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
   const [found, setFound] = useState<{ id: number; title: string }[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  // שלב 71: חדר וציוד, ובדיקת התנגשות חיה מול שאר המדריכים בשבט
+  const [room, setRoom] = useState("");
+  const [gear, setGear] = useState<string[]>([]);
+  const [catalog, setCatalog] = useState<{ id: string; label: string }[]>([]);
+  const [clashes, setClashes] = useState<Clash[]>([]);
+  const [serverClash, setServerClash] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setServerClash("");
+    api<{ id: string; label: string }[]>("/api/gear")
+      .then(setCatalog)
+      .catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +70,8 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
       setRemind(item.remindDays == null ? "" : String(item.remindDays));
       setTitle(item.activityId ? "" : item.title);
       setActId(item.activityId);
+      setRoom(item.room ?? "");
+      setGear(item.gear ?? []);
     } else {
       setD(date ?? todayLocal());
       setTime("");
@@ -64,8 +80,37 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
       setRemind("1");
       setTitle("");
       setActId(activity?.id ?? null);
+      setRoom("");
+      setGear([]);
     }
+    setClashes([]);
   }, [open, item, activity, date]);
+
+  // בדיקת התנגשות חיה: כל שינוי בתאריך, שעה, חדר או ציוד נבדק מול היומנים של השבט (בלי לשמור כלום)
+  const wantsCheck = open && !!token && !!time && (room.trim().length > 0 || gear.length > 0);
+  useEffect(() => {
+    setServerClash("");
+    if (!wantsCheck) {
+      setClashes([]);
+      return;
+    }
+    let live = true;
+    const t = window.setTimeout(() => {
+      api<{ clashes: Clash[] }>("/api/me/schedule/check", {
+        method: "POST",
+        token,
+        body: { date: d, time, room: room.trim(), gear, ...(item ? { excludeId: item.id, durationMin: item.durationMin } : {}), ...((actId ?? activity?.id) ? { activityId: actId ?? activity?.id } : {}) },
+      })
+        .then((r) => live && setClashes(r.clashes))
+        .catch(() => live && setClashes([]));
+    }, 350);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [wantsCheck, token, d, time, room, gear, item, actId, activity]);
+  const toggleGear = (id: string) => setGear((g) => (g.includes(id) ? g.filter((x) => x !== id) : [...g, id]));
+  const clashing = clashes.length > 0 || !!serverClash;
 
   // חיפוש פעולה מהמאגר כשכותבים שם
   useEffect(() => {
@@ -87,7 +132,7 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
 
   const linkedTitle = activity?.title ?? (item?.activityId ? item.title : "");
 
-  const save = async () => {
+  const save = async (force = false) => {
     setBusy(true);
     setErrors([]);
     const body = {
@@ -98,6 +143,9 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
       groupLabel: group.trim(),
       note: note.trim(),
       remindDays: remind === "" ? null : Number(remind),
+      room: room.trim(),
+      gear,
+      ...(force ? { force: true } : {}),
     };
     try {
       if (item) await api(`/api/me/schedule/${item.id}`, { method: "PATCH", token, body });
@@ -106,8 +154,11 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
       onSaved?.();
       onClose();
     } catch (e) {
-      const lines = fieldErrorLines(e);
-      setErrors(lines.length ? lines : [errorMessage(e)]);
+      if (e instanceof ApiError && e.code === "RESOURCE_CLASH") setServerClash(e.message);
+      else {
+        const lines = fieldErrorLines(e);
+        setErrors(lines.length ? lines : [errorMessage(e)]);
+      }
     }
     setBusy(false);
   };
@@ -134,9 +185,14 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
       footer={
         token ? (
           <>
-            <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>
+            <button type="button" className="btn btn-primary" onClick={() => save(false)} disabled={busy || clashing} aria-describedby={clashing ? "sc-clash" : undefined}>
               {busy ? "שומר..." : "שמירה"}
             </button>
+            {clashing && (
+              <button type="button" className="btn" onClick={() => save(true)} disabled={busy}>
+                לשבץ בכל זאת
+              </button>
+            )}
             {item && (
               <button type="button" className="btn btn-danger" onClick={remove} disabled={busy}>
                 מחיקה
@@ -223,10 +279,39 @@ export function ScheduleModal({ open, onClose, activity, item, date, onSaved }: 
                 ))}
               </select>
             </Field>
-            <Field label="הערה לעצמכם (לא חובה)" htmlFor="sc-note" className="span-2">
+            <Field label="חדר או מקום (לא חובה)" htmlFor="sc-room" hint="אם מישהו אחר בשבט משבץ את אותו חדר באותה שעה, תראו כאן התראה.">
+              <input id="sc-room" value={room} maxLength={60} onChange={(e) => setRoom(e.target.value)} autoComplete="off" />
+            </Field>
+            <Field label="הערה לעצמכם (לא חובה)" htmlFor="sc-note">
               <input id="sc-note" value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
             </Field>
           </div>
+          {catalog.length > 0 && (
+            <fieldset className="grade-picker sc71-gear">
+              <legend>ציוד מהארון שתצטרכו (לא חובה)</legend>
+              <div className="grade-options">
+                {catalog.map((g) => (
+                  <label key={g.id} className="check">
+                    <input type="checkbox" checked={gear.includes(g.id)} onChange={() => toggleGear(g.id)} />
+                    <span>{g.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          {!time && (room.trim() || gear.length > 0) && <p className="hint">הוסיפו שעה כדי שנוכל לבדוק התנגשויות עם שאר המדריכים.</p>}
+          {clashing && (
+            <div id="sc-clash" className="warn-box sc71-clash" role="alert">
+              <strong>יש התנגשות שיבוץ</strong>
+              <ul>
+                {clashes.map((c) => (
+                  <li key={`${c.id}-${c.kind}-${c.what}`}>{clashText(c)}</li>
+                ))}
+                {clashes.length === 0 && serverClash && <li>{serverClash}</li>}
+              </ul>
+              <p className="hint">שנו שעה, חדר או ציוד, או שבצו בכל זאת אחרי שתיאמתם. מי שכבר משובץ יקבל התראה.</p>
+            </div>
+          )}
         </>
       )}
     </Modal>

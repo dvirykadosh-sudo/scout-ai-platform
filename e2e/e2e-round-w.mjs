@@ -32,7 +32,7 @@ await step("admin login via api", async () => {
 
 await step("health + health/data", async () => {
   const h = await (await fetch(B + "/api/health")).json();
-  ok(h.ok && h.startedAt, "health has startedAt");
+  ok(h.ok === true && !("startedAt" in h), "health ok, and the boot time is not exposed (privacy)");
   const r = await fetch(B + "/api/health/data");
   ok(r.status === 200, "health/data 200");
 });

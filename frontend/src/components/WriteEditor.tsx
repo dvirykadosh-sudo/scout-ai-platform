@@ -1269,7 +1269,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
         onApply={(blocks, mode) =>
           h.set((st) => {
             const fresh = blocks.map((b) => ({ ...b, id: newBlockId() }));
-            const keep = mode === "append" ? st.blocks.filter((b, i, a) => !(a.length === 1 && !b.text.trim() && !b.title.trim())) : [];
+            const keep = mode === "append" ? st.blocks.filter((b, _i, a) => !(a.length === 1 && !b.text.trim() && !b.title.trim())) : [];
             return { ...st, blocks: [...keep, ...fresh].slice(0, 60) };
           })
         }

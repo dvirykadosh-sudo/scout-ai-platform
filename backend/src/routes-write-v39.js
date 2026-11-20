@@ -56,9 +56,7 @@ function ratioFor(riskIds, ageGroup) {
 }
 export function safetyScan(doc) {
   const meta = metaDefaults(doc.meta ?? {});
-  const all = doc.blocks.map((b) => `${b.title}\n${b.text}`).join("\n");
   const equip = [...meta.equipment, ...meta.gear].join(" ");
-  const notes = doc.blocks.filter((b) => /בטיחות|זהירות|הנחיות/.test(b.title)).map((b) => b.text).join("\n") + "\n" + all;
   const risks = [];
   for (const r of RISKS) {
     const stages = doc.blocks.filter((b) => r.re.test(`${b.title} ${b.text}`)).map((b) => b.title || KIND_LABEL[b.kind]);
@@ -87,7 +85,6 @@ export function adaptToAge(doc, level) {
   const changes = [];
   const blocks = doc.blocks.map((b) => {
     let text = String(b.text || "");
-    const before = text;
     const dict = level === "young" ? TO_YOUNG : level === "old" ? TO_OLD : [];
     for (const [from, to] of dict) if (text.includes(from)) { text = text.replaceAll(from, to); changes.push({ blockId: b.id, label: b.title || KIND_LABEL[b.kind], what: `"${from}" ← "${to}"` }); }
     if (level !== "old") {
