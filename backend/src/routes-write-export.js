@@ -223,7 +223,8 @@ export function registerWriteExportRoutes(app, { limiter, fail, requireUser, get
   const lim = limiter(60_000, 40);
   const norm = (d) => ({ title: d.title, meta: metaDefaults(d.meta ?? {}), blocks: d.blocks, withNotes: d.withNotes });
 
-  const fileName = (doc, ext) => encodeURIComponent(`${(doc.title || "פעולה").replace(/[\\/:*?"<>|]/g, " ").slice(0, 60)}.${ext}`);
+  // שלב 73: encodeURIComponent משאיר ' ( ) * ! ללא קידוד, ובכותרת filename* (RFC 5987) הם אסורים
+  const fileName = (doc, ext) => encodeURIComponent(`${(doc.title || "פעולה").replace(/[\\/:*?"<>|]/g, " ").slice(0, 60)}.${ext}`).replace(/['()*!]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
   const send = (res, buf, name, type) => res.set({ "Content-Type": type, "Content-Disposition": `attachment; filename*=UTF-8''${name}`, "X-Content-Type-Options": "nosniff" }).send(buf);
   const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 

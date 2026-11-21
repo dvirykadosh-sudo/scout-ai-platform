@@ -203,14 +203,16 @@ export function searchActivities(db, f = {}) {
     where.push("(author LIKE ? ESCAPE '\\' OR instructor LIKE ? ESCAPE '\\')");
     p.push(`%${escapeLike(f.author)}%`, `%${escapeLike(f.author)}%`);
   }
-  const order =
+  // שלב 73: בדיקת בעלות עצמית (Object.hasOwn), כדי ש-"constructor" או "__proto__" לא ייכנסו ל-ORDER BY גם אם האימות ייחלש
+  const ORDERS =
     {
       duration: "duration_min ASC, id ASC",
       title: "title COLLATE NOCASE ASC",
       new: "created_at DESC, id DESC",
       rating: `COALESCE(${RATING_SQL}, 0) DESC, ${RATING_COUNT_SQL} DESC, id DESC`,
       popular: `(${RATING_COUNT_SQL} + ${RUN_COUNT_SQL}) DESC, COALESCE(${RATING_SQL}, 0) DESC, id DESC`,
-    }[f.sort] || "created_at DESC, id DESC";
+    };
+  const order = (Object.hasOwn(ORDERS, f.sort) && ORDERS[f.sort]) || "created_at DESC, id DESC";
   const page = Math.max(1, f.page || 1);
   const pageSize = Math.min(50, Math.max(1, f.pageSize || 12));
   const w = where.join(" AND ");
