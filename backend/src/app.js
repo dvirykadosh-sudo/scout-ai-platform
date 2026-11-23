@@ -39,6 +39,8 @@ import { registerV57Routes } from "./routes-v57.js";
 import { registerV69Routes } from "./routes-v69.js";
 import { registerLive70Routes } from "./routes-live70.js";
 import { registerResourceRoutes } from "./routes-res71.js";
+import { registerLab74Routes } from "./routes-lab74.js";
+import { importReport } from "./lab74.js";
 import { registerLuxRoutes } from "./routes-lux.js";
 import { registerV56Routes } from "./routes-v56.js";
 import { cleanDict } from "./human-voice.js";
@@ -204,7 +206,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
 
   // ── יצירת פעולות בלי התחברות (עותק, התאמה, "מהיר"...): מגבלה לכתובת ותקרה יומית כללית נגד הצפת המסד ──
   const anonCreateIp = limiter(60 * 60_000, 15);
-  const ANON_CREATE = /^\/api\/activities\/(quick|generate|emergency|import|import-parsed|\d+\/(duplicate|similar|upgrade-peak|shorten|adapt))\/?$/; // שלב 58: נוספו generate/emergency/import/import-parsed
+  const ANON_CREATE = /^\/api\/activities\/(quick|generate|emergency|import|import-parsed|\d+\/(duplicate|similar|upgrade-peak|shorten|adapt|adapt-multi|for-group))\/?$/; // שלב 58: נוספו generate/emergency/import/import-parsed. שלב 74: adapt-multi ו-for-group יוצרים עותק לאורחים בדיוק כמו adapt
   app.use((req, res, next) => {
     if (req.method !== "POST" || !ANON_CREATE.test(req.path) || optionalAuth(req)) return next();
     // שלב 64: מכסה יומית לכל כתובת, כדי שמשתמש אחד לא ימלא את המכסה הכללית לכולם
@@ -689,7 +691,8 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
     try {
       const name = String(req.query.name || "");
       const text = await extractText(Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0), name);
-      res.json(parseLooseDoc(text, name));
+      const parsed = parseLooseDoc(text, name);
+      res.json({ ...parsed, report: importReport(db, parsed) }); // שלב 74: מה להשלים לפני הפרסום
     } catch (e) {
       res.status(e.status || 422).json(fail("EXTRACT", e.status ? e.message : "לא הצלחתי לקרוא את הקובץ"));
     }
@@ -756,6 +759,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerV69Routes(app, { db, limiter, fail, requireUser });
   registerLive70Routes(app, { db, limiter, fail, requireUser });
   registerResourceRoutes(app, { db, limiter, fail, requireUser });
+  registerLab74Routes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion });
   // שלב 58: מנוע הוואטסאפ (תור, תבניות, בוט, גשר מקומי). בבדיקות אין טיימרים.
   registerWaRoutes(app, { db, limiter, fail, requireAdmin, audit, notifyAdmins, publicUrl: config.publicUrl }, { startScheduler: config.nodeEnv !== "test" });
   registerPilotRoutes(app, { db, mailer, config, limiter, fail, requireUser, requireAdmin, audit });

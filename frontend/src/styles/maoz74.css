@@ -1,0 +1,87 @@
+/* שלב 74: ציר זמן, כרטיס איכות, הבדלי גרסאות, השוואה וכרטיס כיס A5. */
+
+/* ציר זמן של הפעולה (פריט 8). הצבע לא נושא משמעות לבדו: לכל שלב יש גם כתובית בתחתית, והסיום מסומן בפסים. */
+.tl { margin: 12px 0; }
+.tl-bar { display: flex; gap: 2px; height: 18px; border-radius: 9px; overflow: hidden; border: 1px solid var(--line); background: var(--field); }
+.tl-seg { flex-basis: 0; min-width: 6px; background: var(--btn-bg); }
+.tl-opening { background: color-mix(in srgb, var(--btn-bg) 60%, var(--field)); }
+.tl-closing { background: repeating-linear-gradient(135deg, var(--btn-bg) 0 5px, color-mix(in srgb, var(--btn-bg) 55%, var(--field)) 5px 10px); }
+html.hc .tl-seg { background: var(--accent); }
+html.hc .tl-opening { background: var(--field); outline: 2px solid var(--accent); outline-offset: -2px; }
+.tl-legend { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.tl-dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; border: 1px solid var(--line); }
+.tl-warn { margin: 8px 0 0; padding: 8px 12px 8px 12px; list-style: none; border-radius: var(--r-md, 10px); border: 1px solid var(--line); background: rgba(217, 138, 0, 0.15); }
+.tl-warn li + li { margin-top: 4px; }
+.tl-warn li::before { content: "! "; font-weight: 800; }
+.tl-high { font-weight: 700; }
+
+/* כרטיס איכות (פריטים 1, 2, 5, 6) */
+.q-why { font-weight: 600; }
+.q-dims { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 8px; }
+.q-dims li { display: grid; grid-template-columns: minmax(96px, 150px) 1fr 36px; gap: 10px; align-items: center; }
+.q-meter { display: block; height: 12px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); overflow: hidden; }
+.q-meter > span { display: block; height: 100%; background: var(--btn-bg); }
+html.hc .q-meter > span { background: var(--accent); }
+.q-num { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.q-h { margin: 16px 0 4px; }
+
+/* הצעות תגיות */
+.tag-suggest { margin: 8px 0; }
+
+/* הבדלי גרסאות שורה אחרי שורה (פריט 15). הסימנים + ו- והקו החוצה מבדילים גם בלי צבע. */
+.diff-wrap { margin: 8px 0; }
+.diff-h { margin: 12px 0 4px; font-weight: 700; }
+.diff { margin: 0 0 8px; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 0.95rem; }
+.diff span { display: block; }
+.diff-add { background: rgba(21, 128, 61, 0.18); }
+.diff-del { background: rgba(185, 28, 28, 0.16); text-decoration: line-through; text-decoration-thickness: 1px; }
+.diff-skip { opacity: 0.75; font-style: italic; }
+
+/* התאמה לתנאים: שדות קבוצה */
+.adapt-group { border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; padding: 8px 12px; }
+.adapt-group legend { font-weight: 700; padding: 0 6px; }
+.adapt-group .check { display: flex; gap: 8px; align-items: center; min-height: 44px; }
+.filters-access { border: 0; padding: 0; margin: 0; }
+.filters-access legend { font-weight: 700; margin-bottom: 4px; }
+.filters-access .check { display: inline-flex; margin-inline-end: 16px; }
+.saved-fresh { font-size: 0.75rem; padding: 0 8px; }
+
+/* השוואה (פריט 13): גוללת בתוך המכולה שלה, כדי שלא תרחיב את העמוד ב-390px */
+.cmp-wrap { position: relative; overflow-x: auto; }
+.cmp { border-collapse: collapse; width: 100%; min-width: 520px; }
+.cmp th, .cmp td { border: 1px solid var(--line); padding: 8px 10px; text-align: start; vertical-align: top; }
+.cmp tbody th { background: var(--field); font-weight: 700; white-space: nowrap; }
+.cmp thead th { min-width: 150px; }
+
+/* דוח ייבוא (פריט 16) */
+.imp-report { margin: 8px 0 12px; }
+
+/* כרטיס כיס A5 (פריט 18): הגיליון לבן ושחור תמיד, גם במצב כהה וגם בניגודיות גבוהה, כי הוא נועד לנייר */
+.pocket { page: pocket; box-sizing: border-box; width: 148mm; max-width: 100%; min-height: 210mm; margin: 12px auto; padding: 8mm; background: #fff; border: 1px solid #9ca3af; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25); font-size: 10pt; line-height: 1.4; }
+.pocket, .pocket * { color: #111 !important; }
+.pocket-head { display: flex; justify-content: space-between; gap: 8mm; align-items: flex-start; border-bottom: 1.5px solid #111; padding-bottom: 4mm; margin-bottom: 3mm; }
+.pocket-title { margin: 0 0 2mm; font-size: 15pt; line-height: 1.2; }
+.pocket-meta { margin: 0 0 1mm; }
+.pocket-qr { margin: 0; text-align: center; font-size: 7pt; width: 28mm; flex: none; }
+.pocket-qr img { display: block; width: 26mm; height: 26mm; margin: 0 auto 1mm; }
+.pocket-stages { list-style: decimal; margin: 0 0 3mm; padding-inline-start: 5mm; }
+.pocket-stages li { margin-bottom: 2.5mm; break-inside: avoid; }
+.pocket-stages p { margin: 0; }
+.pocket-stage-head { display: flex; justify-content: space-between; gap: 4mm; border-bottom: 1px dotted #6b7280; margin-bottom: 1mm !important; }
+.pocket-box { border: 1px solid #111; border-radius: 2mm; padding: 2mm 3mm; margin-bottom: 3mm; }
+.pocket-box p { margin: 0 0 1mm; }
+.pocket-note { font-weight: 700; margin: 0 0 3mm; }
+.pocket-foot { display: flex; justify-content: space-between; gap: 4mm; font-size: 7.5pt; border-top: 1px solid #6b7280; padding-top: 2mm; }
+.pocket-tools { max-width: 148mm; margin-inline: auto; }
+
+@page pocket { size: A5 portrait; margin: 0; }
+@media print {
+  .pocket { width: auto; min-height: 0; margin: 0; border: 0; box-shadow: none; background: #fff !important; }
+}
+
+@media (max-width: 560px) {
+  .q-dims li { grid-template-columns: 90px 1fr 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .q-meter > span { transition: none; }
+}

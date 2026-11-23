@@ -164,6 +164,8 @@ export interface ParsedDoc {
   stages: { name: string; minutes: number; layer: string; content: string }[];
   durationMin: number;
   warnings: string[];
+  /** שלב 74: דוח מוכנות לפרסום (חסר בטיוטות שנוצרו מצילום) */
+  report?: import("./lab74").ImportReport;
 }
 
 /** Sends one Word or text file to the server and gets a parsed activity draft back. */

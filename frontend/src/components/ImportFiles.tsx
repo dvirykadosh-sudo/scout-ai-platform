@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ApiError, api, errorMessage, parseImportFile, storageGet, type ParsedDoc } from "@/lib/api";
 import { AGE_GROUPS } from "@/lib/constants";
 import type { Activity } from "@/lib/types";
+import { ImportReportView } from "./Lab74More";
 import { useAuth, useToast } from "./Providers";
 import { ScanSheet } from "./ScanSheet";
 import { Field } from "./ui";
@@ -146,6 +147,7 @@ export function ImportFiles() {
                         ))}
                       </ul>
                     )}
+                    {it.draft.report && <ImportReportView report={it.draft.report} />}
                     <div className="form-grid">
                       <Field label="שם הפעולה" htmlFor={`imp-t-${n}`}>
                         <input id={`imp-t-${n}`} value={it.title} onChange={(e) => patch(it.key, { title: e.target.value })} disabled={!!it.saved} />

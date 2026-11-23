@@ -20,6 +20,7 @@ import { RunsLog } from "./RunsLog";
 import { isAdminUser, useAuth } from "./Providers";
 import { ActivitySkeleton } from "./lux/ActivitySkeleton";
 import { PageToc } from "./Comfort54";
+import { PrivacyPanel, QualityCard, TimelineBar } from "./Lab74";
 import { CostPanel, Reactions, VerifiedBadge, pushRecent } from "./Discover54";
 
 export function ActivityPage({ initial = null }: { initial?: Activity | null }) {
@@ -85,6 +86,7 @@ export function ActivityPage({ initial = null }: { initial?: Activity | null }) 
         </p>
         <ActivityMeta a={a} />
         <ActivityStats a={a} />
+        <TimelineBar stages={a.stages} planned={a.durationMin} />
         <ActivityBody a={a} />
         <ActivityActions activity={a} onChanged={load} onDeleted={() => router.push("/library")} />
         <PosterPanel a={a} />
@@ -103,6 +105,8 @@ export function ActivityPage({ initial = null }: { initial?: Activity | null }) 
       <CostPanel activityId={a.id} />
       <PrepChecklist activity={a} />
       <SafetyPanel activityId={a.id} canManage={!!user && (isAdminUser(user) || (!a.isSeed && a.ownerId === user.id))} onChanged={load} />
+      <QualityCard activityId={a.id} />
+      <PrivacyPanel activityId={a.id} canManage={!!user && (isAdminUser(user) || (!a.isSeed && a.ownerId === user.id))} onChanged={load} />
       <NewbieTips activityId={a.id} />
       <DiscussionQuestions activityId={a.id} />
       <SummaryBox activityId={a.id} />

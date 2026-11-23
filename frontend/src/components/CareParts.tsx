@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { API_URL, ApiError, api, errorMessage, fmtDate } from "@/lib/api";
+import type { SafetyScan } from "@/lib/lab74";
 import { useAuth, useToast } from "./Providers";
 import { MergeTool } from "./CommunityParts";
 import { Field, Modal } from "./ui";
@@ -24,12 +25,8 @@ async function downloadAuth(path: string, token: string | null, fallbackName: st
 }
 
 // ───────── 34. בטיחות ─────────
-interface Safety {
-  risks: { id: string; label: string; stages: string[]; suggestion: string; covered: boolean }[];
-  missingCount: number;
-  ok: boolean;
-  addition: string;
-}
+type Safety = SafetyScan;
+const LEVEL_LABEL = { ok: "תקין", attention: "כדאי לשים לב", high: "דורש טיפול לפני הפעלה" } as const;
 
 export function SafetyPanel({ activityId, canManage, onChanged }: { activityId: number; canManage: boolean; onChanged: () => void }) {
   const { token } = useAuth();
@@ -38,7 +35,7 @@ export function SafetyPanel({ activityId, canManage, onChanged }: { activityId: 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const load = useCallback(() => {
-    api<Safety>(`/api/activities/${activityId}/safety`)
+    api<Safety>(`/api/activities/${activityId}/safety-scan`)
       .then(setS)
       .catch((e) => setError(errorMessage(e)));
   }, [activityId]);
@@ -47,7 +44,7 @@ export function SafetyPanel({ activityId, canManage, onChanged }: { activityId: 
   const apply = async () => {
     setBusy(true);
     try {
-      await api(`/api/activities/${activityId}/safety/apply`, { method: "POST", token, body: {} });
+      await api(`/api/activities/${activityId}/safety-scan/apply`, { method: "POST", token, body: {} });
       toast("הנחיות הבטיחות נוספו, והגרסה הקודמת נשמרה בהיסטוריה", { kind: "success" });
       load();
       onChanged();
@@ -62,6 +59,11 @@ export function SafetyPanel({ activityId, canManage, onChanged }: { activityId: 
       <summary>
         בדיקת בטיחות{s && !s.ok ? ` (${s.missingCount} הערות)` : ""}
       </summary>
+      {s && s.risks.length > 0 && (
+        <p>
+          <span className={s.level === "ok" ? "pill pill-ok" : "pill pill-warn"}>{LEVEL_LABEL[s.level]}</span> <span className="hint">ציון כיסוי: {s.score} מתוך 100</span>
+        </p>
+      )}
       {error && (
         <p className="error-box" role="alert">
           {error}
@@ -73,7 +75,7 @@ export function SafetyPanel({ activityId, canManage, onChanged }: { activityId: 
           {s.risks.map((r) => (
             <li key={r.id}>
               <span>
-                <strong>{r.label}</strong> ({r.stages.join(", ")})
+                <strong>{r.label}</strong> {r.stages?.length ? `(${r.stages.join(", ")})` : r.origin === "context" ? "(לפי הרכב הפעולה)" : ""}
                 <br />
                 <span className="hint">{r.covered ? "כבר מופיע בהערות הבטיחות." : r.suggestion}</span>
               </span>

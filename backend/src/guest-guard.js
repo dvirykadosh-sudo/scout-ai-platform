@@ -47,3 +47,7 @@ export function scrubDeep(v, depth = 0) {
   }
   return v;
 }
+
+/** שלב 74: אותם דפוסים, לשימוש בסריקת פרטיות (מציאת המקום המדויק, ולא רק הסרה). */
+export const CONTACT_PATTERNS = { email: [EMAIL], link: [URL_SCHEME, URL_SHORT, URL_BARE], phone: [PHONE_IL, PHONE_GROUPS, LONG_DIGITS] };
+export const CONTACT_MARK = MARK;

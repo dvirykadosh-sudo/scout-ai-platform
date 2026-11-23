@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage, fmtDate } from "@/lib/api";
 import { addDaysIso, fmtDay, todayLocal, type ScheduleItem } from "@/lib/organizer";
 import { isAdminUser, useAuth, useToast } from "./Providers";
+import { TagSuggestions } from "./Lab74";
 import { Field, Skeleton } from "./ui";
 
 interface Brief {
@@ -56,6 +57,7 @@ export function TagsPanel({ activityId }: { activityId: number }) {
           </li>
         ))}
       </ul>
+      <TagSuggestions activityId={activityId} current={tags} full={tags.length >= 8} onPick={(t) => void save([...tags, t])} />
       <form
         className="actions"
         onSubmit={(e) => {

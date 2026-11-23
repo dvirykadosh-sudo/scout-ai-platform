@@ -207,6 +207,19 @@ describe("שלב 58: מפת הנתיבים", () => {
   "GET /api/field/rooms/:code", // שלב 69: מצב חדר סנכרון צוות לפי קוד בן שש תווים, בלי שמות; הגבלת קצב. מדריך מחליף מצטרף בלי חשבון
   "GET /api/field/rooms/:code/stream", // שלב 69: SSE של אותו חדר; מוגבל במספר מחוברים ובקצב
   "POST /api/field/rooms/:code/state", // שלב 69: עדכון שלב וטיימר רק ממי שמחובר כרגע לחדר (מזהה חיבור), הגבלת קצב
+  "GET /api/activities/:id/quality-report", // שלב 74: ציון איכות שמחושב מטקסט פעולה פומבית. לקריאה בלבד, בלי נתונים אישיים; פעולה בארכיון נותנת 404
+  "GET /api/activities/:id/age-fit", // שלב 74: התאמה לגיל, אותו עיקרון
+  "GET /api/activities/:id/goal", // שלב 74: יעד מדיד מהערך המוביל של פעולה פומבית
+  "GET /api/activities/:id/safety-scan", // שלב 74: סריקת בטיחות מורחבת של פעולה פומבית (קריאה בלבד; ההוספה לפעולה דורשת בעלות)
+  "GET /api/activities/:id/access-tags", // שלב 74: תגיות נגישות שנגזרות מהתוכן הפומבי
+  "GET /api/access-tags", // שלב 74: רשימת קבועה של שבע תגיות נגישות
+  "GET /api/adapt/conditions-all", // שלב 74: רשימת התנאים להתאמה, תוכן קבוע
+  "GET /api/compare", // שלב 74: השוואה בין 2–3 פעולות פומביות (מזהים בלבד, בלי ארכיון)
+  "GET /api/holidays/coverage", // שלב 74: כמה פעולות יש במאגר הפומבי לכל חג קרוב
+  "POST /api/activities/check-duplicate", // שלב 74: בדיקת כפילות מול פעולות שפורסמו בלבד, עם הגבלת קצב ואימות קלט קפדני
+  "POST /api/activities/import-report", // שלב 74: דוח מוכנות לטיוטה (בלי שמירה), עם הגבלת קצב ואימות קלט קפדני
+  "POST /api/activities/:id/adapt-multi", // שלב 74: כמו /adapt הקיים: עותק מותאם של פעולה פומבית (אורח מקבל UNLISTED, כמו שם), עם הגבלת כתיבה
+  "POST /api/activities/:id/for-group", // שלב 74: כמו /adapt: עותק לשכבה אחרת (אורח מקבל UNLISTED, בלי בעלים), עם הגבלת כתיבה ואימות קפדני
   "POST /api/assist/stations",
   "POST /api/assist/swap",
   "POST /api/auth/2fa",

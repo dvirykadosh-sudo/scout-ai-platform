@@ -5,6 +5,7 @@ import { ApiError, api, errorMessage, fmtDate } from "@/lib/api";
 import { diffSnapshots } from "@/lib/diff";
 import type { ActivitySnapshot, VersionItem } from "@/lib/types";
 import { useToast } from "./Providers";
+import { VersionLineDiff } from "./Lab74";
 import { Modal } from "./ui";
 
 export function VersionsModal({ open, activityId, token, onClose, onRestored, onAuthError }: { open: boolean; activityId: number; token: string | null; onClose: () => void; onRestored: () => void; onAuthError: (e: unknown) => boolean }) {
@@ -12,10 +13,12 @@ export function VersionsModal({ open, activityId, token, onClose, onRestored, on
   const [data, setData] = useState<{ current: ActivitySnapshot; items: VersionItem[] } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
+  const [lineFor, setLineFor] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setData(null);
+    setLineFor(null);
     setError("");
     api<{ current: ActivitySnapshot; items: VersionItem[] }>(`/api/activities/${activityId}/versions`, { token })
       .then(setData)
@@ -70,9 +73,17 @@ export function VersionsModal({ open, activityId, token, onClose, onRestored, on
                         ))}
                       </ul>
                     )}
-                    <button type="button" className="btn btn-small" disabled={busy === v.id || changes.length === 0} onClick={() => restore(v)}>
-                      {busy === v.id ? "משחזר..." : "שחזור הגרסה הזאת"}
-                    </button>
+                    {lineFor === v.id && <VersionLineDiff activityId={activityId} versionId={v.id} token={token} />}
+                    <div className="actions">
+                      {changes.length > 0 && (
+                        <button type="button" className="btn btn-small" aria-pressed={lineFor === v.id} onClick={() => setLineFor(lineFor === v.id ? null : v.id)}>
+                          {lineFor === v.id ? "הסתרת פירוט השורות" : "פירוט שורה אחרי שורה"}
+                        </button>
+                      )}
+                      <button type="button" className="btn btn-small" disabled={busy === v.id || changes.length === 0} onClick={() => restore(v)}>
+                        {busy === v.id ? "משחזר..." : "שחזור הגרסה הזאת"}
+                      </button>
+                    </div>
                   </details>
                 </li>
               );

@@ -31,6 +31,7 @@ import "../styles/maoz69.css";
 import "../styles/maoz70.css";
 import "../styles/maoz71.css";
 import "../styles/maoz72.css";
+import "../styles/maoz74.css";
 import { Providers } from "@/components/Providers";
 import { EagleIntroGate } from "@/components/lux/EagleIntroGate";
 import { PwaSupport } from "@/components/PwaSupport";

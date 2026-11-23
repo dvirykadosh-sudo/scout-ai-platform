@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, downloadBooklet, errorMessage, fmtDate } from "@/lib/api";
 import type { Activity, Run } from "@/lib/types";
 import { SecurityPlus } from "./AccountV52";
+import { WorkedAndDiversity } from "./Lab74More";
 import { ChangePassword } from "./AuthForms";
 import { LampLogin } from "./login/LampLogin";
 import { useAuth, useToast } from "./Providers";
@@ -313,6 +314,7 @@ export function AccountPanel() {
       <MyActivities />
       <Forgotten />
       <MyTags />
+      <WorkedAndDiversity />
       <SharedWithMe />
       <MyRuns />
       <MyCollections />

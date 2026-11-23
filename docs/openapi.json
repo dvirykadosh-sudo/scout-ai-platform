@@ -6,6 +6,24 @@
   "description": "מפת הנתיבים שנוצרה אוטומטית מהשרת (backend/scripts/gen-openapi.mjs). שגיאות מוחזרות כ-{error:{code,message,fields?}}."
  },
  "paths": {
+  "/api/access-tags": {
+   "get": {
+    "tags": [
+     "access-tags"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/activities": {
    "get": {
     "tags": [
@@ -132,7 +150,63 @@
     }
    }
   },
+  "/api/activities/{id}/access-tags": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/activities/{id}/adapt": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/adapt-multi": {
    "post": {
     "tags": [
      "activities"
@@ -190,6 +264,34 @@
   },
   "/api/activities/{id}/add-story": {
    "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/age-fit": {
+   "get": {
     "tags": [
      "activities"
     ],
@@ -418,6 +520,62 @@
     }
    }
   },
+  "/api/activities/{id}/for-group": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/goal": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/activities/{id}/newbie": {
    "get": {
     "tags": [
@@ -474,6 +632,90 @@
     }
    },
    "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/privacy": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/privacy/redact": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/quality-report": {
+   "get": {
     "tags": [
      "activities"
     ],
@@ -748,6 +990,62 @@
     }
    }
   },
+  "/api/activities/{id}/safety-scan": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/{id}/safety-scan/apply": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/activities/{id}/safety/apply": {
    "post": {
     "tags": [
@@ -922,6 +1220,34 @@
     }
    }
   },
+  "/api/activities/{id}/tag-suggestions": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/activities/{id}/tags": {
    "get": {
     "tags": [
@@ -1068,6 +1394,34 @@
     }
    }
   },
+  "/api/activities/{id}/versions/diff": {
+   "get": {
+    "tags": [
+     "activities"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/activities/{id}/whatsapp": {
    "get": {
     "tags": [
@@ -1082,6 +1436,24 @@
        "type": "string"
       }
      }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/activities/check-duplicate": {
+   "post": {
+    "tags": [
+     "activities"
     ],
     "responses": {
      "200": {
@@ -1186,6 +1558,24 @@
     }
    }
   },
+  "/api/activities/import-report": {
+   "post": {
+    "tags": [
+     "activities"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/activities/prompt": {
    "post": {
     "tags": [
@@ -1223,6 +1613,24 @@
    }
   },
   "/api/adapt/conditions": {
+   "get": {
+    "tags": [
+     "adapt"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/adapt/conditions-all": {
    "get": {
     "tags": [
      "adapt"
@@ -5772,6 +6180,24 @@
     }
    }
   },
+  "/api/compare": {
+   "get": {
+    "tags": [
+     "compare"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/cost/estimate": {
    "post": {
     "tags": [
@@ -6174,6 +6600,24 @@
    "get": {
     "tags": [
      "health"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/holidays/coverage": {
+   "get": {
+    "tags": [
+     "holidays"
     ],
     "responses": {
      "200": {
@@ -6902,6 +7346,24 @@
     }
    }
   },
+  "/api/me/diversity": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/me/export": {
    "get": {
     "tags": [
@@ -7164,6 +7626,114 @@
   },
   "/api/me/runs": {
    "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/saved-searches": {
+   "get": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/saved-searches/{id}": {
+   "delete": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/saved-searches/{id}/seen": {
+   "post": {
+    "tags": [
+     "me"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/saved-searches/import": {
+   "post": {
     "tags": [
      "me"
     ],
@@ -7582,6 +8152,24 @@
   },
   "/api/me/verify/request": {
    "post": {
+    "tags": [
+     "me"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/me/worked": {
+   "get": {
     "tags": [
      "me"
     ],

@@ -132,8 +132,9 @@ await step("run log: ratings and suggestions", async () => {
 
 await step("adapt modal lists the new group conditions", async () => {
   await page.getByRole("button", { name: "התאמה לתנאים" }).click();
-  const opts = await page.getByLabel("מה התנאים?").locator("option").allInnerTexts();
-  ok(opts.length === 14 && opts.includes("בנים ובנות יחד") && opts.includes("קבוצה ותיקה וחזקה"), "fourteen conditions: " + opts.length);
+  await page.getByRole("dialog").getByLabel("חושך או ערב", { exact: true }).waitFor(); // הרשימה המלאה נטענת מהשרת אחרי שהחלון נפתח
+  const opts = await page.getByRole("dialog").locator("label.check").allInnerTexts();
+  ok(opts.length === 17 && opts.includes("בנים ובנות יחד") && opts.includes("קבוצה ותיקה וחזקה"), "seventeen conditions: " + opts.length);
   await page.keyboard.press("Escape");
 });
 

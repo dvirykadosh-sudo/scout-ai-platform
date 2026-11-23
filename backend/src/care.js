@@ -43,8 +43,8 @@ export function safetyAddition(a) {
 // ───────────────────────── 42. פעולות דומות וכפילויות ─────────────────────────
 
 const STOP = new Set(["של", "על", "עם", "את", "אל", "הם", "היא", "הוא", "אנחנו", "כל", "או", "גם", "לא", "כי", "אם", "זה", "זו", "אין", "יש", "פעולה", "פעולת", "מדריך", "חניכים", "קבוצה", "דקות"]);
-const tokens = (s) => new Set(String(s || "").replace(/[^א-ת\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w)));
-const sig = (a) => new Set([...tokens(a.title), ...tokens(a.title), ...tokens(a.leadingValue), ...tokens(a.tags.join(" ")), ...tokens(a.stages[1]?.content)]);
+export const tokens = (s) => new Set(String(s || "").replace(/[^א-ת\s]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w)));
+export const sig = (a) => new Set([...tokens(a.title), ...tokens(a.title), ...tokens(a.leadingValue), ...tokens(a.tags.join(" ")), ...tokens(a.stages[1]?.content)]);
 
 export function jaccard(x, y) {
   let both = 0;

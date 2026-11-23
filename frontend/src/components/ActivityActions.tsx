@@ -8,6 +8,7 @@ import { AGE_GROUPS } from "@/lib/constants";
 import type { Activity } from "@/lib/types";
 import { EditActivityModal } from "./EditActivityModal";
 import { AdaptModal } from "./AdaptModal";
+import { ForGroupModal } from "./Lab74";
 import { CollectionModal } from "./CollectionModal";
 import { AddStoryModal } from "./AddStoryModal";
 import { MyStoryModal } from "./Story56";
@@ -44,6 +45,7 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
   const [shareOpen, setShareOpen] = useState(false);
   const [verOpen, setVerOpen] = useState(false);
   const [adaptOpen, setAdaptOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
   const [colOpen, setColOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
@@ -173,6 +175,9 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
             <button type="button" className="btn" onClick={() => setAdaptOpen(true)}>
               התאמה לתנאים
             </button>
+            <button type="button" className="btn" onClick={() => setGroupOpen(true)}>
+              אותה פעולה, שכבה אחרת
+            </button>
             <button type="button" className="btn" onClick={() => setColOpen(true)}>
               הוספה לאוסף
             </button>
@@ -185,6 +190,12 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
             </Link>
             <Link className="btn" href={`/library/${activity.id}/brief`}>
               דף למדריך מחליף
+            </Link>
+            <Link className="btn" href={`/library/${activity.id}/pocket`}>
+              כרטיס כיס A5
+            </Link>
+            <Link className="btn" href={`/compare?ids=${activity.id}`}>
+              השוואה לפעולה אחרת
             </Link>
             <OfflineButton activityId={activity.id} />
             <button type="button" className="btn" onClick={() => setWaOpen(true)}>
@@ -252,6 +263,7 @@ export function ActivityActions({ activity, onChanged, onDeleted, compact = fals
       {canManage && <AddStoryModal open={storyOpen} onClose={() => setStoryOpen(false)} activity={activity} onChanged={onChanged} />}
       {canManage && <MyStoryModal open={myStoryOpen} onClose={() => setMyStoryOpen(false)} activity={activity} onChanged={onChanged} />}
       <AdaptModal open={adaptOpen} onClose={() => setAdaptOpen(false)} activity={activity} />
+      <ForGroupModal open={groupOpen} onClose={() => setGroupOpen(false)} activity={activity} />
       <CollectionModal open={colOpen} onClose={() => setColOpen(false)} activityId={activity.id} />
       <ShareModal open={fbOpen} onClose={() => setFbOpen(false)} activityId={activity.id} title={activity.title} path={`/feedback/${activity.id}`} heading="משוב מחניכים" intro="הקישור פותח שאלון קצר ואנונימי של שלוש שאלות. אפשר להקרין את ה-QR בסוף הפעולה." />
 

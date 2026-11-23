@@ -59,7 +59,7 @@ await step("create", async () => { actId = await makeActivity("בדיקת סבב
 
 await step("adapt", async () => {
   await page.getByRole("button", { name: "התאמה לתנאים" }).click();
-  await page.getByRole("dialog").getByLabel("מה התנאים?").selectOption("heat");
+  await page.getByRole("dialog").getByLabel("חום", { exact: true }).check();
   await page.getByRole("button", { name: "יצירת עותק מותאם" }).click();
   await page.getByRole("heading", { level: 1, name: /גרסת חום/ }).waitFor();
   ok(true, "adapted copy created");

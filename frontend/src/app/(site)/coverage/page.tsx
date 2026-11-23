@@ -1,5 +1,6 @@
 import { PageTitle } from "@/components/ui";
 import { CoveragePage } from "@/components/Pages54";
+import { HolidayCoverage } from "@/components/Lab74More";
 
 export const metadata = { title: "מפת כיסוי המאגר", description: "לכל ערך ולכל כיתה: כמה פעולות יש במאגר, ואילו פערים כדאי למלא." };
 
@@ -8,6 +9,7 @@ export default function Page() {
     <>
       <PageTitle lead="לכל ערך ולכל כיתה: כמה פעולות יש במאגר, ואילו פערים כדאי למלא.">מפת כיסוי המאגר</PageTitle>
       <CoveragePage />
+      <HolidayCoverage />
     </>
   );
 }

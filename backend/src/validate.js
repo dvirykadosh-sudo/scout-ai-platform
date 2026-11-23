@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AGE_GROUPS, METHOD_NAMES, ROLES, STAGE_NAMES } from "./shared/constants.js";
+import { ACCESS_IDS } from "./access-tags.js";
 import { styleSchema } from "./style.js";
 import { KIND_IDS } from "./kinds.js";
 
@@ -93,6 +94,7 @@ export const listQuerySchema = z.object({
   energetic: z.enum(["1"]).optional(),
   scouting: z.enum(["1"]).optional(),
   lightGear: z.enum(["1"]).optional(),
+  access: z.string().regex(new RegExp(`^(${ACCESS_IDS.join("|")})(,(${ACCESS_IDS.join("|")})){0,2}$`), "תגית נגישות לא מוכרת").optional(),
   author: text(60).optional(),
   minSize: z.coerce.number().int().min(1).max(200).optional(),
   maxSize: z.coerce.number().int().min(1).max(200).optional(),

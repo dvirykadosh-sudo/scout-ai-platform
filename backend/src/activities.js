@@ -2,6 +2,8 @@ import { nowIso } from "./db.js";
 import { gearLoad } from "./gear.js";
 import { notifyAdmins } from "./notify.js";
 import { scrubDeep } from "./guest-guard.js";
+import { hasAccess } from "./access-tags.js";
+import { privacyScan } from "./privacy-scan.js";
 
 export function rowToActivity(r) {
   if (!r) return null;
@@ -75,7 +77,11 @@ export function insertActivity(db, input) {
       a.kind ?? null,
     );
   const newId = Number(res.lastInsertRowid);
-  if ((a.status || "PUBLISHED") === "PENDING") notifyAdmins(db, "pending", `פעולה חדשה ממתינה לאישור: ${a.title}`, "/admin");
+  if ((a.status || "PUBLISHED") === "PENDING") {
+    // שלב 74: אם נמצאו פרטים אישיים אפשריים, האדמין רואה את זה כבר בהתראה
+    const pii = privacyScan({ title: a.title, leadingValue: a.leadingValue, equipment: a.equipment, safetyNotes: a.safetyNotes, conclusionNote: a.conclusionNote, stages: a.stages || [], tags: a.tags || [] }).count;
+    notifyAdmins(db, "pending", `פעולה חדשה ממתינה לאישור: ${a.title}${pii ? ` (נמצאו ${pii} פרטים אישיים אפשריים, כדאי לבדוק)` : ""}`, "/admin");
+  }
   return newId;
 }
 
@@ -189,6 +195,11 @@ export function searchActivities(db, f = {}) {
     where.push("duration_min <= ?");
     p.push(f.maxDuration);
   }
+  if (f.since) {
+    // שלב 74: רק פעולות חדשות מאז רגע מסוים (חיפושים שמורים בשרת). לא נחשף בכתובת הציבורית: הסכמה של הרשימה לא כוללת אותו
+    where.push("created_at > ?");
+    p.push(String(f.since));
+  }
   if (f.energetic) where.push("energetic_mode = 1");
   if (f.scouting) where.push("active_scouting = 1");
   if (f.minSize) {
@@ -218,9 +229,11 @@ export function searchActivities(db, f = {}) {
   const w = where.join(" AND ");
   let total;
   let items;
-  if (f.lightGear) {
+  // שלב 74: תגיות נגישות (f.access, מופרדות בפסיק) נגזרות מהטקסט, כמו "ציוד קל", ולכן גם הן מסוננות בקוד
+  const accessIds = f.access ? String(f.access).split(",").filter(Boolean) : [];
+  if (f.lightGear || accessIds.length) {
     // "ציוד קל" נגזר מטקסט חופשי, ולכן מסננים בקוד ולא ב-SQL
-    const all = db.prepare(`SELECT * FROM activities WHERE ${w} ORDER BY ${order}`).all(...p).map(rowToActivity).filter((a) => gearLoad(a.equipment) <= 1);
+    const all = db.prepare(`SELECT * FROM activities WHERE ${w} ORDER BY ${order}`).all(...p).map(rowToActivity).filter((a) => (!f.lightGear || gearLoad(a.equipment) <= 1) && hasAccess(a, accessIds));
     total = all.length;
     items = all.slice((page - 1) * pageSize, page * pageSize);
   } else {

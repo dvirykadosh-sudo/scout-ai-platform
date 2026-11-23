@@ -11,7 +11,8 @@ import { useFavorites } from "@/lib/favorites";
 import type { Activity, ListResponse } from "@/lib/types";
 import { ActivityActions } from "./ActivityActions";
 import { ActivityGlance } from "./ActivityView";
-import { useToast } from "./Providers";
+import { useAuth, useToast } from "./Providers";
+import { ACCESS_FILTERS, MAX_ACCESS_FILTERS, type SavedSearchRow } from "@/lib/lab74";
 import { Field, Skeleton } from "./ui";
 import { RecentlyViewed, SmartFallback, VoiceSearchButton } from "./Discover54";
 import { PosterThumb } from "./lux/Poster";
@@ -27,8 +28,11 @@ interface Adv {
   minSize: string;
   maxSize: string;
   author: string;
+  access: string[];
 }
-const NO_ADV: Adv = { energetic: false, scouting: false, lightGear: false, minSize: "", maxSize: "", author: "" };
+const NO_ADV: Adv = { energetic: false, scouting: false, lightGear: false, minSize: "", maxSize: "", author: "", access: [] };
+const ACCESS_CHOICES = ACCESS_FILTERS.filter((x) => x.id !== "lightGear");
+const ACCESS_IDS = new Set(ACCESS_FILTERS.map((x) => x.id));
 interface Saved {
   name: string;
   qs: string;
@@ -57,6 +61,8 @@ export function Library() {
   const [hydrated, setHydrated] = useState(false);
   const [suggest, setSuggest] = useState<string[]>([]);
   const [saved, setSaved] = useState<Saved[]>([]);
+  const [remote, setRemote] = useState<SavedSearchRow[] | null>(null);
+  const { token } = useAuth();
   const [saveName, setSaveName] = useState("");
   const [picked, setPicked] = useState<{ id: number; title: string }[]>([]);
   const [bookTitle, setBookTitle] = useState("חוברת פעולות");
@@ -155,6 +161,7 @@ export function Library() {
     if (adv.energetic) p.set("energetic", "1");
     if (adv.scouting) p.set("scouting", "1");
     if (adv.lightGear) p.set("lightGear", "1");
+    if (adv.access.length) p.set("access", adv.access.join(","));
     if (adv.minSize) p.set("minSize", adv.minSize);
     if (adv.maxSize) p.set("maxSize", adv.maxSize);
     if (adv.author.trim()) p.set("author", adv.author.trim());
@@ -171,13 +178,51 @@ export function Library() {
     setMaxD(g("maxDuration"));
     setMinRating(g("minRating"));
     setSort(g("sort") || "new");
-    setAdv({ energetic: g("energetic") === "1", scouting: g("scouting") === "1", lightGear: g("lightGear") === "1", minSize: g("minSize"), maxSize: g("maxSize"), author: g("author") });
+    setAdv({ energetic: g("energetic") === "1", scouting: g("scouting") === "1", lightGear: g("lightGear") === "1", minSize: g("minSize"), maxSize: g("maxSize"), author: g("author"), access: g("access").split(",").filter((x) => ACCESS_IDS.has(x)).slice(0, MAX_ACCESS_FILTERS) });
   }
-  const saveSearch = () => {
+  // חיפושים שמורים בחשבון: נטענים מהשרת, וחיפושים שנשמרו קודם בדפדפן עוברים אליו פעם אחת
+  const loadRemote = useCallback(async () => {
+    if (!token) return;
+    try {
+      let local: Saved[] = [];
+      try {
+        const l = JSON.parse(storageGet(SAVED_KEY) ?? "[]");
+        if (Array.isArray(l)) local = l.filter((x) => x && typeof x.name === "string" && typeof x.qs === "string").slice(0, 8);
+      } catch {
+        /* ignore */
+      }
+      if (local.length) {
+        await api("/api/me/saved-searches/import", { method: "POST", token, body: { items: local } });
+        storageSet(SAVED_KEY, "[]");
+        setSaved([]);
+      }
+      setRemote(await api<SavedSearchRow[]>("/api/me/saved-searches", { token, cache: "no-store" }));
+    } catch {
+      setRemote(null);
+    }
+  }, [token]);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (token) void loadRemote();
+    else setRemote(null);
+  }, [hydrated, token, loadRemote]);
+
+  const saveSearch = async () => {
     const name = saveName.trim();
     const qs = filterParams().toString();
     if (!name) return toast("תנו שם לחיפוש כדי לשמור אותו", { kind: "error" });
     if (!qs) return toast("אין מסננים לשמירה", { kind: "error" });
+    if (token && remote) {
+      try {
+        await api("/api/me/saved-searches", { method: "POST", token, body: { name, qs } });
+        setSaveName("");
+        toast("החיפוש נשמר בחשבון", { kind: "success" });
+        await loadRemote();
+      } catch (e) {
+        toast(errorMessage(e), { kind: "error" });
+      }
+      return;
+    }
     const next = [{ name, qs }, ...saved.filter((x) => x.name !== name)].slice(0, 8);
     setSaved(next);
     storageSet(SAVED_KEY, JSON.stringify(next));
@@ -189,6 +234,21 @@ export function Library() {
     setSaved(next);
     storageSet(SAVED_KEY, JSON.stringify(next));
   };
+  const removeRemote = async (row: SavedSearchRow) => {
+    try {
+      await api(`/api/me/saved-searches/${row.id}`, { method: "DELETE", token });
+      setRemote((l) => (l ? l.filter((x) => x.id !== row.id) : l));
+    } catch (e) {
+      toast(errorMessage(e), { kind: "error" });
+    }
+  };
+  const openRemote = (row: SavedSearchRow) => {
+    applyParams(new URLSearchParams(row.qs));
+    if (row.fresh > 0) {
+      setRemote((l) => (l ? l.map((x) => (x.id === row.id ? { ...x, fresh: 0 } : x)) : l));
+      void api(`/api/me/saved-searches/${row.id}/seen`, { method: "POST", token, body: {} }).catch(() => {});
+    }
+  };
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -197,7 +257,7 @@ export function Library() {
       toast("לא הצלחתי להעתיק את הקישור", { kind: "error" });
     }
   };
-  const advCount = [adv.energetic, adv.scouting, adv.lightGear, adv.minSize, adv.maxSize, adv.author.trim()].filter(Boolean).length;
+  const advCount = [adv.energetic, adv.scouting, adv.lightGear, adv.minSize, adv.maxSize, adv.author.trim(), adv.access.length > 0].filter(Boolean).length;
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
@@ -338,6 +398,23 @@ export function Library() {
                 <span>ציוד קל (עד פריט אחד)</span>
               </label>
             </div>
+            <fieldset className="field filters-access span-2">
+              <legend>נגישות (עד {MAX_ACCESS_FILTERS})</legend>
+              {ACCESS_CHOICES.map((t) => {
+                const on = adv.access.includes(t.id);
+                return (
+                  <label key={t.id} className="check">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={!on && adv.access.length >= MAX_ACCESS_FILTERS}
+                      onChange={() => setAdv({ ...adv, access: on ? adv.access.filter((x) => x !== t.id) : [...adv.access, t.id] })}
+                    />
+                    <span>{t.label}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
             <Field label="גודל קבוצה מינימלי" htmlFor="f-smin">
               <input id="f-smin" type="number" min={1} max={200} value={adv.minSize} onChange={(e) => setAdv({ ...adv, minSize: e.target.value })} />
             </Field>
@@ -354,14 +431,29 @@ export function Library() {
             <Field label="שם לחיפוש הנוכחי" htmlFor="f-save-name">
               <input id="f-save-name" value={saveName} maxLength={40} onChange={(e) => setSaveName(e.target.value)} />
             </Field>
-            <button type="button" className="btn" onClick={saveSearch}>
+            <button type="button" className="btn" onClick={() => void saveSearch()}>
               שמירת החיפוש
             </button>
             <button type="button" className="btn" onClick={copyLink}>
               העתקת קישור לחיפוש
             </button>
           </div>
-          {saved.length > 0 && (
+          {remote && remote.length > 0 && (
+            <ul className="chip-list" aria-label="חיפושים שמורים בחשבון">
+              {remote.map((x) => (
+                <li key={x.id}>
+                  <button type="button" className="btn btn-small" onClick={() => openRemote(x)}>
+                    {x.name}
+                    {x.fresh > 0 && <span className="pill pill-ok saved-fresh"> {x.fresh > 9 ? "9+" : x.fresh} חדשות</span>}
+                  </button>
+                  <button type="button" className="icon-btn" aria-label={`מחיקת החיפוש השמור ${x.name}`} onClick={() => void removeRemote(x)}>
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!remote && saved.length > 0 && (
             <ul className="chip-list" aria-label="חיפושים שמורים">
               {saved.map((x) => (
                 <li key={x.name}>
@@ -463,7 +555,7 @@ export function Library() {
       {picked.length > 0 && (
         <section className="booklet-bar glass" aria-label="חוברת פעולות">
           <p>
-            <strong>{picked.length}</strong> פעולות נבחרו לחוברת Word
+            <strong>{picked.length}</strong> פעולות נבחרו לחוברת Word (ואם נבחרו 2–3, אפשר גם להשוות)
           </p>
           <label className="sr-only" htmlFor="book-title">
             שם החוברת
@@ -475,6 +567,11 @@ export function Library() {
           <button type="button" className="btn" onClick={() => setBookOpen(true)}>
             עיון כספר
           </button>
+          {picked.length >= 2 && picked.length <= 3 && (
+            <Link className="btn" href={`/compare?ids=${picked.map((x) => x.id).join(",")}`}>
+              השוואה
+            </Link>
+          )}
           <button type="button" className="btn" onClick={() => setPicked([])}>
             ניקוי בחירה
           </button>
