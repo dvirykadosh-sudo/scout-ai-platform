@@ -1,25 +1,24 @@
 "use client";
 
 // עורך כתיבה חופשי, רעיונות 101–112.
+// שלב 75: פורק לרכיבים קטנים (כרטיס שלב, כרטיס פרטים, סרגל כלים, פס מצב, שמירה ושחזור, ווים) כדי שהקלדה בשלב אחד
+// תרנדר רק אותו. כאן נשאר הרכבה של הכול והפעולות על המסמך.
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, api, errorMessage, fmtDate, storageGet, storageSet } from "@/lib/api";
-import { AGE_GROUPS } from "@/lib/constants";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { api, errorMessage, fmtDate, storageGet, storageSet } from "@/lib/api";
 import { useAuth, useToast } from "./Providers";
 import { Field, Modal } from "./ui";
 import { ReadabilityModal, RunMode, ShareModal, SnippetsModal, clockTimes, distributeMinutes } from "./WriteMore";
-import { GroupsModal, ParentsModal, PRESETS, PrepPanel, SearchAllModal, SimilarNotice, icsFor, presetBlock } from "./WriteMore4";
+import { GroupsModal, ParentsModal, PrepPanel, SearchAllModal, SimilarNotice, icsFor, presetBlock } from "./WriteMore4";
 import { CommentsModal, cleanText, useDictation, wordDiff } from "./WriteMore3";
-import { ImportStagesModal, QuestionsModal, RunLogModal, ShortcutsModal, SummarySheet } from "./WriteMore2";
-import { BackupPlanModal, ReadinessModal, StationsModal, TourButton, TribeMethodsModal } from "./WriteFinal";
+import { ImportStagesModal, QuestionsModal, RunLogModal, SummarySheet } from "./WriteMore2";
+import { BackupPlanModal, ReadinessModal, StationsModal, TribeMethodsModal } from "./WriteFinal";
 import { ExportModal, ImportModal, PrepModal, PrintSheet } from "./WriteExtras";
 import { MoreToolsModal, OutdoorHint } from "./WriteV36";
-import { EditorProgress } from "./Polish";
 import { WritePulse } from "./v21/WritePulse";
-import { BlockPeers, TeamEdit } from "./v21/TeamEdit";
+import { TeamEdit } from "./v21/TeamEdit";
 import { GroupDnaCard } from "./v21/GroupDnaCard";
 import { useTeamLive } from "@/lib/useTeamLive";
-import { mergeBlocks, mergeFields } from "@/lib/blockmerge";
 import type { TransitionGame } from "@/lib/pulse";
 import { StageModeModal } from "./Depth3D2";
 import { ToolboxModal } from "./WriteV51";
@@ -28,24 +27,61 @@ import { GameRulesModal, HolidayModal, HooksModal, IllustrationsModal, MergeModa
 import { MapModal, PracticeModal, PrintablesModal, ReadAloudModal, StoryQuizModal } from "./WriteV47";
 import { AgeAdaptModal, SafetyModal, StageQuestionsModal, VoiceCheckModal } from "./WriteV39";
 import { GapsPanel, HelpModal, PrefsModal, SearchModal, StageCompare, useCatalog, type InsertFn } from "./WriteHelp";
-import { KINDS, KIND_LABEL, Md, countWords, emptyBlock, newBlockId, flatten, readAloud, sumMinutes, useHistory, type Block, type Doc, type Kind, type Snap } from "./WriteParts";
+import { KIND_LABEL, countWords, emptyBlock, newBlockId, flatten, sumMinutes, useHistory, type Block, type Doc, type Kind, type Snap } from "./WriteParts";
+import { BlockCard, type BlockApi } from "./WriteBlock";
+import { WriteMetaCard, type MetaApi } from "./WriteMetaCard";
+import { WriteToolbar } from "./WriteToolbar";
+import { StatusBar } from "./WriteStatus";
+import { FocusMode } from "./WriteFocus";
+import { FindPanel, NotesModal, StyleModal } from "./WriteFind";
+import { BlockHistoryModal, SideBySideModal, TrayModal } from "./WriteCompare";
+import { ReadMeModal } from "./WriteRead";
+import { ConflictBox, LeaveModal, LimitBanner, PrintPreviewModal, RecoverBox, ShortcutsPanel, UncheckedGate } from "./Write75";
+import { useDocSync } from "./WriteSync";
+import { lockMap, useBlockHistory, useBlockLock, useReorder, useStableApi } from "./WriteHooks75";
+import { LIMITS, blocksLeft, exportWarning, moveItem, shortcutAction, slashPlan, stripRange, trayParse, trayPrune, trayPush, trayRestore, type Hit, type LimitProblem, type SlashHit, type SlashId, type StyleIssue, type Trashed, type W75Block } from "@/lib/write75";
 
-const bufKey = (id: number) => `scout.write.buf.${id}`;
-const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-type Status = "saved" | "saving" | "dirty" | "offline" | "error" | "conflict";
+// רכיבים כבדים שאינם צריכים להתרנדר בכל הקלדה: הם מקבלים את הנוסח המושהה (useDeferredValue) ופעולות קבועות
+const GapsPanelM = memo(GapsPanel);
+const WritePulseM = memo(WritePulse);
+const SimilarNoticeM = memo(SimilarNotice);
+const PrepPanelM = memo(PrepPanel);
+const OutdoorHintM = memo(OutdoorHint);
+const TeamEditM = memo(TeamEdit);
+const SummarySheetM = memo(SummarySheet);
 
-interface Match {
-  b: number;
-  field: "title" | "text";
-  start: number;
-  end: number;
+/**
+ * חלון סגור לא מורכב בכלל: בלי זה כל אחד מ-45 החלונות רץ מחדש בכל הקלדה. אחרי הסגירה הוא נשאר רגע כדי שהדפדפן
+ * יחזיר את המיקוד לכפתור שפתח אותו, ואז יורד מהעץ.
+ */
+function Gate({ open, children }: { open: boolean; children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    const t = window.setTimeout(() => setMounted(false), 300);
+    return () => window.clearTimeout(t);
+  }, [open]);
+  return open || mounted ? <>{children}</> : null;
 }
+
 interface VersionRow {
   id: number;
   title: string;
   words: number;
   note: string | null;
   savedAt: string;
+}
+
+type Dlg = "" | "versions" | "search" | "prefs" | "export" | "import" | "prep" | "snip" | "share" | "readability" | "log" | "q" | "more" | "stages" | "keys" | "comments" | "searchAll" | "groups" | "parents" | "style" | "readMe" | "notes" | "tray" | "printA4" | "history";
+interface Cmp {
+  left: Snap;
+  right: Snap;
+  leftLabel: string;
+  rightLabel: string;
+  restore: boolean;
 }
 
 export function WriteEditor({ initial }: { initial: Doc }) {
@@ -55,275 +91,180 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const first: Snap = { title: initial.title, meta: initial.meta, blocks: initial.blocks };
   const h = useHistory(first);
   const { state } = h;
-  const rev = useRef(initial.rev);
-  // שלב 70: עריכת צוות. baseRef = הנוסח האחרון שאושר בשרת (נקודת המוצא למיזוג ברמת שלב).
-  const baseRef = useRef<{ rev: number; snap: Snap }>({ rev: initial.rev, snap: first });
-  const [teamN, setTeamN] = useState(0);
+  const dState = useDeferredValue(state);
   const role = initial.role ?? "owner";
+  const [teamN, setTeamN] = useState(0);
   const team = role === "editor" || teamN > 0;
-  const adoptSkip = useRef(false);
-  const quiet = useRef(false);
-  const [typing, setTyping] = useState(false);
-  const typingT = useRef<number | undefined>(undefined);
   const pullT = useRef<number | undefined>(undefined);
-  const [status, setStatus] = useState<Status>("saved");
-  const [statusMsg, setStatusMsg] = useState("");
-  const [savedAt, setSavedAt] = useState(initial.updatedAt);
-  const [conflict, setConflict] = useState<Doc | null>(null);
-  const [recover, setRecover] = useState<Snap | null>(null);
-  const seq = useRef(0);
-  const inflight = useRef(false);
-  const again = useRef(false);
-  const timer = useRef<number | undefined>(undefined);
-  const mounted = useRef(false);
-  const statusRef = useRef<Status>("saved");
-  const setSt = (s: Status, msg = "") => {
-    statusRef.current = s;
-    setStatus(s);
-    setStatusMsg(msg);
-  };
-
-  const [preview, setPreview] = useState<Set<string>>(new Set());
-  const [active, setActive] = useState(0);
-  const [focusMode, setFocusMode] = useState(false);
-  const [findOpen, setFindOpen] = useState(false);
-  const [find, setFind] = useState("");
-  const [repl, setRepl] = useState("");
-  const [cursor, setCursor] = useState(-1);
-  const [findMsg, setFindMsg] = useState("");
-  const [verOpen, setVerOpen] = useState(false);
-  const [versions, setVersions] = useState<VersionRow[] | null>(null);
-  const [verView, setVerView] = useState<{ id: number; text: string; title: string; snap: Snap } | null>(null);
-  const [helpFor, setHelpFor] = useState<string | null>(null);
-  const [prefsOpen, setPrefsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [gapsOn, setGapsOn] = useState(true);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [prepOpen, setPrepOpen] = useState(false);
-  const [snipOpen, setSnipOpen] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [readOpen, setReadOpen] = useState(false);
-  const [runOn, setRunOn] = useState(false);
-  const [logOpen, setLogOpen] = useState(false);
-  const [qOpen, setQOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print" | "stage" | V50Tool>("");
-  const [fin, setFin] = useState<"" | "stations" | "backup" | "ready" | "tribe">("");
-  const [stagesOpen, setStagesOpen] = useState(false);
-  const [keysOpen, setKeysOpen] = useState(false);
-  const [comOpen, setComOpen] = useState(false);
-  const [searchAllOpen, setSearchAllOpen] = useState(false);
-  const [groupsOpen, setGroupsOpen] = useState(false);
-  const [parentsOpen, setParentsOpen] = useState(false);
-  const [comCount, setComCount] = useState(0);
-  const [dictId, setDictId] = useState<string | null>(null);
-  const cat = useCatalog(token);
-  const [label, setLabel] = useState("");
-  const [addKind, setAddKind] = useState<Kind>("free");
-  const dragFrom = useRef<number | null>(null);
-  const [dropAt, setDropAt] = useState<number | null>(null);
-  const root = useRef<HTMLDivElement>(null);
-
-  // ───── שמירה אוטומטית (103) ─────
-  const flush = useCallback(async () => {
-    if (inflight.current) {
-      again.current = true;
-      return;
-    }
-    if (statusRef.current === "conflict") return;
-    inflight.current = true;
-    const mySeq = seq.current;
-    const snap = h.current.current;
-    setSt("saving");
-    try {
-      const d = await api<Doc & { merged?: boolean; conflicts?: string[] }>(`/api/write/docs/${initial.id}`, { method: "PUT", token, body: { title: snap.title, meta: snap.meta, blocks: snap.blocks.map(({ hint, ...b }) => ({ ...b, ...(hint ? { hint } : {}) })), baseRev: rev.current, ...(team ? { merge: true, cid: liveRef.current.getCid() || undefined } : {}) } });
-      rev.current = d.rev;
-      baseRef.current = { rev: d.rev, snap: { title: d.title, meta: d.meta, blocks: d.blocks } };
-      if (d.merged) {
-        // השרת מיזג לנוסח שלי שינויים של מדריכים אחרים
-        const theirs: Snap = { title: d.title, meta: d.meta, blocks: d.blocks };
-        if (seq.current === mySeq) {
-          adoptSkip.current = true;
-          h.reset(theirs);
-        } else {
-          const nowSnap = h.current.current; // המשכתי להקליד בזמן השמירה: ממזגים מקומית מול מה ששלחתי
-          quiet.current = true;
-          h.set(() => ({ title: nowSnap.title === snap.title ? d.title : nowSnap.title, meta: mergeFields(snap.meta, nowSnap.meta, d.meta), blocks: mergeBlocks(snap.blocks, nowSnap.blocks, d.blocks).blocks }));
-        }
-        if (d.conflicts?.length) toast("שני מדריכים ערכו את אותו שלב. נשמר הנוסח שלך, והנוסח של האחר נשמר ב״גרסאות״.", { kind: "info" });
-      }
-      setSavedAt(d.updatedAt);
-      if (seq.current === mySeq) {
-        setSt("saved");
-        try {
-          localStorage.removeItem(bufKey(initial.id));
-        } catch {}
-      } else setSt("dirty");
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
-        try {
-          setConflict(await api<Doc>(`/api/write/docs/${initial.id}`, { token }));
-        } catch {}
-        setSt("conflict");
-      } else if (e instanceof ApiError) {
-        setSt("error", errorMessage(e));
-      } else {
-        setSt("offline");
-        window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(() => flush(), 8000);
-      }
-    }
-    inflight.current = false;
-    if (again.current) {
-      again.current = false;
-      if ((statusRef.current as Status) !== "conflict") flush();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, initial.id, team]);
-
-  // שלב 70: חיבור חי. כשמישהו אחר שמר, שולפים את הנוסח העדכני: אם אין לי שינויים שלא נשמרו, מחליפים; אחרת ממזגים ברמת שלב.
-  const adopt = (d: Doc) => {
-    rev.current = d.rev;
-    baseRef.current = { rev: d.rev, snap: { title: d.title, meta: d.meta, blocks: d.blocks } };
-    adoptSkip.current = true;
-    h.reset({ title: d.title, meta: d.meta, blocks: d.blocks });
-    setSavedAt(d.updatedAt);
-    setSt("saved");
-    try {
-      localStorage.removeItem(bufKey(initial.id));
-    } catch {}
-  };
-  const pullRemote = async () => {
-    if (statusRef.current === "conflict" || !token) return;
-    try {
-      const d = await api<Doc>(`/api/write/docs/${initial.id}`, { token, cache: "no-store" });
-      if (d.rev <= rev.current) return;
-      if (statusRef.current === "saved" && !inflight.current) {
-        adopt(d);
-        return;
-      }
-      const base = baseRef.current.snap;
-      const mine = h.current.current;
-      rev.current = d.rev; // הבסיס החדש: השרת. השינויים שלי נשלחים מעליו
-      baseRef.current = { rev: d.rev, snap: { title: d.title, meta: d.meta, blocks: d.blocks } };
-      quiet.current = true;
-      h.set(() => ({ title: mine.title === base.title ? d.title : mine.title, meta: mergeFields(base.meta, mine.meta, d.meta), blocks: mergeBlocks(base.blocks, mine.blocks, d.blocks).blocks }));
-    } catch {
-      /* רשת: ננסה בהודעה הבאה */
-    }
-  };
+  const liveRef = useRef<ReturnType<typeof useTeamLive> | null>(null);
+  const sync = useDocSync({ initial, token, h, team, getCid: () => liveRef.current?.getCid() ?? "" });
   const live = useTeamLive({
     docId: initial.id,
     token,
     enabled: team,
     onSaved: (e) => {
-      if (e.rev <= rev.current) return;
+      if (e.rev <= sync.rev.current) return;
       window.clearTimeout(pullT.current);
-      pullT.current = window.setTimeout(() => void pullRemote(), 400);
+      pullT.current = window.setTimeout(() => void sync.pullRemote(), 400);
     },
   });
-  const liveRef = useRef(live);
   liveRef.current = live;
 
+  const [preview, setPreview] = useState<Set<string>>(new Set());
+  const [active, setActive] = useState(0);
+  const [focusMode, setFocusMode] = useState(false);
+  const focusRef = useRef(false);
+  focusRef.current = focusMode;
+  const [findOpen, setFindOpen] = useState(false);
+  const [dlg, setDlg] = useState<Dlg>("");
+  const [versions, setVersions] = useState<VersionRow[] | null>(null);
+  const [verView, setVerView] = useState<{ id: number; text: string; title: string; snap: Snap } | null>(null);
+  const [helpFor, setHelpFor] = useState<string | null>(null);
+  const [histFor, setHistFor] = useState<string | null>(null);
+  const [gapsOn, setGapsOn] = useState(true);
+  const [runOn, setRunOn] = useState(false);
+  const [tool, setTool] = useState<"" | "voice" | "safety" | "age" | "questions" | "map" | "read" | "practice" | "story" | "print" | "stage" | V50Tool>("");
+  const [fin, setFin] = useState<"" | "stations" | "backup" | "ready" | "tribe">("");
+  const [comCount, setComCount] = useState(0);
+  const [dictId, setDictId] = useState<string | null>(null);
+  const [gate, setGate] = useState<{ next: () => void } | null>(null);
+  const [leave, setLeave] = useState<string | null>(null);
+  const [cmp, setCmp] = useState<Cmp | null>(null);
+  const [tray, setTray] = useState<Trashed[]>([]);
+  const cat = useCatalog(token);
+  const [label, setLabel] = useState("");
+  const [addKind, setAddKind] = useState<Kind>("free");
+  const root = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLOListElement>(null);
+
+  const blocks = state.blocks;
+  const nBlocks = blocks.length;
+  const activeIdx = Math.max(0, Math.min(active, nBlocks - 1));
+  const cur = blocks[activeIdx];
+  const curId = cur?.id ?? null;
+  const atLimit = nBlocks >= LIMITS.blocks;
+  const limitMsg = `יש כבר ${LIMITS.blocks} שלבים, זה המקסימום. אפשר למזג שלבים קרובים או למחוק שלב שלא צריך`;
+
+  // ───── ביטול לכל שלב, מקומי (שלב 75) ─────
+  const setBlock = (id: string, patch: Partial<Block>, coalesce = false) => h.set((s) => ({ ...s, blocks: s.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }), coalesce);
+  const bh = useBlockHistory(initial.id, blocks, (id, v) => setBlock(id, v));
+  const undoAny = (inBlock: boolean) => {
+    if (inBlock && curId && bh.undo(curId)) return;
+    h.undo();
+  };
+  const redoAny = (inBlock: boolean) => {
+    if (inBlock && curId && bh.redo(curId)) return;
+    h.redo();
+  };
+
+  // ───── מי נועל מה, ונעילה של השלב שאני מקליד בו (פריט 19) ─────
+  const locks = useMemo(() => lockMap(live.people, live.me), [live.people, live.me]);
+  useBlockLock({
+    team,
+    docId: initial.id,
+    token,
+    getCid: () => liveRef.current?.getCid() ?? "",
+    curId,
+    typing: sync.typing,
+    onDenied: (by) => toast(`${by || "מדריך אחר"} מקליד/ה בשלב הזה. השינויים שלכם יתמזגו, ואם שניכם שיניתם את אותו שלב יישמר הנוסח שלכם והאחר ב״גרסאות״.`, { kind: "info" }),
+  });
+  // מדווחים לצוות באיזה שלב אני נמצא ואם אני מקליד
+  const focusLive = live.focus;
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
+    if (team) focusLive(curId, sync.typing);
+  }, [team, curId, sync.typing, focusLive]);
+
+  // ───── שלבים שנמחקו (פריט 17) ─────
+  const trayKey = `scout.write.tray.${initial.id}`;
+  const trayLoaded = useRef(false);
+  useEffect(() => {
+    try {
+      setTray(trayParse(localStorage.getItem(trayKey), Date.now()));
+    } catch {
+      /* אחסון חסום */
+    }
+  }, [trayKey]);
+  useEffect(() => {
+    if (!trayLoaded.current) {
+      trayLoaded.current = true;
       return;
     }
-    if (adoptSkip.current) {
-      adoptSkip.current = false;
-      return;
-    }
-    if (quiet.current) quiet.current = false;
-    else {
-      setTyping(true);
-      window.clearTimeout(typingT.current);
-      typingT.current = window.setTimeout(() => setTyping(false), 4000);
-    }
-    seq.current++;
-    if (statusRef.current !== "conflict") setSt("dirty");
     try {
-      localStorage.setItem(bufKey(initial.id), JSON.stringify({ rev: rev.current, snap: state }));
-    } catch {}
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => flush(), 1500);
-    return () => window.clearTimeout(timer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
-
-  // נוסח שלא נשמר בשרת (סגירה פתאומית או נפילת חיבור)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(bufKey(initial.id));
-      if (!raw) return;
-      const b = JSON.parse(raw) as { rev: number; snap: Snap };
-      if (b.rev === initial.rev && JSON.stringify(b.snap) !== JSON.stringify(first)) setRecover(b.snap);
-      else localStorage.removeItem(bufKey(initial.id));
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const warn = (e: BeforeUnloadEvent) => {
-      if (statusRef.current !== "saved") e.preventDefault();
-    };
-    const hide = () => {
-      if (document.visibilityState === "hidden" && statusRef.current === "dirty") flush();
-    };
-    window.addEventListener("beforeunload", warn);
-    document.addEventListener("visibilitychange", hide);
-    return () => {
-      window.removeEventListener("beforeunload", warn);
-      document.removeEventListener("visibilitychange", hide);
-    };
-  }, [flush]);
+      localStorage.setItem(trayKey, JSON.stringify(trayPrune(tray, Date.now())));
+    } catch {
+      /* אחסון חסום */
+    }
+  }, [tray, trayKey]);
 
   // ───── עריכה ─────
   // שלב 69: משחק מעבר מהצעת מד הדופק נכנס כשלב רגיל אחרי השלב שנבחר (אפשר לבטל ב"בטל")
   const insertGame = (after: number, g: TransitionGame) => {
+    if (atLimit) return toast(limitMsg, { kind: "error" });
     const b: Block = { ...emptyBlock("body"), title: `משחק מעבר: ${g.title}`, minutes: g.minutes, text: g.text };
     h.set((s) => ({ ...s, blocks: [...s.blocks.slice(0, after + 1), b, ...s.blocks.slice(after + 1)] }));
     toast(`נוסף שלב "משחק מעבר: ${g.title}"`, { kind: "success" });
   };
-  const setBlock = (id: string, patch: Partial<Block>, coalesce = false) => h.set((s) => ({ ...s, blocks: s.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }), coalesce);
+  const textEl = (id: string) => (focusRef.current ? document.getElementById("wf-text") : null) ?? document.getElementById(`wb-text-${id}`);
   const move = (from: number, to: number) => {
-    if (to < 0 || to >= state.blocks.length || from === to) return;
-    h.set((s) => {
-      const arr = [...s.blocks];
-      const [x] = arr.splice(from, 1);
-      arr.splice(to, 0, x);
-      return { ...s, blocks: arr };
-    });
+    if (to < 0 || to >= nBlocks || from === to) return;
+    // אחרי הזזה React מכניס את הצומת מחדש ל-DOM והמיקוד אובד: מחזירים אותו לאותו רכיב
+    const ae = document.activeElement as HTMLElement | null;
+    const fid = ae?.id ?? "";
+    const sel = ae instanceof HTMLTextAreaElement || ae instanceof HTMLInputElement ? ([ae.selectionStart, ae.selectionEnd] as const) : null;
+    h.set((s) => ({ ...s, blocks: moveItem(s.blocks, from, to) }));
     setActive(to);
+    if (fid)
+      window.requestAnimationFrame(() => {
+        const el = document.getElementById(fid);
+        if (!el || document.activeElement === el) return;
+        el.focus();
+        if (sel && (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement)) {
+          try {
+            el.setSelectionRange(sel[0], sel[1]);
+          } catch {
+            /* שדה שלא תומך בבחירה */
+          }
+        }
+      });
   };
   const addAfter = (idx: number, kind: Kind) => {
+    if (atLimit) return toast(limitMsg, { kind: "error" });
     const b = emptyBlock(kind);
     h.set((s) => ({ ...s, blocks: [...s.blocks.slice(0, idx + 1), b, ...s.blocks.slice(idx + 1)] }));
     setActive(idx + 1);
     window.setTimeout(() => document.getElementById(`wb-title-${b.id}`)?.focus(), 30);
   };
   const remove = (idx: number) => {
-    const b = state.blocks[idx];
-    if ((b.text.trim() || b.note.trim()) && !window.confirm("לשלב הזה יש תוכן. למחוק אותו? אפשר לבטל מיד עם הכפתור 'ביטול'.")) return;
+    const b = blocks[idx];
+    if (!b) return;
+    if ((b.text.trim() || b.note.trim()) && !window.confirm("לשלב הזה יש תוכן. למחוק אותו? אפשר לשחזר אותו מ״נמחקו לאחרונה״, או לבטל מיד עם הכפתור 'ביטול'.")) return;
+    setTray((t) => trayPush(t, b as W75Block, idx, Date.now()));
     h.set((s) => ({ ...s, blocks: s.blocks.filter((x) => x.id !== b.id) }));
     setActive(Math.max(0, idx - 1));
   };
-
+  const restoreTray = (id: string) => {
+    const r = trayRestore(blocks as W75Block[], tray, id);
+    if (!r.ok) return toast(r.reason ?? "אי אפשר לשחזר את השלב", { kind: "error" });
+    h.set((s) => ({ ...s, blocks: r.blocks as Block[] }));
+    setTray(r.tray);
+    toast("השלב שוחזר למקומו. אפשר לבטל", { kind: "success" });
+  };
   const duplicate = (idx: number) => {
-    const src = state.blocks[idx];
-    if (state.blocks.length >= 60) return toast("אפשר עד 60 שלבים", { kind: "error" });
-    const copy: Block = { ...src, id: newBlockId(), title: src.title ? `${src.title} (עותק)`.slice(0, 120) : "" };
+    const src = blocks[idx];
+    if (!src) return;
+    if (atLimit) return toast(limitMsg, { kind: "error" });
+    const copy: Block = { ...src, id: newBlockId(), title: src.title ? `${src.title} (עותק)`.slice(0, LIMITS.blockTitle) : "" };
     h.set((s) => ({ ...s, blocks: [...s.blocks.slice(0, idx + 1), copy, ...s.blocks.slice(idx + 1)] }));
     setActive(idx + 1);
   };
   const splitAtCursor = (idx: number) => {
-    const b = state.blocks[idx];
+    const b = blocks[idx];
+    if (!b) return;
     const el = document.getElementById(`wb-text-${b.id}`) as HTMLTextAreaElement | null;
     const pos = el?.selectionStart ?? 0;
     if (!el || pos <= 0 || pos >= b.text.length) return toast("הציבו את הסמן בתוך הטקסט, במקום שבו רוצים לפצל", { kind: "error" });
-    if (state.blocks.length >= 60) return toast("אפשר עד 60 שלבים", { kind: "error" });
-    const second: Block = { ...emptyBlock(b.kind === "open" ? "body" : b.kind), title: b.title ? `${b.title} (המשך)`.slice(0, 120) : "", text: b.text.slice(pos).replace(/^\s+/, "") };
+    if (atLimit) return toast(limitMsg, { kind: "error" });
+    const second: Block = { ...emptyBlock(b.kind === "open" ? "body" : b.kind), title: b.title ? `${b.title} (המשך)`.slice(0, LIMITS.blockTitle) : "", text: b.text.slice(pos).replace(/^\s+/, "") };
     h.set((s) => ({ ...s, blocks: s.blocks.flatMap((x) => (x.id === b.id ? [{ ...x, text: x.text.slice(0, pos).replace(/\s+$/, "") }, second] : [x])) }));
     setActive(idx + 1);
     toast("השלב פוצל לשניים. אפשר לבטל", { kind: "success" });
@@ -331,27 +272,24 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const autoMinutes = () => {
     const goal = state.meta.minutes;
     if (!goal) return toast("קודם קבעו משך מתוכנן", { kind: "error" });
-    const parts = distributeMinutes(state.blocks, goal);
+    const parts = distributeMinutes(blocks, goal);
     h.set((s) => ({ ...s, blocks: s.blocks.map((b, i) => ({ ...b, minutes: parts[i] })) }));
     toast(`הזמן חולק בין השלבים: ${parts.join(" + ")} דקות. אפשר לבטל`, { kind: "success" });
   };
-  const printCards = () => {
-    document.body.classList.add("printing-write", "printing-cards");
+  const printWith = (...cls: string[]) => {
+    document.body.classList.add(...cls);
     const done = () => {
-      document.body.classList.remove("printing-write", "printing-cards");
+      document.body.classList.remove(...cls);
       window.removeEventListener("afterprint", done);
     };
     window.addEventListener("afterprint", done);
     window.setTimeout(() => window.print(), 50);
   };
-  const printSummary = () => {
-    document.body.classList.add("printing-summary");
-    const done = () => {
-      document.body.classList.remove("printing-summary");
-      window.removeEventListener("afterprint", done);
-    };
-    window.addEventListener("afterprint", done);
-    window.setTimeout(() => window.print(), 50);
+  const printCards = () => printWith("printing-write", "printing-cards");
+  const printSummary = () => printWith("printing-summary");
+  const printSheet = () => {
+    setDlg("");
+    printWith("printing-write");
   };
   const dictTarget = useRef<string | null>(null);
   const dict = useDictation((t) => {
@@ -377,7 +315,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const publishTribe = async () => {
     if (!window.confirm("לפרסם את המסמך כתבנית לכל מדריכי השבט? ההערות האישיות לא יועתקו.")) return;
     try {
-      await flush();
+      await sync.saveNow();
       await api("/api/admin/write-templates", { method: "POST", token, body: { docId: initial.id, title: state.title } });
       toast("פורסם כתבנית שבט", { kind: "success" });
     } catch (e) {
@@ -386,7 +324,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   };
   const endClock = (() => {
     const m = /^(\d{2}):(\d{2})$/.exec(state.meta.startTime ?? "");
-    const tt = sumMinutes(state.blocks);
+    const tt = sumMinutes(blocks);
     if (!m || !tt) return "";
     const t = Number(m[1]) * 60 + Number(m[2]) + tt;
     return `${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
@@ -394,13 +332,13 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const addPreset = (id: string) => {
     const b = presetBlock(id);
     if (!b) return;
-    if (state.blocks.length >= 60) return toast("אפשר עד 60 שלבים", { kind: "error" });
-    h.set((s) => ({ ...s, blocks: [...s.blocks.slice(0, active + 1), b, ...s.blocks.slice(active + 1)] }));
-    setActive(active + 1);
+    if (atLimit) return toast(limitMsg, { kind: "error" });
+    h.set((s) => ({ ...s, blocks: [...s.blocks.slice(0, activeIdx + 1), b, ...s.blocks.slice(activeIdx + 1)] }));
+    setActive(activeIdx + 1);
     window.setTimeout(() => document.getElementById(`wb-title-${b.id}`)?.focus(), 30);
   };
   const downloadIcs = () => {
-    const ics = icsFor(state, sumMinutes(state.blocks));
+    const ics = icsFor(state, sumMinutes(blocks));
     if (!ics) return toast("קודם קבעו תאריך לפעולה בכותרת המסמך", { kind: "error" });
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
     const a = document.createElement("a");
@@ -411,28 +349,27 @@ export function WriteEditor({ initial }: { initial: Doc }) {
     a.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
   };
-  const doneCount = state.blocks.filter((b) => b.done).length;
-  const clocks = clockTimes(state.blocks, state.meta.startTime ?? "");
+  const clocks = clockTimes(blocks, state.meta.startTime ?? "");
 
   // הכנסת הצעה לשלב (115–117). הכול נכנס להיסטוריית הביטול הרגילה.
   const insertText: InsertFn = (id, text, mode, what) => {
-    const b = state.blocks.find((x) => x.id === id);
+    const b = blocks.find((x) => x.id === id);
     if (!b) return;
-    const cur = b.text;
+    const cur0 = b.text;
     if (mode === "replace-all") return setBlock(id, { text });
-    if (mode === "replace-sentence" && what && cur.includes(what)) return setBlock(id, { text: cur.replace(what, text) });
+    if (mode === "replace-sentence" && what && cur0.includes(what)) return setBlock(id, { text: cur0.replace(what, text) });
     if (mode === "cursor") {
-      const el = document.getElementById(`wb-text-${id}`) as HTMLTextAreaElement | null;
-      if (el && cur) {
-        const pos = Math.min(el.selectionStart ?? cur.length, cur.length);
-        const before = cur.slice(0, pos);
-        const after = cur.slice(pos);
+      const el = textEl(id) as HTMLTextAreaElement | null;
+      if (el && cur0) {
+        const pos = Math.min(el.selectionStart ?? cur0.length, cur0.length);
+        const before = cur0.slice(0, pos);
+        const after = cur0.slice(pos);
         const pre = before && !before.endsWith("\n") ? "\n" : "";
         const post = after && !after.startsWith("\n") ? "\n" : "";
         return setBlock(id, { text: before + pre + text + post + after });
       }
     }
-    setBlock(id, { text: cur.trim() ? cur.replace(/\s+$/, "") + "\n\n" + text : text });
+    setBlock(id, { text: cur0.trim() ? cur0.replace(/\s+$/, "") + "\n\n" + text : text });
   };
   const restoreStage = (id: string, text: string) => {
     setBlock(id, { text });
@@ -441,12 +378,12 @@ export function WriteEditor({ initial }: { initial: Doc }) {
 
   // עיצוב על הטקסט המסומן (102)
   const edit = (id: string, fn: (v: string, a: number, b: number) => { v: string; a: number; b: number }) => {
-    const el = document.getElementById(`wb-text-${id}`) as HTMLTextAreaElement | null;
+    const el = textEl(id) as HTMLTextAreaElement | null;
     if (!el) return;
     const r = fn(el.value, el.selectionStart, el.selectionEnd);
     setBlock(id, { text: r.v });
     window.requestAnimationFrame(() => {
-      const e2 = document.getElementById(`wb-text-${id}`) as HTMLTextAreaElement | null;
+      const e2 = textEl(id) as HTMLTextAreaElement | null;
       e2?.focus();
       e2?.setSelectionRange(r.a, r.b);
     });
@@ -456,7 +393,8 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       const sel = v.slice(a, b) || ph;
       return { v: v.slice(0, a) + mark + sel + mark + v.slice(b), a: a + mark.length, b: a + mark.length + sel.length };
     });
-  const prefix = (id: string, fn: (i: number) => string) =>
+  const prefix = (id: string, kind: "h" | "ul" | "ol" | "quote") => {
+    const fn = (i: number) => (kind === "h" ? "## " : kind === "ul" ? "- " : kind === "ol" ? `${i + 1}. ` : "> ");
     edit(id, (v, a, b) => {
       const start = v.lastIndexOf("\n", a - 1) + 1;
       let end = v.indexOf("\n", b);
@@ -465,96 +403,180 @@ export function WriteEditor({ initial }: { initial: Doc }) {
       const out = lines.map((l, i) => fn(i) + l.replace(/^(#{1,4}\s+|[-*]\s+|\d+[.)]\s+|>\s?)/, "")).join("\n");
       return { v: v.slice(0, start) + out + v.slice(end), a: start, b: start + out.length };
     });
+  };
   const table = (id: string) =>
     edit(id, (v, a, b) => {
       const t = `${a > 0 && v[a - 1] !== "\n" ? "\n" : ""}| כותרת א | כותרת ב |\n|---|---|\n| תא | תא |\n`;
       return { v: v.slice(0, a) + t + v.slice(b), a: a + t.length, b: a + t.length };
     });
 
-  const keys = (e: React.KeyboardEvent) => {
-    const t = e.target as HTMLElement;
-    if (!(t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement)) return;
-    if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-      e.preventDefault();
-      move(active, active + (e.key === "ArrowUp" ? -1 : 1));
-      return;
-    }
-    const mod = e.ctrlKey || e.metaKey;
-    if (!mod) return;
-    const k = e.key.toLowerCase();
-    if (k === "s") {
-      e.preventDefault();
-      window.clearTimeout(timer.current);
-      flush();
-      toast("נשמר", { kind: "success" });
-    } else if (k === "z" && !e.shiftKey) {
-      e.preventDefault();
-      h.undo();
-    } else if (k === "y" || (k === "z" && e.shiftKey)) {
-      e.preventDefault();
-      h.redo();
-    } else if (k === "b" && t instanceof HTMLTextAreaElement && t.id.startsWith("wb-text-")) {
-      e.preventDefault();
-      wrap(t.id.slice(8), "**", "טקסט מודגש");
+  // ───── פקודות / בתוך הטקסט (פריט 5) ─────
+  const slash = (id: string, cmd: SlashId, arg: string, hit: SlashHit) => {
+    const idx = blocks.findIndex((b) => b.id === id);
+    if (idx < 0) return;
+    const plan = slashPlan(cmd, arg);
+    if (plan.type === "error") return toast(plan.message, { kind: "error" });
+    const cut = stripRange(blocks[idx].text, hit.start, hit.end);
+    const caret = () =>
+      window.requestAnimationFrame(() => {
+        const el = textEl(id) as HTMLTextAreaElement | null;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(cut.caret, cut.caret);
+      });
+    if (plan.type === "add") {
+      if (atLimit) return toast(limitMsg, { kind: "error" });
+      const nb: Block = { ...emptyBlock(plan.block.kind as Kind), title: plan.block.title, minutes: plan.block.minutes, ...(plan.block.hint ? { hint: plan.block.hint } : {}) };
+      h.set((s) => ({ ...s, blocks: s.blocks.flatMap((x) => (x.id === id ? [{ ...x, text: cut.text }, nb] : [x])) }));
+      setActive(idx + 1);
+      window.setTimeout(() => document.getElementById(`wb-${plan.block.title ? "text" : "title"}-${nb.id}`)?.focus(), 40);
+      toast(`נוסף שלב ״${nb.title || KIND_LABEL[nb.kind]}״ מתחת. אפשר לבטל`, { kind: "success" });
+    } else if (plan.type === "minutes") {
+      setBlock(id, { text: cut.text, minutes: plan.minutes });
+      toast(`משך השלב נקבע ל-${plan.minutes} דקות`, { kind: "success" });
+      caret();
+    } else if (plan.type === "flag") {
+      setBlock(id, { text: cut.text, unchecked: true });
+      toast("השלב סומן ״טרם נבדק״", { kind: "success" });
+      caret();
+    } else {
+      setBlock(id, { text: cut.text });
     }
   };
 
-  // ───── חיפוש והחלפה (110) ─────
-  const matches = useMemo<Match[]>(() => {
-    if (!find) return [];
-    const re = new RegExp(esc(find), "gi");
-    const out: Match[] = [];
-    state.blocks.forEach((b, i) => {
-      for (const field of ["title", "text"] as const) {
-        re.lastIndex = 0;
-        let m: RegExpExecArray | null;
-        while ((m = re.exec(b[field]))) {
-          out.push({ b: i, field, start: m.index, end: m.index + m[0].length });
-          if (!m[0].length) re.lastIndex++;
-        }
-      }
-    });
-    return out;
-  }, [find, state.blocks]);
-  const goTo = (i: number) => {
-    const m = matches[i];
-    if (!m) return;
-    setCursor(i);
-    const b = state.blocks[m.b];
-    setActive(m.b);
-    setPreview((p) => {
-      const n = new Set(p);
-      n.delete(b.id);
-      return n;
-    });
+  // ───── קיצורי מקלדת (פריט 4): לפי המקש הפיזי, ולכן עובדים גם בעברית ─────
+  const goBlock = (i: number) => {
+    if (!nBlocks) return;
+    const to = Math.max(0, Math.min(nBlocks - 1, i));
+    setActive(to);
+    if (focusRef.current) return;
+    const b = blocks[to];
     window.setTimeout(() => {
-      const el = document.getElementById(m.field === "text" ? `wb-text-${b.id}` : `wb-title-${b.id}`) as HTMLInputElement | HTMLTextAreaElement | null;
+      const el = document.getElementById(`wb-text-${b.id}`) ?? document.getElementById(`wb-title-${b.id}`);
       el?.focus();
-      el?.setSelectionRange(m.start, m.end);
       el?.scrollIntoView({ block: "center" });
-    }, 30);
+    }, 20);
   };
-  const next = () => {
-    if (!matches.length) return setFindMsg("לא נמצא");
-    setFindMsg("");
-    goTo(cursor + 1 < matches.length ? cursor + 1 : 0);
-  };
-  const replaceOne = () => {
-    const i = cursor >= 0 && cursor < matches.length ? cursor : 0;
-    const m = matches[i];
-    if (!m) return setFindMsg("לא נמצא");
-    h.set((s) => ({ ...s, blocks: s.blocks.map((b, bi) => (bi === m.b ? { ...b, [m.field]: b[m.field].slice(0, m.start) + repl + b[m.field].slice(m.end) } : b)) }));
-    setFindMsg("הוחלף מופע אחד");
-    setCursor(Math.max(0, i - 1));
-  };
-  const replaceAll = () => {
-    if (!matches.length) return setFindMsg("לא נמצא");
-    const re = new RegExp(esc(find), "gi");
-    const n = matches.length;
-    h.set((s) => ({ ...s, blocks: s.blocks.map((b) => ({ ...b, title: b.title.replace(re, () => repl), text: b.text.replace(re, () => repl) })) }));
-    setFindMsg(`הוחלפו ${n} מופעים. אפשר לבטל בלחיצה אחת`);
-    setCursor(-1);
-  };
+  const keyApi = useStableApi({
+    handle: (e: KeyboardEvent) => {
+      if (e.isComposing) return;
+      // יעד שאינו אלמנט (window, document, SVG) לא מכיל שום שדה: מתייחסים אליו כרקע העמוד
+      const t = e.target instanceof HTMLElement ? e.target : null;
+      const typing = !!t && (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t.isContentEditable);
+      // גם לחיצה על רווח ריק בעמוד (המיקוד עובר ל-main) נחשבת "בתוך העורך", כדי ש-? יפתח את קיצורי העורך ולא את קיצורי האתר
+      const inside = !t || (t === document.body || t === document.documentElement || t.tagName === "MAIN" || !!root.current?.contains(t));
+      if (!inside) return;
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (document.querySelector("dialog[open]") && !(ctrl && e.code === "KeyS")) return;
+      const r = shortcutAction({ key: e.key, code: e.code, ctrl, alt: e.altKey, shift: e.shiftKey, typing });
+      if (!r) return;
+      const inBlock = !!t && (focusRef.current || !!t.closest?.(".write-block"));
+      const inText = !!t && (t.id === "wf-text" || t.id.startsWith("wb-text-"));
+      const stop = () => {
+        e.preventDefault();
+        e.stopPropagation();
+      };
+      switch (r.action) {
+        case "save":
+          stop();
+          void sync.saveNow();
+          toast("נשמר", { kind: "success" });
+          break;
+        case "undo":
+          stop();
+          undoAny(inBlock);
+          break;
+        case "redo":
+          stop();
+          redoAny(inBlock);
+          break;
+        case "bold":
+        case "italic":
+          if (inText && curId) {
+            stop();
+            if (r.action === "bold") wrap(curId, "**", "טקסט מודגש");
+            else wrap(curId, "*", "טקסט נטוי");
+          }
+          break;
+        case "newBlock":
+          stop();
+          addAfter(activeIdx, "free");
+          break;
+        case "dup":
+          stop();
+          duplicate(activeIdx);
+          break;
+        case "moveUp":
+          stop();
+          move(activeIdx, activeIdx - 1);
+          break;
+        case "moveDown":
+          stop();
+          move(activeIdx, activeIdx + 1);
+          break;
+        case "prevBlock":
+          stop();
+          goBlock(activeIdx - 1);
+          break;
+        case "nextBlock":
+          stop();
+          goBlock(activeIdx + 1);
+          break;
+        case "goto":
+          stop();
+          goBlock((r.n ?? 1) - 1);
+          break;
+        case "find":
+          stop();
+          setFindOpen(true);
+          window.setTimeout(() => document.getElementById("w-find")?.focus(), 30);
+          break;
+        case "focus":
+          stop();
+          if (cur) setFocusMode(true);
+          break;
+        case "preview":
+          stop();
+          if (curId) togglePreview(curId);
+          break;
+        case "readAloud":
+          stop();
+          setDlg("readMe");
+          break;
+        case "help":
+          stop();
+          setDlg("keys");
+          break;
+      }
+    },
+  });
+  useEffect(() => {
+    // בשלב הלכידה, כדי שקיצור שהעורך תופס (למשל ?) לא יגיע גם לקיצורי האתר הכלליים ויפתח שני חלונות
+    const k = (e: KeyboardEvent) => keyApi.handle(e);
+    window.addEventListener("keydown", k, true);
+    return () => window.removeEventListener("keydown", k, true);
+  }, [keyApi]);
+
+  // ───── יציאה עם שינויים שלא נשמרו, גם בתוך האתר (פריט 17) ─────
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (sync.statusRef.current === "saved" || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+      let url: URL;
+      try {
+        url = new URL(a.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin || (url.pathname === window.location.pathname && url.search === window.location.search)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setLeave(url.pathname + url.search + url.hash);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [sync.statusRef]);
 
   // ───── גרסאות (112) ─────
   const loadVersions = useCallback(() => {
@@ -564,8 +586,8 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   }, [initial.id, token, toast]);
   const openVersions = async () => {
     setVerView(null);
-    setVerOpen(true);
-    if (statusRef.current === "dirty") await flush();
+    setDlg("versions");
+    if (sync.statusRef.current === "dirty") await sync.saveNow();
     loadVersions();
   };
   const viewVersion = async (v: VersionRow) => {
@@ -579,13 +601,12 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   const restore = async (id: number) => {
     if (!window.confirm("לשחזר את הגרסה הזו? המצב הנוכחי יישמר כגרסה 'לפני שחזור'.")) return;
     try {
-      if (statusRef.current === "dirty") await flush();
+      if (sync.statusRef.current === "dirty") await sync.saveNow();
       const d = await api<Doc>(`/api/write/docs/${initial.id}/versions/${id}/restore`, { method: "POST", token, body: {} });
-      rev.current = d.rev;
-      setSavedAt(d.updatedAt);
+      sync.afterServerReplace(d);
       h.set(() => ({ title: d.title, meta: d.meta, blocks: d.blocks }));
-      setSt("saved");
-      setVerOpen(false);
+      sync.setSt("saved");
+      setDlg("");
       toast("הגרסה שוחזרה", { kind: "success" });
     } catch (e) {
       toast(errorMessage(e), { kind: "error" });
@@ -593,7 +614,7 @@ export function WriteEditor({ initial }: { initial: Doc }) {
   };
   const savePoint = async () => {
     try {
-      if (statusRef.current === "dirty") await flush();
+      if (sync.statusRef.current === "dirty") await sync.saveNow();
       await api(`/api/write/docs/${initial.id}/snapshot`, { method: "POST", token, body: { label: label.trim() } });
       setLabel("");
       toast("נקודת השמירה נוצרה", { kind: "success" });
@@ -619,666 +640,576 @@ export function WriteEditor({ initial }: { initial: Doc }) {
     if (state.meta.minutes) storageSet("scout.assist.target", String(state.meta.minutes));
     router.push("/assistant");
   };
+  /** לפני ייצוא, שיתוף או הדפסה: אם יש שלבים ״טרם נבדק״, שואלים */
+  const guard = (fn: () => void) => {
+    if (exportWarning(blocks as W75Block[])) setGate({ next: fn });
+    else fn();
+  };
 
-  useEffect(() => {
-    if (!focusMode) return;
-    const k = (e: KeyboardEvent) => e.key === "Escape" && setFocusMode(false);
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [focusMode]);
+  // ───── קפיצה למקום בשלב (חיפוש, בדיקת סגנון, מגבלות) ─────
+  const focusAt = (id: string, field: "title" | "text" | "note", start: number, end: number) => {
+    const idx = blocks.findIndex((b) => b.id === id);
+    if (idx < 0) return;
+    setActive(idx);
+    setPreview((p) => {
+      if (!p.has(id)) return p;
+      const n = new Set(p);
+      n.delete(id);
+      return n;
+    });
+    // כשהקפיצה באה מתוך חלון (בדיקת סגנון, הערות, מגבלות), החלון עדיין נסגר ומונע מיקוד: מנסים שוב עד שהמיקוד נתפס
+    let tries = 0;
+    const attempt = () => {
+      const el = document.getElementById(`wb-${field}-${id}`) as HTMLInputElement | HTMLTextAreaElement | null;
+      if (!el) return;
+      if (field === "note") {
+        const d = el.closest("details");
+        if (d) d.open = true;
+      }
+      el.focus();
+      if (document.activeElement !== el && tries++ < 15) {
+        window.setTimeout(attempt, 60);
+        return;
+      }
+      try {
+        el.setSelectionRange(start, end);
+      } catch {
+        /* שדה בלי בחירה */
+      }
+      el.scrollIntoView({ block: "center" });
+    };
+    window.setTimeout(attempt, 30);
+  };
+  const goHit = (hit: Hit) => focusAt(hit.id, hit.field, hit.start, hit.end);
+  const jumpStyle = (i: StyleIssue) => {
+    setDlg("");
+    focusAt(i.id, "text", i.start, i.end);
+  };
+  const jumpLimit = (p: LimitProblem) => {
+    const b = p.block ? blocks[p.block - 1] : null;
+    if (!b) return;
+    focusAt(b.id, p.code === "BLOCK_TITLE" ? "title" : p.code === "BLOCK_NOTE" ? "note" : "text", 0, 0);
+  };
 
-  const words = countWords(state);
-  const total = sumMinutes(state.blocks);
+  const togglePreview = (id: string) =>
+    setPreview((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  // ───── פעולות קבועות לרכיבים הממוזערים ─────
+  const reorder = useReorder(blocks, listRef, move);
+  const blockApi: BlockApi = useStableApi({
+    setBlock,
+    setActive,
+    togglePreview,
+    wrap,
+    prefix,
+    table,
+    move,
+    duplicate,
+    split: splitAtCursor,
+    addAfter,
+    remove,
+    help: (id: string) => setHelpFor(id),
+    toggleDict,
+    slash,
+    openHistory: (id: string) => {
+      setHistFor(id);
+      setDlg("history");
+    },
+    grab: reorder.grab,
+    keyGrab: reorder.keyGrab,
+    release: () => {
+      // ההזזה במקלדת מעבירה את המיקוד לרגע (הצומת נכנס מחדש): משחררים רק אם המיקוד באמת עבר למקום אחר
+      window.setTimeout(() => {
+        if (!document.activeElement?.id.startsWith("wb-grab-")) reorder.release();
+      }, 150);
+    },
+  });
+  const metaApi: MetaApi = useStableApi({
+    setTitle: (v: string) => h.set((s) => ({ ...s, title: v }), true),
+    patch: (p: Partial<Snap["meta"]>, coalesce = false) => h.set((s) => ({ ...s, meta: { ...s.meta, ...p } }), coalesce),
+  });
+  const panelApi = useStableApi({
+    suggest: (id: string) => setHelpFor(id),
+    add: (kind: string) => {
+      if (kind === "close") addAfter(nBlocks - 1, "close");
+      else if (kind === "open") {
+        if (atLimit) return toast(limitMsg, { kind: "error" });
+        const b = emptyBlock("open");
+        h.set((s) => ({ ...s, blocks: [b, ...s.blocks] }));
+        setActive(0);
+      } else addAfter(Math.max(0, nBlocks - 2), kind as Kind);
+    },
+    focus: (id: string, field: string) => {
+      setActive(Math.max(0, blocks.findIndex((b) => b.id === id)));
+      window.setTimeout(() => document.getElementById(field === "minutes" ? `wb-min-${id}` : `wb-title-${id}`)?.focus(), 30);
+    },
+    game: insertGame,
+    equipment: (equipment: string[]) => h.set((s) => ({ ...s, meta: { ...s.meta, equipment } })),
+    review: (review: string[]) => h.set((s) => ({ ...s, meta: { ...s.meta, review } })),
+    openBackup: () => setFin("backup"),
+    setTarget: (m: number) => h.set((s) => ({ ...s, meta: { ...s.meta, minutes: m } })),
+  });
+  const toolbarApi = useStableApi({
+    on: (cmd: string) => {
+      if (cmd.startsWith("preset:")) return addPreset(cmd.slice(7));
+      switch (cmd) {
+        case "undo":
+          return h.undo();
+        case "redo":
+          return h.redo();
+        case "find":
+          setFindOpen((o) => !o);
+          return;
+        case "focus":
+          return setFocusMode(true);
+        case "versions":
+          return void openVersions();
+        case "searchMethod":
+          return setDlg("search");
+        case "prefs":
+          return setDlg("prefs");
+        case "gaps":
+          return setGapsOn((g) => !g);
+        case "copy":
+          return guard(() => void copyText());
+        case "importText":
+          return setDlg("import");
+        case "prep":
+          return setDlg("prep");
+        case "log":
+          return setDlg("log");
+        case "questions":
+          return setDlg("q");
+        case "stages":
+          return setDlg("stages");
+        case "stations":
+        case "backup":
+        case "ready":
+        case "tribe":
+          return setFin(cmd);
+        case "more":
+          return setDlg("more");
+        case "printSummary":
+          return guard(printSummary);
+        case "keys":
+          return setDlg("keys");
+        case "searchAll":
+          return setDlg("searchAll");
+        case "groups":
+          return setDlg("groups");
+        case "parents":
+          return setDlg("parents");
+        case "ics":
+          return downloadIcs();
+        case "comments":
+          return setDlg("comments");
+        case "publishTribe":
+          return void publishTribe();
+        case "autoMinutes":
+          return autoMinutes();
+        case "readability":
+          return setDlg("readability");
+        case "style":
+          return setDlg("style");
+        case "readMe":
+          return setDlg("readMe");
+        case "notes":
+          return setDlg("notes");
+        case "tray":
+          return setDlg("tray");
+        case "printA4":
+          return guard(() => setDlg("printA4"));
+        case "snippets":
+          return setDlg("snip");
+        case "run":
+          return setRunOn(true);
+        case "printCards":
+          return guard(printCards);
+        case "share":
+          return guard(() => setDlg("share"));
+        case "export":
+          return guard(() => setDlg("export"));
+        case "assistant":
+          return toAssistant();
+      }
+    },
+  });
+
+  // ───── נוסחים מושהים לרכיבים כבדים ─────
+  const words = useMemo(() => countWords(dState), [dState]);
+  const dText = useMemo(() => flatten(dState), [dState]);
   const target = state.meta.minutes;
-  const diff = target ? total - target : 0;
-  const cur = state.blocks[Math.min(active, state.blocks.length - 1)];
-  // שלב 70: מדווחים לצוות באיזה שלב אני נמצא ואם אני מקליד
-  const curId = cur?.id ?? null;
-  const focusLive = live.focus;
-  useEffect(() => {
-    if (team) focusLive(curId, typing);
-  }, [team, curId, typing, focusLive]);
+  const problemsLive = sync.problems;
   const statusText =
-    status === "saved" ? `נשמר ${new Date(savedAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : status === "saving" ? "שומר..." : status === "dirty" ? "יש שינויים, נשמרים בעוד רגע" : status === "offline" ? "אין חיבור. הטקסט שמור במכשיר ויישמר בשרת כשהחיבור יחזור" : status === "conflict" ? "המסמך עודכן במקום אחר" : `השמירה נכשלה: ${statusMsg}`;
+    sync.status === "saved"
+      ? `נשמר ${new Date(sync.savedAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`
+      : sync.status === "saving"
+        ? "שומר..."
+        : sync.status === "dirty"
+          ? "יש שינויים, נשמרים בעוד רגע"
+          : sync.status === "offline"
+            ? "אין חיבור. הטקסט שמור במכשיר ויישמר בשרת כשהחיבור יחזור"
+            : sync.status === "conflict"
+              ? "המסמך עודכן במקום אחר"
+              : sync.status === "limits"
+                ? `לא נשמר: ${sync.statusMsg}`
+                : `השמירה נכשלה: ${sync.statusMsg}`;
+  const left = blocksLeft(nBlocks);
+
+  const openCompare = (c: Cmp) => setCmp(c);
+  const rec = sync.recover;
 
   return (
-    <div className="write" ref={root} onKeyDown={keys}>
-      {conflict && (
-        <div className="error-box" role="alert">
-          <p>המסמך הזה עודכן בלשונית או במכשיר אחר, ולכן לא שמרנו כדי לא לדרוס. מה לעשות?</p>
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-small"
-              onClick={() => {
-                rev.current = conflict.rev;
-                h.reset({ title: conflict.title, meta: conflict.meta, blocks: conflict.blocks });
-                setConflict(null);
-                setSt("saved");
-                try {
-                  localStorage.removeItem(bufKey(initial.id));
-                } catch {}
-              }}
-            >
-              לטעון את הנוסח העדכני (השינויים שלי כאן יימחקו)
-            </button>
-            <button
-              type="button"
-              className="btn btn-small"
-              onClick={() => {
-                rev.current = conflict.rev;
-                setConflict(null);
-                setSt("dirty");
-                flush();
-              }}
-            >
-              לשמור את הנוסח שלי מעל
-            </button>
-          </div>
-        </div>
-      )}
-      {recover && (
-        <div className="warn-box" role="status">
-          <p>נמצא נוסח שהקלדתם ולא הגיע לשרת (סגירה פתאומית או נפילת חיבור). לשחזר אותו?</p>
-          <div className="actions">
-            <button
-              type="button"
-              className="btn btn-small"
-              onClick={() => {
-                h.set(() => recover);
-                setRecover(null);
-              }}
-            >
-              שחזור הנוסח
-            </button>
-            <button
-              type="button"
-              className="btn btn-small"
-              onClick={() => {
-                setRecover(null);
-                try {
-                  localStorage.removeItem(bufKey(initial.id));
-                } catch {}
-              }}
-            >
-              להתעלם
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="card glass write-meta">
-        <Field label="שם הפעולה" htmlFor="w-title">
-          <input id="w-title" value={state.title} maxLength={120} onChange={(e) => h.set((s) => ({ ...s, title: e.target.value }), true)} placeholder="למשל: מה זה אומץ" />
-        </Field>
-        <Field label="שכבה" htmlFor="w-age">
-          <select id="w-age" value={state.meta.ageGroup} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, ageGroup: e.target.value } }))}>
-            <option value="">לא נבחרה</option>
-            {AGE_GROUPS.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="משך מתוכנן (דקות)" htmlFor="w-min">
-          <input id="w-min" type="number" min={0} max={480} dir="ltr" value={target ?? ""} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, minutes: e.target.value === "" ? null : Math.max(0, Math.min(480, Math.round(Number(e.target.value)))) } }), true)} />
-        </Field>
-        <Field label="גודל קבוצה" htmlFor="w-size">
-          <input id="w-size" type="number" min={0} max={200} dir="ltr" value={state.meta.groupSize ?? ""} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, groupSize: e.target.value === "" ? null : Math.max(0, Math.min(200, Math.round(Number(e.target.value)))) } }), true)} />
-        </Field>
-        <datalist id="w-values">
-          {["אחריות", "אומץ", "חברות", "יושרה", "כבוד", "נתינה", "התנדבות", "ערבות הדדית", "הגינות", "אהבת הארץ", "עבודת צוות", "סבלנות", "הקשבה", "התמדה"].map((v) => (
-            <option key={v} value={v} />
-          ))}
-        </datalist>
-        <Field label="שעת התחלה" htmlFor="w-start" hint="מציגה שעה לכל שלב">
-          <input id="w-start" type="time" dir="ltr" value={state.meta.startTime ?? ""} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, startTime: e.target.value } }))} />
-        </Field>
-        <Field label="תגיות" htmlFor="w-tags" hint="מופרדות בפסיק, עד 8">
-          <input
-            id="w-tags"
-            defaultValue={(state.meta.tags ?? []).join(", ")}
-            key={(state.meta.tags ?? []).join("|")}
-            onBlur={(e) => {
-              const tags = [...new Set(e.target.value.split(/[,،]/).map((x) => x.trim().slice(0, 20)).filter(Boolean))].slice(0, 8);
-              if (tags.join("|") !== (state.meta.tags ?? []).join("|")) h.set((s) => ({ ...s, meta: { ...s.meta, tags } }));
-            }}
-          />
-        </Field>
-        <Field label="שם המדריך/ה" htmlFor="w-leader" hint="יופיע בקובץ Word ובהדפסה">
-          <input id="w-leader" value={state.meta.leader ?? ""} maxLength={60} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, leader: e.target.value } }), true)} />
-        </Field>
-        <Field label="תאריך הפעולה" htmlFor="w-date">
-          <input id="w-date" type="date" dir="ltr" value={state.meta.date ?? ""} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, date: e.target.value } }))} />
-        </Field>
-        <label className="check write-pin">
-          <input type="checkbox" checked={!!state.meta.pinned} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, pinned: e.target.checked } }))} />
-          <span>סימון בכוכב (יופיע ראשון ברשימה)</span>
-        </label>
-        <label className="check write-pin">
-          <input type="checkbox" checked={!!state.meta.template} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, template: e.target.checked } }))} />
-          <span>שמירה כתבנית אישית</span>
-        </label>
-        <label className="check write-pin">
-          <input type="checkbox" checked={!!state.meta.archived} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, archived: e.target.checked } }))} />
-          <span>העברה לארכיון</span>
-        </label>
-        <Field label="ערך או מטרה" htmlFor="w-value" hint="ההצעות יחברו אליו">
-          <input id="w-value" list="w-values" value={state.meta.value ?? ""} maxLength={40} onChange={(e) => h.set((s) => ({ ...s, meta: { ...s.meta, value: e.target.value } }), true)} placeholder="למשל: אחריות" />
-        </Field>
-        {cat && (
-          <fieldset className="write-gear">
-            <legend>ציוד שיש לכם</legend>
-            {cat.gear.map((g) => {
-              const on = (state.meta.gear ?? []).includes(g.id);
-              return (
-                <label key={g.id} className="check-inline">
-                  <input type="checkbox" checked={on} onChange={() => h.set((s) => ({ ...s, meta: { ...s.meta, gear: on ? (s.meta.gear ?? []).filter((x) => x !== g.id) : [...(s.meta.gear ?? []), g.id] } }))} />
-                  {g.label}
-                </label>
-              );
-            })}
-          </fieldset>
-        )}
-      </div>
-
-      <OutdoorHint snap={state} onOpen={() => setFin("backup")} />
-      <div className="write-bar card glass" role="region" aria-label="מצב המסמך">
-        <p className={`write-status st-${status}`} role="status" aria-live="polite">
-          {statusText}
-        </p>
-        <EditorProgress total={total} target={target ?? undefined} blocks={state.blocks} />
-        <p className="hint" role="status">
-          {words} מילים · זמן הקראה בערך {readAloud(words)} ·{" "}
-          {target ? (
-            diff === 0 ? (
-              <span>השלבים מסתכמים ב-{total} דקות, כמו המשך המתוכנן</span>
-            ) : diff > 0 ? (
-              <strong>השלבים מסתכמים ב-{total} דקות, חורגים ב-{diff} דקות מהמשך המתוכנן</strong>
-            ) : (
-              <span>
-                השלבים מסתכמים ב-{total} דקות, נשארו {-diff} דקות לתכנון
-              </span>
-            )
-          ) : (
-            <span>השלבים מסתכמים ב-{total} דקות</span>
-          )}{" "}
-          · {doneCount} מתוך {state.blocks.length} שלבים מסומנים כמוכנים{endClock ? ` · הפעולה מסתיימת בערך בשעה ${endClock}` : ""}
-        </p>
-        {total > 0 && (
-          <div className="write-timeline" aria-hidden="true">
-            {state.blocks.map((b) => (
-              <span key={b.id} className={`kind-${b.kind}`} style={{ flexGrow: b.minutes ?? 0 }} title={`${b.title || KIND_LABEL[b.kind]}: ${b.minutes ?? 0} דק'`} />
-            ))}
-          </div>
-        )}
-        {target !== total && total > 0 && (
-          <button type="button" className="btn btn-small" onClick={() => h.set((s) => ({ ...s, meta: { ...s.meta, minutes: total } }))}>
-            לקבוע את המשך המתוכנן ל-{total} דקות
-          </button>
-        )}
-      </div>
-      <div className="write-actions-card card glass" role="region" aria-label="סרגל כלים ומצב המסמך">
-        <div className="actions">
-          <button type="button" className="btn btn-small" onClick={h.undo} disabled={!h.canUndo}>
-            ביטול
-          </button>
-          <button type="button" className="btn btn-small" onClick={h.redo} disabled={!h.canRedo}>
-            שחזור
-          </button>
-          <button type="button" className="btn btn-small" aria-expanded={findOpen} onClick={() => setFindOpen(!findOpen)}>
-            חיפוש והחלפה
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setFocusMode(true)} disabled={!cur}>
-            מסך מלא לשלב הנוכחי
-          </button>
-          <button type="button" className="btn btn-small" onClick={openVersions}>
-            גרסאות
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setSearchOpen(true)} disabled={!cur}>
-            חיפוש מתודה
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setPrefsOpen(true)}>
-            המתודות שלי
-          </button>
-          <button type="button" className="btn btn-small" aria-pressed={gapsOn} onClick={() => setGapsOn(!gapsOn)}>
-            {gapsOn ? "הסתרת מה חסר" : "הצגת מה חסר"}
-          </button>
-          <button type="button" className="btn btn-small" onClick={copyText}>
-            העתקה כטקסט
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setImportOpen(true)}>
-            הדבקת טקסט לשלבים
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setPrepOpen(true)}>
-            דף הכנה
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setLogOpen(true)}>
-            יומן הרצות ({(state.meta.runs ?? []).length})
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setQOpen(true)} disabled={!cur}>
-            שאלות לדיון
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setStagesOpen(true)}>
-            שלבים ממסמך אחר
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setFin("stations")} disabled={!cur}>
-            חישוב תחנות
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setFin("backup")}>
-            תוכנית גיבוי
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setFin("ready")}>
-            מוכנות להעברה
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setFin("tribe")} disabled={!cur}>
-            מתודות השבט
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setMoreOpen(true)}>
-            כלים נוספים
-          </button>
-          <TourButton kind="write" />
-          <button type="button" className="btn btn-small" onClick={printSummary}>
-            דף מדריך להדפסה
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setKeysOpen(true)}>
-            קיצורי מקלדת
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setSearchAllOpen(true)}>
-            חיפוש בכל המסמכים
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setGroupsOpen(true)}>
-            חלוקה לקבוצות
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setParentsOpen(true)}>
-            הודעה להורים
-          </button>
-          <button type="button" className="btn btn-small" onClick={downloadIcs}>
-            קובץ יומן (ICS)
-          </button>
-          <label className="write-preset">
-            <span className="sr-only">הוספת שלב מוכן</span>
-            <select
-              value=""
-              onChange={(e) => {
-                if (e.target.value) addPreset(e.target.value);
-              }}
-            >
-              <option value="">הוספת שלב מוכן…</option>
-              {PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className="btn btn-small" onClick={() => setComOpen(true)}>
-            הערות מבקרים{comCount ? ` (${comCount})` : ""}
-          </button>
-          {user?.role === "ADMIN" && (
-            <button type="button" className="btn btn-small" onClick={publishTribe}>
-              פרסום כתבנית שבט
-            </button>
-          )}
-          <button type="button" className="btn btn-small" onClick={autoMinutes}>
-            חלוקת זמן אוטומטית
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setReadOpen(true)}>
-            קריאוּת והצעות לשם
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setSnipOpen(true)} disabled={!cur}>
-            קטעים שמורים
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setRunOn(true)} disabled={!state.blocks.length}>
-            מצב הרצה
-          </button>
-          <button type="button" className="btn btn-small" onClick={printCards}>
-            כרטיסי הדפסה לשלבים
-          </button>
-          <button type="button" className="btn btn-small" onClick={() => setShareOpen(true)}>
-            שיתוף בקישור
-          </button>
-          <button type="button" className="btn btn-small btn-primary" onClick={() => setExportOpen(true)}>
-            ייצוא ושיתוף
-          </button>
-          <button type="button" className="btn btn-small btn-primary" onClick={toAssistant}>
-            בדיקה בעוזר הכתיבה
-          </button>
-        </div>
-      </div>
-
-      {gapsOn && (
-        <GapsPanel
-          snap={state}
-          token={token}
-          onSuggest={(id) => setHelpFor(id)}
-          onAdd={(kind) => {
-            if (kind === "close") addAfter(state.blocks.length - 1, "close");
-            else if (kind === "open") {
-              const b = emptyBlock("open");
-              h.set((s) => ({ ...s, blocks: [b, ...s.blocks] }));
-              setActive(0);
-            } else addAfter(Math.max(0, state.blocks.length - 2), kind as Kind);
+    <div className="write" ref={root}>
+      <p id="w-drag-help" className="sr-only">
+        לשינוי סדר: רווח להרמת השלב, חץ למעלה או למטה להזזה, רווח להנחה, Escape לביטול. בעכבר או במגע אפשר לגרור את הידית.
+      </p>
+      <p className="sr-only" role="status" aria-live="polite">
+        {reorder.message}
+      </p>
+      {sync.conflict && (
+        <ConflictBox
+          onUseServer={() => {
+            const c = sync.conflict;
+            if (!c) return;
+            sync.afterServerReplace(c);
+            h.reset({ title: c.title, meta: c.meta, blocks: c.blocks });
+            sync.setConflict(null);
+            sync.clearBuf();
           }}
-          onFocus={(id, field) => {
-            setActive(Math.max(0, state.blocks.findIndex((b) => b.id === id)));
-            window.setTimeout(() => document.getElementById(field === "minutes" ? `wb-min-${id}` : `wb-title-${id}`)?.focus(), 30);
+          onKeepMine={() => {
+            const c = sync.conflict;
+            if (!c) return;
+            sync.rev.current = c.rev;
+            sync.setConflict(null);
+            sync.setSt("dirty");
+            void sync.flush();
           }}
         />
       )}
-
-      {findOpen && (
-        <div className="card glass write-find" role="search" aria-label="חיפוש והחלפה במסמך">
-          <Field label="חיפוש" htmlFor="w-find">
-            <input
-              id="w-find"
-              value={find}
-              onChange={(e) => {
-                setFind(e.target.value);
-                setCursor(-1);
-                setFindMsg("");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), next())}
-            />
-          </Field>
-          <Field label="החלפה ב" htmlFor="w-repl">
-            <input id="w-repl" value={repl} onChange={(e) => setRepl(e.target.value)} />
-          </Field>
-          <div className="actions">
-            <button type="button" className="btn btn-small" onClick={next}>
-              הבא
-            </button>
-            <button type="button" className="btn btn-small" onClick={replaceOne}>
-              החלפה
-            </button>
-            <button type="button" className="btn btn-small" onClick={replaceAll}>
-              החלפת הכול
-            </button>
-          </div>
-          <p className="hint" role="status">
-            {find ? `נמצאו ${matches.length} מופעים` : "הקלידו מה לחפש"} {findMsg && `· ${findMsg}`}
-          </p>
-        </div>
+      {rec && (
+        <RecoverBox
+          recover={rec}
+          onApply={() => void sync.applyRecovery()}
+          onDrop={sync.dropRecovery}
+          onCompare={() => {
+            if (rec.kind === "conflict") openCompare({ left: rec.theirs, right: rec.mine, leftLabel: "בשרת", rightLabel: "במכשיר", restore: false });
+            else if (rec.kind === "merge") openCompare({ left: first, right: rec.snap, leftLabel: "בשרת", rightLabel: "אחרי המיזוג", restore: false });
+          }}
+        />
       )}
+      <LimitBanner problems={problemsLive} onJump={jumpLimit} />
 
-      <PrepPanel equipment={state.meta.equipment ?? []} review={state.meta.review ?? []} onEquipment={(equipment) => h.set((s) => ({ ...s, meta: { ...s.meta, equipment } }))} onReview={(review) => h.set((s) => ({ ...s, meta: { ...s.meta, review } }))} />
-      <SimilarNotice title={state.title} text={flatten(state)} docId={initial.id} token={token} />
+      <WriteMetaCard title={state.title} meta={state.meta} cat={cat} api={metaApi} />
 
-      {token && <TeamEdit docId={initial.id} role={role} active={team} people={live.people} me={live.me} state={live.state} blocks={state.blocks} activeId={cur?.id ?? null} onEditorsChange={setTeamN} />}
+      <OutdoorHintM snap={dState} onOpen={panelApi.openBackup} />
+      <StatusBar status={sync.status} statusText={statusText} blocks={dState.blocks} total={blocks.reduce((t, b) => t + (b.minutes ?? 0), 0)} done={blocks.filter((b) => b.done).length} target={target} words={words} endClock={endClock} onSetTarget={panelApi.setTarget} />
+      <WriteToolbar on={toolbarApi.on} canUndo={h.canUndo} canRedo={h.canRedo} findOpen={findOpen} gapsOn={gapsOn} hasCur={!!cur} hasBlocks={nBlocks > 0} runs={(state.meta.runs ?? []).length} comCount={comCount} isAdmin={user?.role === "ADMIN"} />
+
+      {gapsOn && <GapsPanelM snap={dState} token={token} onSuggest={panelApi.suggest} onAdd={panelApi.add} onFocus={panelApi.focus} />}
+
+      {findOpen && <FindPanel blocks={blocks} activeId={curId} apply={(next) => h.set((s) => ({ ...s, blocks: next }))} go={goHit} onClose={() => setFindOpen(false)} />}
+
+      <PrepPanelM equipment={state.meta.equipment ?? []} review={state.meta.review ?? []} onEquipment={panelApi.equipment} onReview={panelApi.review} />
+      <SimilarNoticeM title={dState.title} text={dText} docId={initial.id} token={token} />
+
+      {token && <TeamEditM docId={initial.id} role={role} active={team} people={live.people} me={live.me} state={live.state} blocks={dState.blocks} activeId={curId} onEditorsChange={setTeamN} />}
       {token && <GroupDnaCard compact />}
 
-      <WritePulse blocks={state.blocks} total={total} onInsert={insertGame} />
+      <WritePulseM blocks={dState.blocks} total={sumMinutes(dState.blocks)} onInsert={panelApi.game} />
 
-      <ol className="write-blocks">
-        {state.blocks.map((b, idx) => {
-          const isPrev = preview.has(b.id);
-          return (
-            <li
-              key={b.id}
-              className={`card glass write-block kind-${b.kind} ${dropAt === idx ? "is-drop" : ""} ${active === idx ? "is-active" : ""}`}
-              onDragOver={(e) => {
-                if (dragFrom.current === null) return;
-                e.preventDefault();
-                setDropAt(idx);
-              }}
-              onDragLeave={() => setDropAt((d) => (d === idx ? null : d))}
-              onDrop={(e) => {
-                e.preventDefault();
-                const from = dragFrom.current;
-                dragFrom.current = null;
-                setDropAt(null);
-                if (from !== null) move(from, idx);
-              }}
-              onFocusCapture={() => setActive(idx)}
-            >
-              <h2 className="sr-only">
-                שלב {idx + 1}: {b.title || KIND_LABEL[b.kind]}
-              </h2>
-              <BlockPeers people={live.people} me={live.me} blockId={b.id} />
-              <div className="write-head">
-                <span
-                  className="write-handle"
-                  draggable
-                  aria-hidden="true"
-                  title="גררו כדי לשנות סדר"
-                  onDragStart={(e) => {
-                    dragFrom.current = idx;
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", String(idx));
-                  }}
-                  onDragEnd={() => {
-                    dragFrom.current = null;
-                    setDropAt(null);
-                  }}
-                >
-                  ⋮⋮
-                </span>
-                <span className="write-num" aria-hidden="true">
-                  {idx + 1}
-                </span>
-                <Field label="סוג" htmlFor={`wb-kind-${b.id}`} className="write-kind">
-                  <select id={`wb-kind-${b.id}`} value={b.kind} onChange={(e) => setBlock(b.id, { kind: e.target.value as Kind })}>
-                    {KINDS.map((k) => (
-                      <option key={k} value={k}>
-                        {KIND_LABEL[k]}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="כותרת השלב" htmlFor={`wb-title-${b.id}`} className="write-ttl">
-                  <input id={`wb-title-${b.id}`} value={b.title} maxLength={120} onChange={(e) => setBlock(b.id, { title: e.target.value }, true)} />
-                </Field>
-                <Field label="דקות" htmlFor={`wb-min-${b.id}`} className="write-mins">
-                  <input id={`wb-min-${b.id}`} type="number" min={0} max={300} dir="ltr" value={b.minutes ?? ""} onChange={(e) => setBlock(b.id, { minutes: e.target.value === "" ? null : Math.max(0, Math.min(300, Math.round(Number(e.target.value)))) }, true)} />
-                </Field>
-              </div>
-
-              <div className="write-tools" role="toolbar" aria-label={`עיצוב טקסט בשלב ${idx + 1}`}>
-                <button type="button" className="btn btn-small" onClick={() => wrap(b.id, "**", "טקסט מודגש")} disabled={isPrev}>
-                  <strong>מודגש</strong>
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => wrap(b.id, "*", "טקסט נטוי")} disabled={isPrev}>
-                  <em>נטוי</em>
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => prefix(b.id, () => "## ")} disabled={isPrev}>
-                  כותרת
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => prefix(b.id, () => "- ")} disabled={isPrev}>
-                  רשימה
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => prefix(b.id, (i) => `${i + 1}. `)} disabled={isPrev}>
-                  ממוספרת
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => prefix(b.id, () => "> ")} disabled={isPrev}>
-                  ציטוט
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => table(b.id)} disabled={isPrev}>
-                  טבלה
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-small"
-                  aria-pressed={isPrev}
-                  onClick={() =>
-                    setPreview((p) => {
-                      const n = new Set(p);
-                      if (n.has(b.id)) n.delete(b.id);
-                      else n.add(b.id);
-                      return n;
-                    })
-                  }
-                >
-                  {isPrev ? "חזרה לכתיבה" : "תצוגה מקדימה"}
-                </button>
-              </div>
-
-              {isPrev ? (
-                <div className="write-preview" tabIndex={0} role="region" aria-label={`תצוגה מקדימה של שלב ${idx + 1}`}>
-                  <Md text={b.text} />
-                </div>
-              ) : (
-                <>
-                  <label htmlFor={`wb-text-${b.id}`} className="sr-only">
-                    טקסט השלב {idx + 1}
-                  </label>
-                  <textarea id={`wb-text-${b.id}`} className="write-text" value={b.text} placeholder={b.hint || "כתבו כאן"} onChange={(e) => setBlock(b.id, { text: e.target.value }, true)} rows={Math.max(5, Math.min(18, b.text.split("\n").length + 2))} />
-                </>
-              )}
-
-              <details className="write-note">
-                <summary>הערה לעצמי{b.note.trim() ? " (יש הערה)" : ""}</summary>
-                <label htmlFor={`wb-note-${b.id}`} className="sr-only">
-                  הערה אישית לשלב {idx + 1}
-                </label>
-                <textarea id={`wb-note-${b.id}`} className="write-note-text" value={b.note} maxLength={5000} onChange={(e) => setBlock(b.id, { note: e.target.value }, true)} placeholder="רעיונות, תזכורות, ציוד. ההערה לא נכנסת להעתקה או לייצוא" rows={3} />
-              </details>
-
-              {clocks[idx] && <p className="hint write-clock">מתחיל בשעה {clocks[idx]}</p>}
-              <div className="actions write-foot">
-                <button type="button" className="btn btn-small btn-primary" onClick={() => setHelpFor(b.id)}>
-                  עזרה במתודות<span className="sr-only">: שלב {idx + 1}</span>
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => move(idx, idx - 1)} disabled={idx === 0}>
-                  הזזה למעלה<span className="sr-only">: שלב {idx + 1}</span>
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => move(idx, idx + 1)} disabled={idx === state.blocks.length - 1}>
-                  הזזה למטה<span className="sr-only">: שלב {idx + 1}</span>
-                </button>
-                {dict.supported && (
-                  <button type="button" className="btn btn-small" aria-pressed={dictId === b.id && dict.on} onClick={() => toggleDict(b.id)}>
-                    {dictId === b.id && dict.on ? "עצירת הכתבה" : "הכתבה בקול"}
-                    <span className="sr-only">: שלב {idx + 1}</span>
-                  </button>
-                )}
-                <label className="check-inline">
-                  <input type="checkbox" checked={!!b.done} onChange={(e) => setBlock(b.id, { done: e.target.checked })} />
-                  השלב מוכן<span className="sr-only">: שלב {idx + 1}</span>
-                </label>
-                <button type="button" className="btn btn-small" onClick={() => duplicate(idx)}>
-                  שכפול השלב<span className="sr-only">: שלב {idx + 1}</span>
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => splitAtCursor(idx)}>
-                  פיצול במיקום הסמן<span className="sr-only">: שלב {idx + 1}</span>
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => addAfter(idx, "free")}>
-                  שלב חדש מתחת<span className="sr-only">: שלב {idx + 1}</span>
-                </button>
-                <button type="button" className="btn btn-small" onClick={() => remove(idx)}>
-                  מחיקת השלב<span className="sr-only">: שלב {idx + 1}</span>
-                </button>
-              </div>
-            </li>
-          );
-        })}
+      <ol className="write-blocks" ref={listRef}>
+        {blocks.map((b, idx) => (
+          <BlockCard
+            key={b.id}
+            b={b}
+            idx={idx}
+            total={nBlocks}
+            active={activeIdx === idx}
+            preview={preview.has(b.id)}
+            dropMark={reorder.drop === idx ? "before" : reorder.drop === nBlocks && idx === nBlocks - 1 ? "after" : null}
+            isDragging={reorder.dragging === idx}
+            held={reorder.held === b.id}
+            clock={clocks[idx]}
+            people={live.people}
+            me={live.me}
+            lockedBy={locks.get(b.id) ?? null}
+            dictOn={dictId === b.id && dict.on}
+            dictSupported={dict.supported}
+            atLimit={atLimit}
+            api={blockApi}
+          />
+        ))}
       </ol>
 
       <div className="card glass write-add">
         <Field label="סוג השלב החדש" htmlFor="w-addkind">
           <select id="w-addkind" value={addKind} onChange={(e) => setAddKind(e.target.value as Kind)}>
-            {KINDS.map((k) => (
+            {(Object.keys(KIND_LABEL) as Kind[]).map((k) => (
               <option key={k} value={k}>
                 {KIND_LABEL[k]}
               </option>
             ))}
           </select>
         </Field>
-        <button type="button" className="btn btn-primary" onClick={() => addAfter(state.blocks.length - 1, addKind)}>
+        <button type="button" className="btn btn-primary" onClick={() => addAfter(nBlocks - 1, addKind)} disabled={atLimit} title={atLimit ? limitMsg : undefined}>
           הוספת שלב בסוף
         </button>
+        {(left <= 10 || atLimit) && (
+          <p className={`hint ${atLimit ? "warn-text" : ""}`} role="status">
+            {atLimit ? limitMsg : `אפשר להוסיף עוד ${left} שלבים (המקסימום הוא ${LIMITS.blocks})`}
+          </p>
+        )}
       </div>
 
       {focusMode && cur && (
-        <div className="assist-focus no-print" role="dialog" aria-modal="true" aria-label="מצב כתיבה במסך מלא">
-          <div className="assist-focus-bar">
-            <label htmlFor="wf-title">כותרת השלב</label>
-            <input id="wf-title" style={{ width: "16rem" }} value={cur.title} onChange={(e) => setBlock(cur.id, { title: e.target.value }, true)} />
-            <span>
-              שלב {Math.min(active, state.blocks.length - 1) + 1} מתוך {state.blocks.length}
-            </span>
-            <button type="button" className="btn btn-small" onClick={() => setActive(Math.max(0, active - 1))} disabled={active <= 0}>
-              השלב הקודם
-            </button>
-            <button type="button" className="btn btn-small" onClick={() => setActive(Math.min(state.blocks.length - 1, active + 1))} disabled={active >= state.blocks.length - 1}>
-              השלב הבא
-            </button>
-            <button type="button" className="btn btn-small" onClick={h.undo} disabled={!h.canUndo}>
-              ביטול
-            </button>
-            <span className="hint" role="status">
-              {statusText}
-            </span>
-            <button type="button" className="btn btn-small btn-primary" onClick={() => setFocusMode(false)} autoFocus>
-              יציאה (Esc)
-            </button>
-          </div>
-          <label htmlFor="wf-text" className="sr-only">
-            טקסט השלב
-          </label>
-          <textarea id="wf-text" className="assist-focus-text" value={cur.text} onChange={(e) => setBlock(cur.id, { text: e.target.value }, true)} />
-        </div>
+        <FocusMode
+          block={cur}
+          index={activeIdx}
+          total={nBlocks}
+          blocks={blocks}
+          planned={target}
+          statusText={statusText}
+          words={words}
+          canUndo={bh.canUndo(cur.id) || h.canUndo}
+          locked={locks.has(cur.id)}
+          onChange={(patch, co) => setBlock(cur.id, patch, co)}
+          onPrev={() => setActive(Math.max(0, activeIdx - 1))}
+          onNext={() => setActive(Math.min(nBlocks - 1, activeIdx + 1))}
+          onUndo={() => undoAny(true)}
+          onHelp={() => setDlg("keys")}
+          onExit={() => setFocusMode(false)}
+        />
       )}
 
-      <PrintSheet snap={state} />
-      <SearchAllModal open={searchAllOpen} onClose={() => setSearchAllOpen(false)} token={token} />
-      <GroupsModal open={groupsOpen} onClose={() => setGroupsOpen(false)} size={state.meta.groupSize} />
-      <ParentsModal open={parentsOpen} onClose={() => setParentsOpen(false)} snap={state} token={token} />
-      <SummarySheet snap={state} />
-      <RunLogModal open={logOpen} onClose={() => setLogOpen(false)} runs={state.meta.runs ?? []} onChange={(runs) => h.set((s) => ({ ...s, meta: { ...s.meta, runs } }))} />
-      <StationsModal open={fin === "stations"} onClose={() => setFin("")} token={token} total={state.meta.minutes ?? 0} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
-      <BackupPlanModal open={fin === "backup"} onClose={() => setFin("")} token={token} snap={state} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, 60) }))} />
-      <ReadinessModal open={fin === "ready"} onClose={() => setFin("")} token={token} snap={state} />
-      <TribeMethodsModal open={fin === "tribe"} onClose={() => setFin("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
-      <QuestionsModal open={qOpen} onClose={() => setQOpen(false)} token={token} value={state.meta.value ?? ""} age={state.meta.ageGroup} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
-      <ImportStagesModal open={stagesOpen} onClose={() => setStagesOpen(false)} token={token} currentId={initial.id} onApply={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs.map((b) => ({ ...b, id: newBlockId(), done: false }))].slice(0, 60) }))} />
-      <MoreToolsModal open={moreOpen} onClose={() => setMoreOpen(false)} snap={state} docId={initial.id} token={token} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} onOpened={(id) => router.push(`/write/${id}`)} onTool={(t) => { setMoreOpen(false); setTool(t); }} />
-      <VoiceCheckModal open={tool === "voice"} onClose={() => setTool("")} snap={state} token={token} />
-      <SafetyModal open={tool === "safety"} onClose={() => setTool("")} snap={state} token={token} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, 60) }))} />
-      <AgeAdaptModal open={tool === "age"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onOpened={(id) => router.push(`/write/${id}`)} />
-      <MapModal open={tool === "map"} onClose={() => setTool("")} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <ReadAloudModal open={tool === "read"} onClose={() => setTool("")} snap={state} block={cur} />
-      <PracticeModal open={tool === "practice"} onClose={() => setTool("")} block={cur} />
-      <StoryQuizModal open={tool === "story"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <PrintablesModal open={tool === "print"} onClose={() => setTool("")} snap={state} token={token} />
-      <IllustrationsModal open={tool === "illus"} onClose={() => setTool("")} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <HolidayModal open={tool === "holiday"} onClose={() => setTool("")} token={token} onAdd={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs].slice(0, 60) }))} />
-      <MergeModal open={tool === "merge"} onClose={() => setTool("")} token={token} currentId={initial.id} blocks={state.blocks} onApply={(bs) => h.set((st) => ({ ...st, blocks: bs }))} />
-      <ViewersModal open={tool === "viewers"} onClose={() => setTool("")} token={token} docId={initial.id} blocks={state.blocks} />
-      <VoiceNotesModal open={tool === "vnotes"} onClose={() => setTool("")} docId={initial.id} block={cur} />
-      <HooksModal open={tool === "hooks"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <ParticipationModal open={tool === "meter"} onClose={() => setTool("")} docId={initial.id} />
-      <GameRulesModal open={tool === "rules"} onClose={() => setTool("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <TranslateModal open={tool === "translate"} onClose={() => setTool("")} token={token} snap={state} />
-      <SeriesModal open={tool === "series"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} onOpened={(id) => router.push(`/write/${id}`)} />
-      <StyleLabModal open={tool === "lab53"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <ToolboxModal open={tool === "box51"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <StageModeModal open={tool === "stage"} onClose={() => setTool("")} blocks={state.blocks} />
-      <StageQuestionsModal open={tool === "questions"} onClose={() => setTool("")} block={cur} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
-      <ShortcutsModal open={keysOpen} onClose={() => setKeysOpen(false)} />
+      <PrintSheet snap={dState} />
+      <SummarySheetM snap={dState} />
+      <Gate open={dlg === "searchAll"}>
+        <SearchAllModal open={dlg === "searchAll"} onClose={() => setDlg("")} token={token} />
+      </Gate>
+      <Gate open={dlg === "groups"}>
+        <GroupsModal open={dlg === "groups"} onClose={() => setDlg("")} size={state.meta.groupSize} />
+      </Gate>
+      <Gate open={dlg === "parents"}>
+        <ParentsModal open={dlg === "parents"} onClose={() => setDlg("")} snap={state} token={token} />
+      </Gate>
+      <Gate open={dlg === "log"}>
+        <RunLogModal open={dlg === "log"} onClose={() => setDlg("")} runs={state.meta.runs ?? []} onChange={(runs) => h.set((s) => ({ ...s, meta: { ...s.meta, runs } }))} />
+      </Gate>
+      <Gate open={fin === "stations"}>
+        <StationsModal open={fin === "stations"} onClose={() => setFin("")} token={token} total={state.meta.minutes ?? 0} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
+      </Gate>
+      <Gate open={fin === "backup"}>
+        <BackupPlanModal open={fin === "backup"} onClose={() => setFin("")} token={token} snap={state} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, LIMITS.blocks) }))} />
+      </Gate>
+      <Gate open={fin === "ready"}>
+        <ReadinessModal open={fin === "ready"} onClose={() => setFin("")} token={token} snap={state} />
+      </Gate>
+      <Gate open={fin === "tribe"}>
+        <TribeMethodsModal open={fin === "tribe"} onClose={() => setFin("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
+      </Gate>
+      <Gate open={dlg === "q"}>
+        <QuestionsModal open={dlg === "q"} onClose={() => setDlg("")} token={token} value={state.meta.value ?? ""} age={state.meta.ageGroup} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
+      </Gate>
+      <Gate open={dlg === "stages"}>
+        <ImportStagesModal open={dlg === "stages"} onClose={() => setDlg("")} token={token} currentId={initial.id} onApply={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs.map((b) => ({ ...b, id: newBlockId(), done: false }))].slice(0, LIMITS.blocks) }))} />
+      </Gate>
+      <Gate open={dlg === "more"}>
+        <MoreToolsModal
+          open={dlg === "more"}
+          onClose={() => setDlg("")}
+          snap={state}
+          docId={initial.id}
+          token={token}
+          onInsert={(t) => cur && insertText(cur.id, t, "cursor")}
+          onOpened={(id) => router.push(`/write/${id}`)}
+          onTool={(t) => {
+            setDlg("");
+            setTool(t);
+          }}
+        />
+      </Gate>
+      <Gate open={tool === "voice"}>
+        <VoiceCheckModal open={tool === "voice"} onClose={() => setTool("")} snap={state} token={token} />
+      </Gate>
+      <Gate open={tool === "safety"}>
+        <SafetyModal open={tool === "safety"} onClose={() => setTool("")} snap={state} token={token} onAddStage={(title, text) => h.set((st) => ({ ...st, blocks: [...st.blocks, { ...emptyBlock("free"), title, text }].slice(0, LIMITS.blocks) }))} />
+      </Gate>
+      <Gate open={tool === "age"}>
+        <AgeAdaptModal open={tool === "age"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onOpened={(id) => router.push(`/write/${id}`)} />
+      </Gate>
+      <Gate open={tool === "map"}>
+        <MapModal open={tool === "map"} onClose={() => setTool("")} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <Gate open={tool === "read"}>
+        <ReadAloudModal open={tool === "read"} onClose={() => setTool("")} snap={state} block={cur} />
+      </Gate>
+      <Gate open={tool === "practice"}>
+        <PracticeModal open={tool === "practice"} onClose={() => setTool("")} block={cur} />
+      </Gate>
+      <Gate open={tool === "story"}>
+        <StoryQuizModal open={tool === "story"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <Gate open={tool === "print"}>
+        <PrintablesModal open={tool === "print"} onClose={() => setTool("")} snap={state} token={token} />
+      </Gate>
+      <Gate open={tool === "illus"}>
+        <IllustrationsModal open={tool === "illus"} onClose={() => setTool("")} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <Gate open={tool === "holiday"}>
+        <HolidayModal open={tool === "holiday"} onClose={() => setTool("")} token={token} onAdd={(bs) => h.set((st) => ({ ...st, blocks: [...st.blocks, ...bs].slice(0, LIMITS.blocks) }))} />
+      </Gate>
+      <Gate open={tool === "merge"}>
+        <MergeModal open={tool === "merge"} onClose={() => setTool("")} token={token} currentId={initial.id} blocks={state.blocks} onApply={(bs) => h.set((st) => ({ ...st, blocks: bs }))} />
+      </Gate>
+      <Gate open={tool === "viewers"}>
+        <ViewersModal open={tool === "viewers"} onClose={() => setTool("")} token={token} docId={initial.id} blocks={state.blocks} />
+      </Gate>
+      <Gate open={tool === "vnotes"}>
+        <VoiceNotesModal open={tool === "vnotes"} onClose={() => setTool("")} docId={initial.id} block={cur} />
+      </Gate>
+      <Gate open={tool === "hooks"}>
+        <HooksModal open={tool === "hooks"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <Gate open={tool === "meter"}>
+        <ParticipationModal open={tool === "meter"} onClose={() => setTool("")} docId={initial.id} />
+      </Gate>
+      <Gate open={tool === "rules"}>
+        <GameRulesModal open={tool === "rules"} onClose={() => setTool("")} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <Gate open={tool === "translate"}>
+        <TranslateModal open={tool === "translate"} onClose={() => setTool("")} token={token} snap={state} />
+      </Gate>
+      <Gate open={tool === "series"}>
+        <SeriesModal open={tool === "series"} onClose={() => setTool("")} token={token} snap={state} onInsert={(t) => cur && insertText(cur.id, t, "append")} onOpened={(id) => router.push(`/write/${id}`)} />
+      </Gate>
+      <Gate open={tool === "lab53"}>
+        <StyleLabModal open={tool === "lab53"} onClose={() => setTool("")} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <Gate open={tool === "box51"}>
+        <ToolboxModal open={tool === "box51"} onClose={() => setTool("")} snap={state} token={token} docId={initial.id} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <Gate open={tool === "stage"}>
+        <StageModeModal open={tool === "stage"} onClose={() => setTool("")} blocks={state.blocks} />
+      </Gate>
+      <Gate open={tool === "questions"}>
+        <StageQuestionsModal open={tool === "questions"} onClose={() => setTool("")} block={cur} snap={state} token={token} onInsert={(t) => cur && insertText(cur.id, t, "append")} />
+      </Gate>
+      <ShortcutsPanel open={dlg === "keys"} onClose={() => setDlg("")} />
       {runOn && <RunMode snap={state} onClose={() => setRunOn(false)} />}
-      <SnippetsModal open={snipOpen} onClose={() => setSnipOpen(false)} token={token} current={cur?.text ?? ""} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
-      <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} docId={initial.id} token={token} />
-      <ReadabilityModal open={readOpen} onClose={() => setReadOpen(false)} snap={state} token={token} onTitle={(t) => h.set((s) => ({ ...s, title: t }))} onClean={cleanAll} />
-      <CommentsModal open={comOpen} onClose={() => setComOpen(false)} docId={initial.id} token={token} onCount={setComCount} titleOf={(id) => { const b = state.blocks.find((x) => x.id === id); return b ? b.title || KIND_LABEL[b.kind] : "שלב שנמחק"; }} />
-      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} snap={state} token={token} docId={initial.id} />
-      <PrepModal open={prepOpen} onClose={() => setPrepOpen(false)} snap={state} token={token} />
-      <ImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
+      <Gate open={dlg === "snip"}>
+        <SnippetsModal open={dlg === "snip"} onClose={() => setDlg("")} token={token} current={cur?.text ?? ""} onInsert={(t) => cur && insertText(cur.id, t, "cursor")} />
+      </Gate>
+      <Gate open={dlg === "share"}>
+        <ShareModal open={dlg === "share"} onClose={() => setDlg("")} docId={initial.id} token={token} />
+      </Gate>
+      <Gate open={dlg === "readability"}>
+        <ReadabilityModal open={dlg === "readability"} onClose={() => setDlg("")} snap={state} token={token} onTitle={(t) => h.set((s) => ({ ...s, title: t }))} onClean={cleanAll} />
+      </Gate>
+      <CommentsModal
+        open={dlg === "comments"}
+        onClose={() => setDlg("")}
+        docId={initial.id}
         token={token}
-        onApply={(blocks, mode) =>
-          h.set((st) => {
-            const fresh = blocks.map((b) => ({ ...b, id: newBlockId() }));
-            const keep = mode === "append" ? st.blocks.filter((b, _i, a) => !(a.length === 1 && !b.text.trim() && !b.title.trim())) : [];
-            return { ...st, blocks: [...keep, ...fresh].slice(0, 60) };
-          })
-        }
+        onCount={setComCount}
+        titleOf={(id) => {
+          const b = blocks.find((x) => x.id === id);
+          return b ? b.title || KIND_LABEL[b.kind] : "שלב שנמחק";
+        }}
       />
-      <HelpModal open={helpFor !== null} onClose={() => setHelpFor(null)} snap={state} blockId={helpFor} token={token} onInsert={insertText} />
-      <PrefsModal open={prefsOpen} onClose={() => setPrefsOpen(false)} token={token} cat={cat} />
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} token={token} blockId={cur?.id ?? null} onInsert={insertText} />
+      <Gate open={dlg === "export"}>
+        <ExportModal open={dlg === "export"} onClose={() => setDlg("")} snap={state} token={token} docId={initial.id} />
+      </Gate>
+      <Gate open={dlg === "prep"}>
+        <PrepModal open={dlg === "prep"} onClose={() => setDlg("")} snap={state} token={token} />
+      </Gate>
+      <Gate open={dlg === "import"}>
+        <ImportModal
+          open={dlg === "import"}
+          onClose={() => setDlg("")}
+          token={token}
+          onApply={(bs, mode) =>
+            h.set((st) => {
+              const fresh = bs.map((b) => ({ ...b, id: newBlockId() }));
+              const keep = mode === "append" ? st.blocks.filter((b, _i, a) => !(a.length === 1 && !b.text.trim() && !b.title.trim())) : [];
+              return { ...st, blocks: [...keep, ...fresh].slice(0, LIMITS.blocks) };
+            })
+          }
+        />
+      </Gate>
+      <Gate open={helpFor !== null}>
+        <HelpModal open={helpFor !== null} onClose={() => setHelpFor(null)} snap={state} blockId={helpFor} token={token} onInsert={insertText} />
+      </Gate>
+      <Gate open={dlg === "prefs"}>
+        <PrefsModal open={dlg === "prefs"} onClose={() => setDlg("")} token={token} cat={cat} />
+      </Gate>
+      <Gate open={dlg === "search"}>
+        <SearchModal open={dlg === "search"} onClose={() => setDlg("")} token={token} blockId={cur?.id ?? null} onInsert={insertText} />
+      </Gate>
 
-      <Modal open={verOpen} onClose={() => setVerOpen(false)} title="גרסאות קודמות" wide footer={<button type="button" className="btn" onClick={() => setVerOpen(false)}>סגירה</button>}>
+      {/* שלב 75 */}
+      <StyleModal open={dlg === "style"} onClose={() => setDlg("")} blocks={blocks} ageGroup={state.meta.ageGroup} onJump={jumpStyle} />
+      <NotesModal
+        open={dlg === "notes"}
+        onClose={() => setDlg("")}
+        blocks={blocks}
+        onChange={(id, note) => setBlock(id, { note }, true)}
+        onJump={(id) => {
+          setDlg("");
+          focusAt(id, "note", 0, 0);
+        }}
+      />
+      <ReadMeModal open={dlg === "readMe"} onClose={() => setDlg("")} blocks={blocks} activeIdx={activeIdx} onJump={(i) => setActive(i)} />
+      <TrayModal open={dlg === "tray"} onClose={() => setDlg("")} tray={tray} onRestore={restoreTray} />
+      <BlockHistoryModal
+        open={dlg === "history"}
+        onClose={() => setDlg("")}
+        block={blocks.find((b) => b.id === histFor) ?? null}
+        index={Math.max(0, blocks.findIndex((b) => b.id === histFor))}
+        list={histFor ? bh.list(histFor) : []}
+        onRestore={(i) => {
+          if (histFor && bh.restore(histFor, i)) toast("המצב שוחזר. אפשר לבטל", { kind: "success" });
+        }}
+      />
+      <PrintPreviewModal open={dlg === "printA4"} onClose={() => setDlg("")} snap={dState} onPrint={printSheet} />
+      <SideBySideModal open={cmp !== null} onClose={() => setCmp(null)} left={cmp?.left ?? null} right={cmp?.right ?? null} leftLabel={cmp?.leftLabel ?? ""} rightLabel={cmp?.rightLabel ?? ""} onRestore={cmp?.restore ? restoreStage : undefined} />
+      <UncheckedGate
+        open={gate !== null}
+        blocks={blocks}
+        onClose={() => setGate(null)}
+        onContinue={() => {
+          const g = gate;
+          setGate(null);
+          g?.next();
+        }}
+        onJump={(id) => focusAt(id, "text", 0, 0)}
+      />
+      <LeaveModal
+        open={leave !== null}
+        status={sync.status}
+        onStay={() => setLeave(null)}
+        onLeave={() => {
+          const to = leave;
+          setLeave(null);
+          sync.writeBuf();
+          if (to) router.push(to);
+        }}
+        onSave={async () => {
+          const to = leave;
+          await sync.saveNow();
+          if (sync.statusRef.current === "saved") {
+            setLeave(null);
+            if (to) router.push(to);
+          } else toast("השמירה לא הצליחה, ולכן נשארים בעורך. הנוסח שלכם שמור במכשיר.", { kind: "error" });
+        }}
+      />
+
+      <Modal open={dlg === "versions"} onClose={() => setDlg("")} title="גרסאות קודמות" wide footer={<button type="button" className="btn" onClick={() => setDlg("")}>סגירה</button>}>
         <p className="hint">האתר שומר גרסה אוטומטית לכל היותר פעם בשעה, ועד 100 גרסאות. אפשר גם ליצור נקודת שמירה ידנית לפני שינוי גדול.</p>
         <div className="inline-form">
           <Field label="שם לנקודת שמירה (לא חובה)" htmlFor="w-label">
@@ -1305,6 +1236,9 @@ export function WriteEditor({ initial }: { initial: Doc }) {
             <div className="actions">
               <button type="button" className="btn btn-primary" onClick={() => restore(verView.id)}>
                 שחזור הגרסה הזו
+              </button>
+              <button type="button" className="btn" onClick={() => openCompare({ left: verView.snap, right: state, leftLabel: verView.title, rightLabel: "הנוכחי", restore: true })}>
+                השוואה זה לצד זה
               </button>
               <button type="button" className="btn" onClick={() => setVerView(null)}>
                 חזרה לרשימה

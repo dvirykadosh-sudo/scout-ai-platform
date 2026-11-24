@@ -38,6 +38,7 @@ import { registerWaRoutes } from "./wa/index.js";
 import { registerV57Routes } from "./routes-v57.js";
 import { registerV69Routes } from "./routes-v69.js";
 import { registerLive70Routes } from "./routes-live70.js";
+import { registerWrite75Routes } from "./write75.js";
 import { registerResourceRoutes } from "./routes-res71.js";
 import { registerLab74Routes } from "./routes-lab74.js";
 import { importReport } from "./lab74.js";
@@ -758,6 +759,7 @@ export function createApp({ db, mailer, serveStatic = true, dbFile = config.dbPa
   registerLuxRoutes(app, { db, limiter, fail, requireUser, optionalAuth });
   registerV69Routes(app, { db, limiter, fail, requireUser });
   registerLive70Routes(app, { db, limiter, fail, requireUser });
+  registerWrite75Routes(app, { db, limiter, fail, requireUser });
   registerResourceRoutes(app, { db, limiter, fail, requireUser });
   registerLab74Routes(app, { db, limiter, fail, requireUser, optionalAuth, canManage, forbidden, saveVersion });
   // שלב 58: מנוע הוואטסאפ (תור, תבניות, בוט, גשר מקומי). בבדיקות אין טיימרים.

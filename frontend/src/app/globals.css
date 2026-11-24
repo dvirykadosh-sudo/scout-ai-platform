@@ -1875,7 +1875,6 @@ html.hc .cal-event { background: #000; border-width: 2px; }
   .write-meta, .write-find { grid-template-columns: 1fr; }
   .write-head { grid-template-columns: 1fr 1fr; }
   .write-head .write-ttl { grid-column: 1 / -1; }
-  .write-handle { display: none; }
 }
 
 /* סבב 113–126: עזרה במתודות */

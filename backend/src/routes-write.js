@@ -5,6 +5,7 @@ import { z } from "zod";
 import { audit, nowIso } from "./db.js";
 import { AGE_GROUPS } from "./shared/constants.js";
 import { createRevCache, mergeBlocks, mergeFields } from "./block-merge.js";
+import { limitProblemsOf } from "./write75.js";
 
 export const KINDS = ["open", "body", "peak", "close", "free"];
 const MAX_DOCS = 100;
@@ -20,6 +21,8 @@ const blockSchema = z.object({
   note: z.string().max(5000).default(""),
   hint: z.string().max(200).optional(),
   done: z.boolean().default(false),
+  // שלב 75: "טרם נבדק". נשמר רק כשהוא true, כדי שמסמכים ישנים לא ישתנו ולא ייווצרו התנגשויות מדומות במיזוג
+  unchecked: z.boolean().optional().transform((v) => (v ? true : undefined)),
 });
 const metaSchema = z.object({
   ageGroup: z.enum(AGE_GROUPS).or(z.literal("")).default(""),
@@ -197,6 +200,9 @@ export function registerWriteRoutes(app, { db, limiter, fail, requireUser }) {
     const a = editable(idOf(req), req.user.id);
     if (!a) return notFound(res);
     const d = a.d;
+    // שלב 75: חריגה מהמגבלות מקבלת הסבר ברור (איזה שלב, כמה תווים, מה עושים), לא "הנתונים שנשלחו אינם תקינים"
+    const lp = limitProblemsOf(req.body);
+    if (lp.length) return res.status(400).json({ ...fail("LIMITS", lp[0].message), problems: lp.slice(0, 10) });
     const v = saveSchema.parse(req.body ?? {});
     let { title, meta, blocks } = v;
     let merged = null;

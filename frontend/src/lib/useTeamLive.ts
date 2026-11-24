@@ -13,6 +13,8 @@ export interface LivePerson {
   block: string | null;
   editing: boolean;
   color: string;
+  /** שלב 75: השלב שהאדם הזה נועל כרגע לעריכה (מייעץ בלבד), או null */
+  lock?: string | null;
 }
 export interface SavedEvent {
   rev: number;

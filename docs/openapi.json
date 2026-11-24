@@ -10062,6 +10062,34 @@
     }
    }
   },
+  "/api/write/docs/{id}/live/lock": {
+   "post": {
+    "tags": [
+     "write"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
   "/api/write/docs/{id}/presence": {
    "get": {
     "tags": [
@@ -10312,6 +10340,24 @@
        "type": "string"
       }
      }
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/docs/from-run": {
+   "post": {
+    "tags": [
+     "write"
     ],
     "responses": {
      "200": {
@@ -11567,6 +11613,24 @@
    }
   },
   "/api/write/templates": {
+   "get": {
+    "tags": [
+     "write"
+    ],
+    "responses": {
+     "200": {
+      "$ref": "#/components/responses/Ok"
+     },
+     "400": {
+      "$ref": "#/components/responses/Bad"
+     },
+     "401": {
+      "$ref": "#/components/responses/Auth"
+     }
+    }
+   }
+  },
+  "/api/write/templates/mine": {
    "get": {
     "tags": [
      "write"

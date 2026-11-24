@@ -11,6 +11,7 @@ import { LogoSplash } from "./WriteExtras";
 import { BackupPanel } from "./WriteMore";
 import { StatsModal } from "./WriteMore2";
 import { TrashPanel, TribeTemplates } from "./WriteMore3";
+import { RunTemplates } from "./WriteRunTemplates";
 import { WriteEditor } from "./WriteEditor";
 import type { Doc } from "./WriteParts";
 import { SharedWithMe } from "./v21/SharedWithMe";
@@ -152,6 +153,7 @@ export function WriteList() {
           ))}
         </ul>
         <TribeTemplates token={token} isAdmin={user?.role === "ADMIN"} busy={busy} onCreate={(id) => create("blank", undefined, id)} />
+        <RunTemplates token={token} busy={busy} onOpen={(id) => router.push(`/write/${id}`)} />
         {templatesMine.length > 0 && (
           <>
             <h3 className="subtitle">התבניות האישיות שלי</h3>

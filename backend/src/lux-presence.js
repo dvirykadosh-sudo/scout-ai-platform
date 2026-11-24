@@ -60,12 +60,13 @@ export function createPresence(now = () => Date.now()) {
 // מי מחובר למסמך עכשיו, באיזה שלב הוא נמצא, והאם הוא מקליד. בנוסף: הודעת "נשמר" לשאר המחוברים, כדי שישלפו את הנוסח העדכני.
 // הכול בזיכרון בלבד (נעלם כשהשרת נרדם; הדפדפנים מתחברים מחדש לבד), ואף כתובת IP לא נשמרת.
 // בפרוטוקול משתמשים במזהה אטום (hash) ולא במזהה החיבור, כדי שאי אפשר יהיה לזייף מיקום של מישהו אחר.
-export function createLiveDocs({ maxPerDoc = 6, maxDocs = 300, pingMs = 20_000, timers = true } = {}) {
-  const docs = new Map(); // docId -> Map(cid -> {res, userId, name, owner, block, editing})
+export const LOCK_MS = 20_000;
+export function createLiveDocs({ maxPerDoc = 6, maxDocs = 300, pingMs = 20_000, timers = true, now = () => Date.now() } = {}) {
+  const docs = new Map(); // docId -> Map(cid -> {res, userId, name, owner, block, editing, lock})
   const pid = (cid) => (hash(cid) % 1e8).toString(36);
   const list = (m) =>
     [...m]
-      .map(([cid, p]) => ({ id: pid(cid), name: p.name, owner: p.owner, block: p.block, editing: p.editing, color: COLORS[hash(cid) % COLORS.length] }))
+      .map(([cid, p]) => ({ id: pid(cid), name: p.name, owner: p.owner, block: p.block, editing: p.editing, lock: p.lock && p.lock.until > now() ? p.lock.block : null, color: COLORS[hash(cid) % COLORS.length] }))
       .sort((a, b) => Number(b.owner) - Number(a.owner) || a.name.localeCompare(b.name, "he") || a.id.localeCompare(b.id));
   const send = (res, event, data) => {
     try {
@@ -90,9 +91,26 @@ export function createLiveDocs({ maxPerDoc = 6, maxDocs = 300, pingMs = 20_000, 
   const tidy = (docId) => {
     if (docs.get(docId)?.size === 0) docs.delete(docId);
   };
+  /** מנקה נעילות שפג תוקפן ומודיע לשאר המחוברים. מחזיר כמה נעילות שוחררו. */
+  const sweep = () => {
+    let n = 0;
+    for (const [docId, m] of [...docs]) {
+      let changed = false;
+      for (const p of m.values()) {
+        if (p.lock && p.lock.until <= now()) {
+          p.lock = null;
+          changed = true;
+          n++;
+        }
+      }
+      if (changed) broadcast(docId, "presence", { people: list(m) });
+    }
+    return n;
+  };
   let beat = null;
   if (timers) {
     beat = setInterval(() => {
+      sweep();
       for (const [docId, m] of [...docs]) {
         for (const [cid, p] of [...m]) {
           try {
@@ -127,7 +145,7 @@ export function createLiveDocs({ maxPerDoc = 6, maxDocs = 300, pingMs = 20_000, 
           /* כבר סגור */
         }
       }
-      m.set(cid, { res, userId, name: cleanName(name), owner: !!owner, block: null, editing: false });
+      m.set(cid, { res, userId, name: cleanName(name), owner: !!owner, block: null, editing: false, lock: null });
       send(res, "hello", { me: pid(cid), people: list(m) });
       broadcast(docId, "presence", { people: list(m) }, cid);
       return () => {
@@ -150,6 +168,30 @@ export function createLiveDocs({ maxPerDoc = 6, maxDocs = 300, pingMs = 20_000, 
       broadcast(docId, "presence", { people: list(docs.get(docId)) });
       return true;
     },
+    /**
+     * שלב 75: נעילת שלב קצרה. מי שמקליד בשלב מחזיק בו 20 שניות (ומחדש בהקלדה); אחרים רואים אותו לקריאה בלבד ומי עורך אותו.
+     * הנעילה מייעצת: היא מונעת התנגשות בהקלדה, ובכל מקרה השמירה ממזגת ברמת שלב. בלי block משחררים. נעילה אחת לכל חיבור.
+     */
+    lock(docId, cid, userId, block) {
+      const m = docs.get(docId);
+      const p = m?.get(cid);
+      if (!p || p.userId !== userId) return { ok: false, reason: "NOT_CONNECTED" };
+      if (block == null) {
+        if (p.lock) {
+          p.lock = null;
+          broadcast(docId, "presence", { people: list(m) });
+        }
+        return { ok: true };
+      }
+      const b = String(block).slice(0, 24);
+      const t = now();
+      for (const [other, q] of m) if (other !== cid && q.lock && q.lock.until > t && q.lock.block === b) return { ok: false, reason: "LOCKED", by: q.name };
+      const changed = !p.lock || p.lock.block !== b || p.lock.until <= t;
+      p.lock = { block: b, until: t + LOCK_MS };
+      if (changed) broadcast(docId, "presence", { people: list(m) });
+      return { ok: true, until: p.lock.until };
+    },
+    sweep,
     /** הודעה לכולם: המסמך נשמר (rev חדש). by = מזהה אטום של השומר, כדי שהוא יתעלם מההודעה על עצמו. */
     saved(docId, { rev, cid, changed = [], title = false, meta = false, conflicts = [] }) {
       return broadcast(docId, "saved", { rev, by: cid ? pid(cid) : null, changed: changed.slice(0, 60), title: !!title, meta: !!meta, conflicts: conflicts.slice(0, 60) }, cid);

@@ -1,0 +1,115 @@
+/* שלב 75: עוזר הכתיבה והעורך. ידית גרירה נגישה, תפריט פקודות, מד זמן, חיפוש והחלפה, השוואה זה לצד זה, מצב מיקוד והדפסת A4.
+   הצבע אף פעם לא נושא משמעות לבד: לכל מצב יש גם כתובית או סימן. בניגודיות גבוהה (html.hc) הכול שחור-צהוב. */
+
+/* ───────── ידית גרירה: כפתור אמיתי, עובד בעכבר, במגע ובמקלדת ───────── */
+.write-handle { background: none; border: 1px solid transparent; color: inherit; min-width: 2.75rem; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; touch-action: none; font: inherit; font-size: 1.3rem; }
+.write-handle:hover { border-color: var(--line); }
+.write-handle:focus-visible { outline: 3px solid var(--focus, var(--accent)); outline-offset: 2px; }
+.write-handle[aria-pressed="true"] { border: 2px solid currentColor; background: var(--field); }
+.write-block.is-drop { box-shadow: 0 -5px 0 0 var(--accent-2); }
+.write-block.is-drop-end { box-shadow: 0 5px 0 0 var(--accent-2); }
+.write-block.is-dragging { opacity: 0.55; }
+.write-block.is-held { outline: 3px solid var(--accent); outline-offset: 2px; }
+.write-block.is-unchecked { border-inline-end: 6px dashed #d98a00; }
+html.hc .write-block.is-unchecked { border-inline-end-color: #ffeb00; }
+body.is-reordering { user-select: none; cursor: grabbing; }
+body.is-reordering * { cursor: grabbing !important; }
+@media (max-width: 720px) {
+  .write-head { grid-template-columns: auto auto 1fr 6rem; }
+  .write-head .write-ttl { grid-column: 1 / -1; order: 5; }
+}
+
+/* ───────── תיבת הטקסט, תפריט / ומגבלות ───────── */
+.write-text-wrap { display: grid; gap: 0.35rem; }
+.slash-menu { list-style: none; margin: 0; padding: 0.3rem; border: 1px solid var(--line); border-radius: 10px; background: var(--field); display: grid; gap: 2px; max-width: 28rem; }
+.slash-menu li { padding: 0.35rem 0.6rem; border-radius: 8px; cursor: pointer; display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap; }
+.slash-menu li span { opacity: 0.85; font-size: 0.92rem; }
+.slash-menu li.is-sel { outline: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.slash-menu li.slash-help { cursor: default; font-size: 0.85rem; opacity: 0.8; }
+.write-count { margin: 0; font-size: 0.92rem; }
+.write-count.lv-near::before { content: "! "; font-weight: 800; }
+.write-count.lv-over { font-weight: 700; }
+.write-count.lv-over::before { content: "✗ "; }
+.write-lock { margin: 0; }
+.check-inline input { margin: 0; }
+
+/* ───────── מד זמן חי ───────── */
+.tmeter { margin: 0.5rem 0; }
+.tmeter-bar { display: flex; gap: 2px; height: 14px; border-radius: 7px; overflow: hidden; border: 1px solid var(--line); background: var(--field); }
+.tmeter-bar > span { flex-basis: 0; min-width: 3px; background: var(--k, #9ca3af); }
+.tmeter-bar .kind-open { --k: #2ea8e6; }
+.tmeter-bar .kind-body { --k: var(--accent-2); }
+.tmeter-bar .kind-peak { --k: #ff8a3d; }
+.tmeter-bar .kind-close { --k: #2fbf71; }
+.tmeter-bar .kind-free { --k: #9ca3af; }
+html.hc .tmeter-bar > span { background: #ffeb00; }
+.tmeter-label { margin: 0.35rem 0 0; }
+.tmeter-badge { display: inline-block; padding: 1px 10px; border-radius: 999px; border: 1px solid var(--line); font-weight: 700; font-size: 0.92rem; }
+.tm-ok .tmeter-badge { background: color-mix(in srgb, #2fbf71 28%, transparent); }
+.tm-ok .tmeter-badge::before { content: "✓ "; }
+.tm-near .tmeter-badge { background: color-mix(in srgb, #d98a00 30%, transparent); }
+.tm-near .tmeter-badge::before { content: "! "; }
+.tm-over .tmeter-badge { background: color-mix(in srgb, #e5484d 32%, transparent); }
+.tm-over .tmeter-badge::before { content: "✗ "; }
+.tm-under .tmeter-badge { background: color-mix(in srgb, #3b82f6 28%, transparent); }
+.tm-under .tmeter-badge::before { content: "↓ "; }
+html.hc .tmeter-badge { background: #000 !important; border-color: #ffeb00; color: #ffeb00; }
+.tmeter.is-compact { margin: 0; }
+.tmeter.is-compact .tmeter-label { margin: 0; }
+
+/* ───────── מצב מיקוד ───────── */
+.focus75 { z-index: 1100; }
+.assist-focus-bar, .focus75-meter { transition: opacity 0.4s; }
+.assist-focus-bar.is-quiet, .focus75-meter.is-quiet { opacity: 0.12; }
+.assist-focus-bar.is-quiet:hover, .assist-focus-bar.is-quiet:focus-within, .focus75-meter.is-quiet:hover { opacity: 1; }
+.focus75-meter { display: flex; flex-wrap: wrap; gap: 0.2rem 1.2rem; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .assist-focus-bar, .focus75-meter { transition: none; } }
+
+/* ───────── חיפוש והחלפה, בדיקת סגנון, הערות והיסטוריה ───────── */
+.find75-opts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; border: 1px solid var(--line); border-radius: 10px; padding: 0.5rem 0.8rem; margin: 0; }
+.find75-opts legend { font-weight: 700; padding: 0 0.3rem; }
+.find75-list { grid-column: 1 / -1; max-height: 16rem; overflow: auto; }
+.find75-list li.is-cur { outline: 2px solid var(--accent); border-radius: 8px; }
+.find75-list .link-btn { text-align: start; text-decoration: none; display: block; width: 100%; }
+.find75-ctx mark { background: #ffe14d; color: #000; padding: 0 2px; border-radius: 3px; }
+.style75-list li, .hist75-list li, .tray75-list li { display: flex; gap: 0.8rem; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--line); padding: 0.5rem 0; }
+.style75-text, .hist75-text { margin: 0.25rem 0; white-space: pre-wrap; }
+.notes75-list li { display: grid; gap: 0.35rem; border-bottom: 1px solid var(--line); padding: 0.5rem 0; }
+.notes75-list textarea { width: 100%; font: inherit; line-height: 1.6; padding: 0.5rem; }
+.read75-sentence { font-size: 1.2rem; line-height: 1.8; padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; margin: 0.3rem 0; }
+.wa75-parts ol { padding: 0; }
+.runtpl75 .actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+
+/* ───────── השוואה זה לצד זה ───────── */
+.cmp-list { display: grid; gap: 0.8rem; }
+.cmp-row { border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.8rem; }
+.cmp-head { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; }
+.cmp-pill.st-added::before { content: "+ "; }
+.cmp-pill.st-removed::before { content: "− "; }
+.cmp-pill.st-changed::before { content: "~ "; }
+.cmp-pill.st-moved::before { content: "↕ "; }
+.cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.4rem; }
+.cmp-col h4 { margin: 0 0 0.25rem; font-size: 0.95rem; }
+.cmp-text { white-space: pre-wrap; border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.7rem; max-height: 18rem; overflow: auto; line-height: 1.7; }
+.cmp-text ins { background: color-mix(in srgb, #2fbf71 38%, transparent); text-decoration: none; border-bottom: 2px solid #2fbf71; }
+.cmp-text del { background: color-mix(in srgb, #e5484d 34%, transparent); text-decoration: line-through; }
+html.hc .cmp-text ins { background: #000; color: #ffeb00; text-decoration: underline; border-bottom: 0; }
+html.hc .cmp-text del { background: #000; color: #fff; text-decoration: line-through; }
+@media (max-width: 720px) { .cmp-grid { grid-template-columns: 1fr; } }
+
+/* ───────── תצוגת הדפסה A4 ───────── */
+.a4-wrap { overflow: auto; max-height: 60vh; background: #6b7280; padding: 1rem; border-radius: 10px; margin-top: 0.6rem; }
+.write-print.is-preview { display: block; width: 210mm; max-width: none; margin: 0 auto; box-sizing: border-box; padding: 14mm; background: #fff; color: #000; font-size: 11pt; line-height: 1.55; background-image: linear-gradient(to bottom, transparent calc(100% - 2px), rgba(220, 38, 38, 0.7) calc(100% - 2px)); background-size: 100% 269mm; background-position: 0 14mm; background-repeat: repeat-y; }
+.write-print.is-preview a { color: #0b3d91; }
+.print-unchecked { font-weight: 400; font-size: 0.8em; border: 1px dashed currentColor; padding: 0 0.3em; border-radius: 4px; }
+
+/* עימוד חכם: שלב קצר נשאר שלם בעמוד אחד, שלב ארוך נמשך. כותרת לא נשארת לבדה, ושורה בודדת לא נתקעת בראש עמוד או בסופו. */
+.write-print { page: write75; }
+@page write75 { size: A4; margin: 14mm; }
+@media print {
+  .write .write-print section { break-inside: auto; orphans: 3; widows: 3; }
+  .write .write-print section[data-keep] { break-inside: avoid; }
+  .write-print h1, .write-print h2 { break-after: avoid; }
+  .write-print .md-table, .write-print li, .write-print blockquote, .write-print tr { break-inside: avoid; }
+  .write-print p { orphans: 3; widows: 3; }
+}

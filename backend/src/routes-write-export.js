@@ -11,6 +11,7 @@ import { fadeWatermark } from "./watermark.js";
 import { AlignmentType, BorderStyle, Document, ImageRun, Packer, Paragraph, ShadingType, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
 import { KINDS, metaDefaults } from "./routes-write.js";
 import { prepOf } from "./write-suggest.js";
+import { toWhatsApp } from "./write75.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FONT = { ascii: "Arial", hAnsi: "Arial", cs: "Arial", eastAsia: "Arial" };
@@ -24,6 +25,7 @@ const blockZ = z.object({
   minutes: z.number().int().min(0).max(300).nullable().default(null),
   text: z.string().max(20000).default(""),
   note: z.string().max(5000).default(""),
+  unchecked: z.boolean().optional(),
 });
 const docZ = z.object({
   title: z.string().max(120).default(""),
@@ -166,7 +168,7 @@ export async function buildSheetDocx(doc, { logo, tribe = "שבט מעוז", opt
 export function toPlain(doc, { whatsapp = false } = {}) {
   const meta = metaDefaults(doc.meta ?? {});
   const B = (s) => (whatsapp ? `*${s}*` : s);
-  const strip = (s) => (whatsapp ? s.replace(/\*\*([^*]+)\*\*/g, "*$1*") : s.replace(/\*\*([^*]+)\*\*/g, "$1")).replace(/^#{1,3}\s+/gm, "").replace(/^>\s?/gm, "");
+  const strip = (s) => (whatsapp ? s.replace(/\*\*([^*]+)\*\*/g, "*$1*") : s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])/g, "$1")).replace(/^#{1,3}\s+/gm, "").replace(/^>\s?/gm, "");
   const out = [B(doc.title || "פעולה")];
   const bits = [meta.ageGroup, meta.minutes ? `${meta.minutes} דקות` : "", meta.groupSize ? `${meta.groupSize} חניכים` : "", meta.value ? `ערך: ${meta.value}` : ""].filter(Boolean);
   if (bits.length) out.push(bits.join(" | "));
@@ -282,8 +284,13 @@ export function registerWriteExportRoutes(app, { limiter, fail, requireUser, get
   });
 
   app.post("/api/write/export/text", requireUser(), lim, (req, res) => {
-    const v = docZ.extend({ whatsapp: z.boolean().default(false) }).parse(req.body ?? {});
-    res.json({ text: toPlain(norm(v), { whatsapp: v.whatsapp }) });
+    const v = docZ.extend({ whatsapp: z.boolean().default(false), marks: z.boolean().default(false), max: z.number().int().min(1000).max(20000).default(4000) }).parse(req.body ?? {});
+    // שלב 75: בוואטסאפ ממירים את העיצוב בצורה בטוחה (נטייה, טבלאות, כותרות, סימנים בלי זוג) ומפצלים להודעות לפי שלבים
+    if (v.whatsapp) {
+      const w = toWhatsApp(norm(v), { max: v.max, marks: v.marks });
+      return res.json({ text: w.text, parts: w.parts, chars: w.chars });
+    }
+    res.json({ text: toPlain(norm(v), { whatsapp: false }) });
   });
 
   app.post("/api/write/split", requireUser(), lim, (req, res) => {

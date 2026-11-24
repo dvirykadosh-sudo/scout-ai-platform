@@ -3,12 +3,13 @@
 // כלים נלווים לעורך הכתיבה (רעיונות 127–138): מסך לוגו בפתיחה, ייצוא ל-Word/הדפסה/העתקה,
 // ייבוא טקסט חופשי לשלבים, דף הכנה, ותפריט מהיר ו"המשך מאיפה שעצרת" לדף הבית.
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { ApiError, api, errorMessage, extractStyleFile, fmtDate, postDownload } from "@/lib/api";
 import { useLogoUrl } from "./Chrome";
 import { useAuth, useToast } from "./Providers";
 import { Field, Modal } from "./ui";
 import { toMarkdown } from "./WriteMore3";
+import { exportWarning, paginate, type W75Block } from "@/lib/write75";
 import { KIND_LABEL, Md, type Block, type Snap } from "./WriteParts";
 
 /** 127: מסך לוגו קצר בזמן שנוצר מסמך חדש. אפשר לדלג, ומכבד "הפחתת תנועה". */
@@ -41,6 +42,10 @@ export function ExportModal({ open, onClose, snap, token, docId }: { open: boole
   const [notes, setNotes] = useState(false);
   const [look, setLook] = useState<Look>({ theme: "classic", eco: false, large: false, qr: false });
   const [busy, setBusy] = useState("");
+  // שלב 75: ״טרם נבדק״ בטקסט, ועימוד הודעת וואטסאפ ארוכה לכמה הודעות
+  const [marks, setMarks] = useState(true);
+  const [waParts, setWaParts] = useState<string[] | null>(null);
+  const warn = exportWarning(snap.blocks as W75Block[]);
   const extra = { ...look, ...(docId ? { docId } : {}) };
   const name = (snap.title || "פעולה").replace(/[\\/:*?"<>|]/g, " ").slice(0, 60);
   const run = async (key: string, fn: () => Promise<void>) => {
@@ -52,7 +57,8 @@ export function ExportModal({ open, onClose, snap, token, docId }: { open: boole
     }
     setBusy("");
   };
-  const text = async (whatsapp: boolean) => (await api<{ text: string }>("/api/write/export/text", { method: "POST", token, body: { ...body(snap, false), whatsapp } })).text;
+  const textFull = (whatsapp: boolean) => api<{ text: string; parts?: string[]; chars?: number }>("/api/write/export/text", { method: "POST", token, body: { ...body(snap, false), whatsapp, marks } });
+  const text = async (whatsapp: boolean) => (await textFull(whatsapp)).text;
   const print = () => {
     document.body.classList.add("printing-write");
     const done = () => {
@@ -65,6 +71,17 @@ export function ExportModal({ open, onClose, snap, token, docId }: { open: boole
   };
   return (
     <Modal open={open} onClose={onClose} title="ייצוא ושיתוף" footer={<button type="button" className="btn" onClick={onClose}>סגירה</button>}>
+      {warn && (
+        <p className="warn-box" role="status">
+          {warn}
+        </p>
+      )}
+      {warn && (
+        <label className="check">
+          <input type="checkbox" checked={marks} onChange={(e) => setMarks(e.target.checked)} />
+          <span>לסמן ״(טרם נבדק)״ ליד שלבים כאלה בטקסט ובהעתקה לוואטסאפ</span>
+        </label>
+      )}
       <label className="check">
         <input type="checkbox" checked={notes} onChange={(e) => setNotes(e.target.checked)} />
         <span>לכלול את ההערות האישיות שלי בקובץ Word</span>
@@ -124,7 +141,17 @@ export function ExportModal({ open, onClose, snap, token, docId }: { open: boole
           disabled={!!busy}
           onClick={() =>
             run("wa", async () => {
-              await navigator.clipboard.writeText(await text(true));
+              const r = await textFull(true);
+              const parts = r.parts && r.parts.length ? r.parts : [r.text];
+              if (parts.length > 1) {
+                // הודעה ארוכה מדי להודעה אחת: מפצלים בגבולות שלבים ומעתיקים חלק אחרי חלק
+                setWaParts(parts);
+                await navigator.clipboard.writeText(parts[0]);
+                toast(`ההודעה ארוכה, חולקה ל-${parts.length} חלקים. חלק 1 הועתק`, { kind: "success" });
+                return;
+              }
+              setWaParts(null);
+              await navigator.clipboard.writeText(parts[0]);
               toast("הועתק בפורמט וואטסאפ", { kind: "success" });
             })
           }
@@ -169,16 +196,47 @@ export function ExportModal({ open, onClose, snap, token, docId }: { open: boole
         </button>
       </div>
       <p className="hint">הקובץ נבנה בשרת, כולל כותרת, פרטי הפעולה, כל השלבים והזמנים.</p>
-    </Modal>
+          {waParts && (
+        <section aria-label="חלקי ההודעה לוואטסאפ" className="wa75-parts">
+          <h3 className="subtitle">ההודעה חולקה ל-{waParts.length} חלקים</h3>
+          <p className="hint">הדביקו כל חלק כהודעה נפרדת, לפי הסדר. החלוקה בגבולות שלבים כדי שלא יישבר עיצוב באמצע.</p>
+          <ol className="plain-list">
+            {waParts.map((p, n) => (
+              <li key={n}>
+                <span>
+                  חלק {n + 1} · {p.length} תווים
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(p);
+                      toast(`חלק ${n + 1} הועתק`, { kind: "success" });
+                    } catch {
+                      toast("ההעתקה נכשלה. סמנו ידנית", { kind: "error" });
+                    }
+                  }}
+                >
+                  העתקת חלק {n + 1}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+</Modal>
   );
 }
 
 /** גרסה להדפסה: מוסתר במסך, מוצג רק כשמדפיסים, עם הלוגו. */
-export function PrintSheet({ snap }: { snap: Snap }) {
+export const PrintSheet = memo(function PrintSheet({ snap, preview = false }: { snap: Snap; preview?: boolean }) {
   const logo = useLogoUrl();
   const m = snap.meta;
+  // שלב 75: שלב קצר נשמר בעמוד אחד (data-keep), ושלב ארוך נמשך על פני עמודים. ההערות האישיות אף פעם לא נכנסות.
+  const keep = useMemo(() => paginate(snap.blocks).blocks.map((b) => b.keep), [snap.blocks]);
   return (
-    <div className="write-print" aria-hidden="true">
+    <div className={`write-print${preview ? " is-preview" : ""}`} aria-hidden={preview ? undefined : true}>
       {logo && (
         // eslint-disable-next-line @next/next/no-img-element
         <img className="write-print-logo" src={logo} alt="" />
@@ -187,18 +245,19 @@ export function PrintSheet({ snap }: { snap: Snap }) {
       <p>
         {[m.leader && `מדריך/ה: ${m.leader}`, `תאריך: ${m.date || new Date().toLocaleDateString("he-IL")}`, m.ageGroup, m.minutes ? `${m.minutes} דקות` : "", m.groupSize ? `${m.groupSize} חניכים` : "", m.value && `ערך: ${m.value}`].filter(Boolean).join(" · ")}
       </p>
-      {snap.blocks.map((b) => (
-        <section key={b.id}>
+      {snap.blocks.map((b, i) => (
+        <section key={b.id} data-keep={keep[i] ? "1" : undefined}>
           <h2>
             {b.title || KIND_LABEL[b.kind]}
             {b.minutes ? ` (${b.minutes} דקות)` : ""}
+            {b.unchecked ? <span className="print-unchecked"> (טרם נבדק)</span> : null}
           </h2>
           <Md text={b.text} />
         </section>
       ))}
     </div>
   );
-}
+});
 
 /** 135: הדבקת טקסט חופשי ופירוק לשלבים. */
 export function ImportModal({ open, onClose, token, onApply }: { open: boolean; onClose: () => void; token: string | null; onApply: (blocks: Block[], mode: "append" | "replace") => void }) {

@@ -13,6 +13,8 @@ export interface Block {
   note: string;
   hint?: string;
   done?: boolean;
+  /** שלב 75: סימון ״טרם נבדק״. נשמר רק כשהוא דלוק */
+  unchecked?: boolean;
 }
 export interface Meta {
   ageGroup: string;

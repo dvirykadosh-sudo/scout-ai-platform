@@ -304,7 +304,7 @@ export function registerWriteCommunityRoutes(app, { db, limiter, fail, requireUs
     if (!d) return nf(res);
     if (db.prepare("SELECT COUNT(*) AS c FROM write_tribe_templates").get().c >= 30) return res.status(409).json(fail("LIMIT", "אפשר עד 30 תבניות שבט. מחקו ישנות"));
     const meta = { ...JSON.parse(d.meta_json), runs: [], date: "", leader: "", template: false, archived: false, pinned: false };
-    const blocks = JSON.parse(d.blocks_json).map((b) => ({ ...b, note: "", done: false }));
+    const blocks = JSON.parse(d.blocks_json).map((b) => ({ ...b, note: "", done: false, unchecked: undefined }));
     const r = db.prepare("INSERT INTO write_tribe_templates (title, meta_json, blocks_json, created_by, created_at) VALUES (?,?,?,?,?)").run(v.title || d.title || "תבנית", JSON.stringify(meta), JSON.stringify(blocks), req.user.username, nowIso());
     audit(db, req.user.username, "write.tribe-template", { id: Number(r.lastInsertRowid) });
     res.status(201).json({ id: Number(r.lastInsertRowid) });
